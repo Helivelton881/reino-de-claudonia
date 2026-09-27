@@ -1,6 +1,10 @@
 # Personagens (GLB/GLTF rigados)
 
-Coloque aqui o personagem principal com o nome **`base_male.glb`**.
+**Modelo atual:** `base_male/base_male.glb` — "Ranger" do KayKit Adventurers 2.0 FREE (CC0),
+com 22 animações dentro. Origem e licença: `../vendor/kaykit/README.md`.
+O caminho fica em `CHARACTER_CONFIG.model` em `public/js/claudonia-character-config.js`.
+
+Para trocar por outro modelo, coloque o arquivo nesse caminho (ou mude o caminho).
 O jogo tenta carregar esse arquivo sozinho. Se ele não existir ou der erro, o jogo
 continua com o personagem antigo (procedural), sem travar.
 

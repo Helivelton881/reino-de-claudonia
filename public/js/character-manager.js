@@ -30,6 +30,7 @@
       const tries = [this.cfg.model];
       if (this.cfg.usePlaceholderIfMissing && this.cfg.placeholder && this.cfg.placeholder !== this.cfg.model) tries.push(this.cfg.placeholder);
       let gltf = null;
+      if (this.cfg.modelLabel) console.info(`[Character] Loading ${this.cfg.modelLabel}...`);
       for (const url of tries){
         console.info(`[Character] Loading ${fileName(url)}`);
         try { gltf = await this._load(url); this.source = url; break; }
@@ -39,7 +40,7 @@
           else { this.error = `erro ao carregar ${fileName(url)} (${status ? 'HTTP ' + status : (e && e.message) || 'desconhecido'})`; console.warn(`[Character] ${this.error}. Usando fallback.`); }
         }
       }
-      if (!gltf) return false;
+      if (!gltf){ console.warn('[Character] GLB failed. Using legacy fallback.'); return false; }
       try {
         this.clips = (gltf.animations || []).slice();
         for (const url of (this.cfg.animationFiles || [])){
@@ -49,6 +50,8 @@
         this.template = this._prepare(gltf.scene);
         this.ready = true; this.error = null;
         console.info(`[Character] Model loaded: ${fileName(this.source)}${/placeholder/.test(this.source) ? ' (PLACEHOLDER DE TESTE)' : ''}`);
+        console.info('[Character] Model loaded successfully.');
+        console.info(`[Character] Animation clips: ${this.clips.map(c => c.name).join(', ') || '(nenhuma)'}`);
         const test = new window.ClaudoniaAnimationManager(this.THREE, new this.THREE.Object3D(), this.clips, this.cfg.clips);
         console.info(`[Character] Animations: ${test.report()}`);
         test.dispose();
@@ -56,7 +59,8 @@
         return true;
       } catch (e){
         this.error = 'o modelo carregou mas não pôde ser preparado'; this.ready = false;
-        console.error(`[Character] ${this.error}. Usando fallback.`, e); return false;
+        console.error(`[Character] ${this.error}. Usando fallback.`, e);
+        console.warn('[Character] GLB failed. Using legacy fallback.'); return false;
       }
     }
 

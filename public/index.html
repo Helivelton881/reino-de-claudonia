@@ -2036,6 +2036,10 @@ function setHeroWeapon(h, cls){
     const b = weaponMesh(cls), hd = weaponMesh(cls);
     charSys.equip(h.view, 'back', b); charSys.equip(h.view, 'weapon', hd);
     hd.visible = false; h.back = b; h.hand = hd;
+    // partes do modelo só de algumas classes (ex.: aljava só no arqueiro)
+    Object.entries(CHAR_CFG.classOnlyMeshes || {}).forEach(([name, list])=>{
+      h.view.model.traverse(o=>{ if (o.isMesh && o.name === name) o.visible = list.includes(cls); });
+    });
     const eq = charSys.equipment, url = eq.weaponUrl(cls);
     if (url) eq.loadAsset(url).then(g=>{
       if (!g || h.weaponCls !== cls || !h.isGLB) return;

@@ -32,9 +32,10 @@
       view.anchors = {}; view.equipment = {}; view.anchorInfo = {};
       Object.entries(this.cfg.anchors || {}).forEach(([name, a]) => {
         const node = new T.Group(); node.name = 'anchor_' + name;
-        const bone = this._findBone(view.model, a.bones);
+        const slotBone = this._findBone(view.model, a.slotBones);   // osso que já é o ponto de pegada
+        const bone = slotBone || this._findBone(view.model, a.bones);
         if (bone){
-          const exact = norm(bone.name) === norm(name);
+          const exact = !!slotBone || norm(bone.name) === norm(name);
           node.position.fromArray(exact ? [0,0,0] : (a.boneOffset || [0,0,0]));
           if (!exact) node.rotation.set(...(a.rotation || [0,0,0]));
           bone.add(node); view.anchorInfo[name] = 'osso ' + bone.name;

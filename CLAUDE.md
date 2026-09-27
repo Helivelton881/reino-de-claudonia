@@ -36,8 +36,11 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   (chave `USE_NEW_CHARACTER_MODEL`, caminhos, nomes das animações, ossos dos
   encaixes), `public/js/character-manager.js` e `public/js/animation-manager.js`
   (AnimationMixer, 10 estados). O modelo principal é
-  `public/assets/characters/base_male.glb` (ainda não existe: o jogo usa o
-  `makeHero` como reserva). Boneco de teste: `?personagem=placeholder`
+  `public/assets/characters/base_male/base_male.glb`: o "Ranger" do KayKit Adventurers 2.0
+  FREE (Kay Lousberg, CC0), com as animações do pacote dentro (Idle_A, Walking_A, Running_A,
+  Throw = ataque, Hit_A, Death_A, Jump_Start, Use_Item = magia). Origem e licença em
+  `public/assets/vendor/kaykit/`. Armas KayKit em `public/assets/weapons/kaykit_*.glb`.
+  Se o GLB faltar, o jogo usa o `makeLegacyHero` como reserva. Boneco de teste: `?personagem=placeholder`
   (gerado por `tools/gerar_placeholder_glb.js`). Diagnóstico: `?debug=1`.
   Os NPCs e moradores continuam com `makeLegacyHero` (o antigo `makeHero`, reserva do GLB).
   Equipamentos: `public/js/equipment-manager.js` (slots, âncoras Weapon_R/Weapon_L/Back/Head,
