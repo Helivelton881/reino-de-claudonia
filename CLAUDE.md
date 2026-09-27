@@ -29,6 +29,19 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
     vegetação usa InstancedMesh; peças dos monstros viram 1 a 3 malhas
     (`mergeBody`). Isso mantém o celular leve; siga esse padrão.
   - Colisões numa grade (`addCollider`, `colAt`), não num array percorrido.
+  - Visual: sombreado suave (Lambert), sombras reais só no PC (`HQ`), árvores de
+    copa fofa, grama em cartões com textura desenhada, personagem procedural em
+    estilo anime (`makeHero`, cabeça grande, rosto em textura).
+- Personagens GLB rigados (versão 0.7): `public/js/claudonia-character-config.js`
+  (chave `USE_NEW_CHARACTER_MODEL`, caminhos, nomes das animações, ossos dos
+  encaixes), `public/js/character-manager.js` e `public/js/animation-manager.js`
+  (AnimationMixer, 10 estados). O modelo principal é
+  `public/assets/characters/base_male.glb` (ainda não existe: o jogo usa o
+  `makeHero` como reserva). Boneco de teste: `?personagem=placeholder`
+  (gerado por `tools/gerar_placeholder_glb.js`). Diagnóstico: `?debug=1`.
+  Os NPCs e moradores continuam com `makeHero`.
+- Scripts `blender_etapa_*.py` na raiz são do dono (modelagem no Blender);
+  não mexer e não enviar ao GitHub sem ele pedir.
 - `server.js`: Node.js + Express + ws. Confere o login no Supabase, repassa
   posições (10 vezes por segundo), chat e salva o personagem a cada 15 s.
   O servidor usa o token do próprio jogador, então o banco (RLS) só deixa
