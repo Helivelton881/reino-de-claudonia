@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Reino De Claudonia</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#2E1C0C">
@@ -227,7 +227,7 @@ button{font-family:inherit;color:inherit}
 .shoprow div{flex:1;line-height:1.2} .shoprow b{font-size:14.5px}
 .shoprow div span{display:block;font-size:12.5px;color:var(--ink-soft)}
 .shoprow .btn{flex:none;padding:0 10px;height:36px;font-size:13.5px}
-.shoprow input{width:74px!important;height:34px!important;display:inline-block!important;margin:0!important;font-size:14px!important;padding:0 6px!important}
+.shoprow input{width:74px!important;height:34px!important;display:inline-block!important;margin:0!important;font-size:16px!important;padding:0 6px!important}
 .si{width:34px;text-align:center;font-size:22px}
 #npcBody p{margin:0 0 10px;font-size:14.5px;line-height:1.4}
 #npcBody .role{color:var(--gold);font-weight:700;margin-bottom:6px}
@@ -335,6 +335,10 @@ button{font-family:inherit;color:inherit}
   .overlay .panel{max-height:92vh;overflow:auto}
   #banner{top:16%} #banner b{font-size:30px} #banner span{font-size:15px}
 }
+/* Sem zoom de dois toques nos botões e campos (o iPhone respeita "manipulation") */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
+.overlay .panel{touch-action:pan-y}
 </style>
 </head>
 <body>
@@ -491,6 +495,18 @@ if (typeof THREE === 'undefined'){ document.getElementById('err').style.display=
 const $ = id => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches;
 if (isTouch) document.body.classList.add('touch');
+// iPhone: bloqueia o zoom da PÁGINA (dois toques e pinça). A pinça continua mexendo só na câmera do jogo.
+{
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', e=>{
+    const now = Date.now();
+    if (now - lastTouchEnd < 350 && !e.target.closest('input,textarea,select,button,.cell')) e.preventDefault();
+    lastTouchEnd = now;
+  }, {passive:false});
+  ['gesturestart','gesturechange','gestureend'].forEach(ev=> document.addEventListener(ev, e=> e.preventDefault(), {passive:false}));
+  document.addEventListener('dblclick', e=> e.preventDefault(), {passive:false});
+  document.addEventListener('touchmove', e=>{ if (e.touches.length > 1 && typeof e.scale === 'number' && e.scale !== 1) e.preventDefault(); }, {passive:false});
+}
 const rnd = (a,b) => a + Math.random()*(b-a);
 const rndInt = (a,b) => Math.floor(rnd(a, b+1));
 
