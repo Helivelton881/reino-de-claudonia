@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Reino De Claudonia</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2E1C0C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Claudonia">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
@@ -292,6 +300,41 @@ button{font-family:inherit;color:inherit}
   .menu button{width:40px;height:40px;font-size:20px} .menu button small{display:none}
 }
 @media (max-width:420px){ .party{width:190px} .touch .hotbar{grid-template-columns:repeat(5,44px)} .touch .slot{width:44px;height:44px} }
+/* Botão de tela cheia (perto do minimapa) */
+#bFull{display:inline-grid;place-items:center;width:30px;height:30px;margin:6px 0 0 6px;vertical-align:top;border-radius:8px;border:1px solid var(--panel-edge);
+  background:var(--wood-grad);color:#FFE7A3;font-size:16px;line-height:1;cursor:pointer;padding:0;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+#bFull[hidden]{display:none}
+
+/* Celular DEITADO: tudo mais compacto, controles nos cantos de baixo, menu em linha no topo */
+@media (orientation: landscape) and (max-height: 560px){
+  .touch .status{padding:calc(env(safe-area-inset-top,0px) + 4px) 0 0 calc(env(safe-area-inset-left,0px) + 6px)}
+  .touch .portrait{width:54px;height:54px;font-size:26px}
+  .touch .lvl{width:24px;height:24px;font-size:12px;left:-4px;top:-4px}
+  .touch .bars{min-width:150px;margin-top:2px;padding:2px 20px 4px 18px} .touch .bars b{font-size:13px}
+  .touch .track{height:11px} .touch .track em{font-size:9.5px;line-height:10px}
+  .touch .chips{font-size:12px;margin-top:2px;gap:8px} .touch .buffs{max-width:220px} .touch .party{width:170px}
+  .touch .mapbox{padding:calc(env(safe-area-inset-top,0px) + 4px) calc(env(safe-area-inset-right,0px) + 6px) 0 0}
+  .touch #mini{width:92px;height:92px}
+  .touch .area{margin-top:6px;font-size:12px;padding:0 10px}
+  .touch #online,.touch #fps{font-size:10px;margin-top:1px}
+  .touch #bFull{width:26px;height:26px;font-size:14px;margin-top:5px}
+  .touch .menu{flex-direction:row;gap:8px;top:calc(env(safe-area-inset-top,0px) + 6px);right:calc(env(safe-area-inset-right,0px) + 150px);bottom:auto}
+  .touch .menu button{width:40px;height:40px;font-size:19px}
+  .touch .target{padding-top:calc(env(safe-area-inset-top,0px) + 56px);margin-top:0}
+  .touch .target .panel{width:190px;padding:4px 10px 6px}
+  .touch #joy{left:calc(env(safe-area-inset-left,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:118px;height:118px}
+  .touch #knob{width:52px;height:52px;margin:-26px 0 0 -26px}
+  .touch #jump{right:calc(env(safe-area-inset-right,0px) + 22px);bottom:calc(env(safe-area-inset-bottom,0px) + 24px);width:78px;height:78px}
+  .touch.flying #down{right:calc(env(safe-area-inset-right,0px) + 112px);bottom:calc(env(safe-area-inset-bottom,0px) + 30px);width:54px;height:54px}
+  .touch .hotbar{display:flex;gap:4px;padding:4px 6px;margin-bottom:4px}
+  .touch .slot{width:38px;height:38px;font-size:19px}
+  .touch .slot small{left:6px;font-size:9px} .touch .slot .n{right:6px;font-size:10.5px}
+  .touch .log{left:50%;right:auto;transform:translateX(-50%);width:min(440px,46vw);bottom:calc(env(safe-area-inset-bottom,0px) + 62px);max-height:64px;font-size:12px;padding:4px 10px}
+  .touch #invites{top:calc(env(safe-area-inset-top,0px) + 56px)}
+  .touch .win{max-height:88%}
+  .overlay .panel{max-height:92vh;overflow:auto}
+  #banner{top:16%} #banner b{font-size:30px} #banner span{font-size:15px}
+}
 </style>
 </head>
 <body>
@@ -323,7 +366,7 @@ button{font-family:inherit;color:inherit}
 
 <div class="mapbox txt">
   <canvas id="mini" width="300" height="300" aria-label="Minimapa"></canvas>
-  <div class="area" id="area">Vila do Vale</div>
+  <div class="area" id="area">Vila do Vale</div><button id="bFull" type="button" title="Tela cheia" aria-label="Tela cheia">⛶</button>
   <div id="online">Desconectado</div>
   <div id="fps" title="Toque ou tecla P para esconder">-- fps</div>
 </div>
@@ -631,7 +674,36 @@ $('controls').innerHTML = controls.map(c=>`<li><b>${c[0]}</b><span>${c[1]}</span
 let helpOpen = true, deadOpen = false, lastArea = '';
 const blocked = () => helpOpen || deadOpen;
 function banner(t, s){ $('banT').textContent = t; $('banS').textContent = s; const b = $('banner'); b.classList.remove('show'); void b.offsetWidth; b.classList.add('show'); }
-$('start').addEventListener('click', ()=>{ $('help').hidden = true; helpOpen = false; banner('Reino De Claudonia','Vila do Vale'); lastArea = 'Vila do Vale'; });
+$('start').addEventListener('click', ()=>{ $('help').hidden = true; helpOpen = false; banner('Reino De Claudonia','Vila do Vale'); lastArea = 'Vila do Vale'; fullscreenTip(); });
+
+/* ---------- Tela cheia (em pé ou deitado) ----------
+   Android e PC: o botão ⛶ esconde as barras do navegador.
+   iPhone: a Apple não deixa site entrar em tela cheia; o jeito é "Adicionar à Tela de Início",
+   que abre o jogo como aplicativo, sem as barras do Safari. */
+const docEl = document.documentElement;
+const canFullscreen = !!(docEl.requestFullscreen || docEl.webkitRequestFullscreen);
+const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isApp = matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+const inFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+$('bFull').hidden = isApp || (!canFullscreen && !isIOS);
+function iosTip(){ log('iPhone: toque em Compartilhar (quadrado com seta) → "Adicionar à Tela de Início". O jogo abre como aplicativo, sem as barras do Safari, em pé ou deitado.', 'gold'); }
+function fullscreenTip(){
+  if (isApp || !isTouch) return;
+  try { if (sessionStorage.getItem('dicaTela')) return; sessionStorage.setItem('dicaTela', '1'); } catch (e) {}
+  if (canFullscreen) log('Dica: toque em ⛶ (perto do minimapa) para jogar em tela cheia. Funciona em pé ou deitado.', 'gold');
+  else if (isIOS) iosTip();
+}
+$('bFull').addEventListener('click', ()=>{
+  if (inFullscreen()){ (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+  if (canFullscreen){
+    const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+    try { const r = req.call(docEl, {navigationUI:'hide'}); if (r && r.catch) r.catch(()=> log('O navegador não deixou entrar em tela cheia.', 'bad')); }
+    catch (e){ log('O navegador não deixou entrar em tela cheia.', 'bad'); }
+  } else if (isIOS) iosTip();
+});
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=> document.addEventListener(ev, ()=>{ $('bFull').textContent = inFullscreen() ? '🗗' : '⛶'; setTimeout(resize, 150); }));
+// ao girar o celular, espera o navegador terminar de mudar o tamanho da tela
+addEventListener('orientationchange', ()=> setTimeout(resize, 250));
 
 /* =========================================================
    RENDERIZADOR E MUNDO (continente grande, estilo outono)
