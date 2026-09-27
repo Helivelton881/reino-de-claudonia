@@ -488,6 +488,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <script src="/js/animation-manager.js"></script>
 <script src="/js/equipment-manager.js"></script>
 <script src="/js/character-manager.js"></script>
+<script src="/js/world-asset-manager.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="/config.js"></script>
 <script>
@@ -1213,6 +1214,56 @@ scatter(crossCard(0.9, 0.8), new THREE.MeshLambertMaterial({map:flowerTex, alpha
 
 finishBake();
 
+/* ---------- Kits externos: marcos regionais e interiores da vila ---------- */
+const worldAssets = new WorldAssetManager({scene, heightAt, highQuality:HQ});
+const WA = CLAUDONIA_WORLD_ASSETS, NATURE = WA.paths.nature, PROPS = WA.paths.props, MONSTER_KIT = WA.paths.monsters;
+
+function placeRegionLandmarks(){
+  ZONES.forEach((zone, zi)=>{
+    const models = WA.regions[zone.key];
+    // Seis peças por região: suficientes para dar identidade sem sacrificar FPS.
+    for(let i=0;i<6;i++){
+      const name=models[i%models.length], angle=(i/6)*Math.PI*2+zi*.61, radius=zone.r*(.68+(i%2)*.34);
+      const x=zone.x+Math.cos(angle)*radius, z=zone.z+Math.sin(angle)*radius;
+      const isTree=/Tree|Pine/.test(name), isRock=/Rock/.test(name);
+      worldAssets.place(NATURE+name+'.gltf',{
+        x,z,rotation:angle+Math.PI*.35,height:WA.heights[name],scale:.9+((zi*7+i*3)%5)*.06,maxDistance:HQ?150:105
+      });
+      if(isTree||isRock)addCollider({x,z,r:isTree?1.15:1.0});
+    }
+  });
+}
+
+function townPoint(cx,cz,rot,lx,lz){
+  const c=Math.cos(rot),s=Math.sin(rot);return{x:cx+lx*c+lz*s,z:cz-lx*s+lz*c};
+}
+function makeOpenInterior({x,z,rot,title,props}){
+  const g=new THREE.Group(), floorMat=lam(0x7C5638), wallMat=lam(0xD9C39C), beamMat=lam(0x5A3827), roofMat=lam(0x7A3E32);
+  const floor=box(8,.25,6,floorMat,0,.12,0), back=box(8,4.3,.28,wallMat,0,2.15,2.86);
+  const left=box(.28,4.3,6,wallMat,-3.86,2.15,0),right=box(.28,4.3,6,wallMat,3.86,2.15,0);
+  const roof=box(8.7,.28,6.7,roofMat,0,4.42,0);g.add(floor,back,left,right,roof);
+  [-3.65,3.65].forEach(bx=>{g.add(box(.22,4.5,.22,beamMat,bx,2.25,2.66));g.add(box(.22,4.5,.22,beamMat,bx,2.25,-2.66));});
+  const sign=makeLabel(title,'#fff1c8');sign.position.set(0,4.25,-3.18);sign.scale.setScalar(.72);g.add(sign);
+  g.position.set(x,heightAt(x,z),z);g.rotation.y=rot;scene.add(g);
+  props.forEach(([model,lx,lz,h,lr=0,ground=true,y=0])=>{
+    const p=townPoint(x,z,rot,lx,lz);
+    worldAssets.place(PROPS+model+'.gltf',{x:p.x,z:p.z,y:ground?undefined:heightAt(x,z)+y,rotation:rot+lr,height:h,ground,maxDistance:95});
+  });
+}
+function buildTownInteriors(){
+  makeOpenInterior({x:0,z:27,rot:0,title:'Taverna do Vale',props:[
+    ['Table_Large',0,.4,1.05],['Chair_1',-2,-.6,1.05,0],['Chair_1',2,-.6,1.05,Math.PI],['Barrel_Apples',-2.9,1.9,1.25],['Bench',0,2.15,1.1],['Chandelier',0,.2,1.25,0,false,3.65]
+  ]});
+  makeOpenInterior({x:27,z:0,rot:-Math.PI/2,title:'Forja Real',props:[
+    ['Workbench_Drawers',0,1.9,1.35],['Anvil',-2,.25,1.05],['Crate_Wooden',2.8,1.9,1.05],['Stool',1,-.7,.72],['Lantern_Wall',-2.8,2.45,.75,0,false,2.15]
+  ]});
+  makeOpenInterior({x:-27,z:0,rot:Math.PI/2,title:'Casa do Alquimista',props:[
+    ['Bookcase_2',-2.4,2.15,2.45],['Cabinet',2.35,2.15,2.1],['Cauldron',0,.55,1.3],['Shelf_Arch',0,2.35,1.9],['Potion_1',-1.1,-.45,.48],['SmallBottles_1',1.1,-.45,.55]
+  ]});
+}
+placeRegionLandmarks();
+buildTownInteriors();
+
 /* ---------- Ilhotas voadoras e nuvens ---------- */
 const isles = [], ISLE_CROWN = crownGeo(5);
 [[250,14,-60,13],[-260,24,-40,15],[60,8,265,11],[-170,34,210,14],[210,28,160,10],[-40,44,-270,16],[160,20,-220,12],[-280,16,120,11]].forEach(([x,y,z,r])=>{
@@ -1697,6 +1748,9 @@ function createMonster(key, giant, net){
   if (net){ m.id=net.id; m.lvl=net.level; m.name=net.name; m.maxHp=net.maxHp; m.hp=net.hp; m.dead=!!net.dead; m.state=net.state||'idle'; m.scale=m.giant?2.4:0.9+(m.lvl-T.lv[0])*0.07; m.mesh.scale.setScalar(m.scale); m.radius=T.r*m.scale; refreshLabel(m); }
   else setupStats(m);
   scene.add(m.mesh); monsters.push(m);
+  const premium=WA.monsterVariants[key];
+  // Chefes e uma amostra dos monstros online usam os modelos do Bestiary.
+  if(premium&&(m.giant||(net&&Number(net.id)%4===0)))worldAssets.replaceMonster(m,MONSTER_KIT+premium,T.h);
   return m;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(()=> monsters.forEach(refreshLabel));
@@ -2987,6 +3041,7 @@ function frame(){
   let cy = camTarget.y + Math.sin(pitch)*dist;
   if (Math.hypot(cx,cz) < R) cy = Math.max(cy, heightAt(cx,cz) + 0.6);
   camera.position.set(cx,cy,cz); camera.lookAt(camTarget);
+  worldAssets.update(camera.position);
 
   clouds.forEach(c=>{ c.a += c.v*dt; c.g.position.set(Math.cos(c.a)*c.r, c.y, Math.sin(c.a)*c.r); });
   isles.forEach(i=>{ i.g.position.y = i.y + Math.sin(t*0.5 + i.ph)*0.8; });
