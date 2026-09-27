@@ -1,9 +1,14 @@
-# Reino De Claudonia (Fases 3 e 4)
+# Reino De Claudonia (Fases 3 a 5)
 
 MMORPG 3D de navegador. Já tem: login, até 3 personagens por conta,
 outros jogadores visíveis na ilha, chat, progresso salvo no banco,
 4 classes (Guerreiro, Druida, Mago, Arqueiro) com prova no nível 15,
 habilidades por classe e voo de prancha ou vassoura a partir do nível 20.
+
+Fase 5: aprimoramento de armas e armaduras (+1 a +10) e loja de
+equipamentos com a Ferreira Brunna, troca de itens e ouro entre jogadores,
+grupo de até 8 (com experiência dividida e chat `/g`) e guildas de até
+30 membros (salvas no banco, chat `/gu`).
 
 ## Peças
 - `public/index.html`: o jogo (Three.js) com login e escolha de personagem.
@@ -11,6 +16,8 @@ habilidades por classe e voo de prancha ou vassoura a partir do nível 20.
   das posições, do chat e do salvamento (WebSocket em `/ws`).
 - `supabase/001_ilha_verde.sql`: tabela `iv_personagens` com regras de
   segurança (cada conta só vê e altera os próprios personagens).
+- `supabase/002_guildas.sql`: guildas, membros e convites, com regras de
+  segurança (só entra quem foi convidado pelo líder).
 
 ## Variáveis de ambiente (no Render)
 - `SUPABASE_URL`: endereço do projeto Supabase.

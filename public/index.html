@@ -224,6 +224,41 @@ button{font-family:inherit;color:inherit}
 .shoprow .btn{flex:none;padding:0 10px;height:36px;font-size:13.5px}
 .si{width:34px;text-align:center;font-size:22px}
 #err{position:fixed;inset:0;display:none;place-items:center;padding:24px;text-align:center;font-size:17px;background:#0E283E}
+/* Fase 5: grupo, troca, guilda, ferreira */
+:root{--partyH:0px}
+.party{margin-top:6px;display:flex;flex-direction:column;gap:4px;width:214px}
+.party:empty{display:none}
+.party .pm{padding:4px 8px 5px;border-radius:10px;font-size:12px;line-height:1.15}
+.party .pm b{font-weight:700;font-size:12.5px} .party .pm span{color:var(--ink-soft)}
+.party .pm .track{height:7px;margin-top:2px} .party .pm.far{opacity:.6}
+.log{margin-top:var(--partyH)}
+@media (max-width:760px){ .target{margin-top:var(--partyH)} .log{margin-top:0} }
+@media (max-width:420px){ .party{width:186px} }
+.win input{display:block;width:100%;height:42px;margin-top:4px;padding:0 12px;border-radius:10px;
+  border:1px solid var(--panel-edge);background:rgba(0,0,0,.3);color:var(--ink);font-weight:500;font-size:16px;font-family:inherit;
+  touch-action:manipulation;user-select:text;-webkit-user-select:text}
+.win input:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.win .tabs{margin-top:0}
+.cell .up{position:absolute;left:3px;top:0;font-size:11px;font-weight:800;color:var(--gold);text-shadow:0 1px 2px #000}
+.eq .cell .up{top:2px}
+.note{font-size:13px;color:var(--ink-soft);line-height:1.35;margin:8px 0}
+.row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--panel-edge);font-size:14px}
+.row div{flex:1;line-height:1.2} .row span{display:block;font-size:12.5px;color:var(--ink-soft)}
+.row .btn{flex:none;padding:0 10px;height:34px;font-size:13.5px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6B7C8A;margin-right:6px}
+.dot.on{background:#7BE495}
+.tcols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tcols .grid{grid-template-columns:repeat(4,1fr)}
+.tcols h3{margin:0 0 6px;font-size:14px;font-weight:800}
+.tcols .st{font-size:12.5px;margin-top:6px;color:var(--ink-soft)} .tcols .st.ok{color:#9BE7A8}
+#winTrade{width:min(420px,96vw)}
+#invites{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 130px);z-index:35;
+  display:flex;flex-direction:column;gap:8px;width:min(340px,92vw)}
+#invites .panel{padding:10px 12px;font-size:14.5px;line-height:1.3}
+.touch #invites{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 70px)}
+.log .chat.g{color:#B9F28A} .log .chat.g b{color:#8FE35A}
+.log .chat.gu{color:#E3C8FF} .log .chat.gu b{color:#C9A2FF}
+.touch .menu{gap:8px} .touch .menu button{width:50px;height:50px}
 </style>
 </head>
 <body>
@@ -237,6 +272,7 @@ button{font-family:inherit;color:inherit}
     <div class="bar"><i>Energia</i><div class="track"><div class="fill" id="fpF" style="background:var(--fp)"></div><em id="fpT"></em></div></div>
     <div class="buffs" id="buffs"></div>
   </div>
+  <div class="party" id="partyHud"></div>
 </div>
 
 <div class="target" id="target" hidden>
@@ -258,6 +294,7 @@ button{font-family:inherit;color:inherit}
 <div class="menu">
   <button class="panel" id="bInv" type="button" title="Mochila (I)">🎒<small>Mochila</small></button>
   <button class="panel" id="bChar" type="button" title="Personagem (C)">🧍<small>Heroi</small></button>
+  <button class="panel" id="bSocial" type="button" title="Grupo e guilda (G)">👥<small>Grupo</small></button>
   <button class="panel" id="bChat" type="button" title="Conversar (Enter)">💬<small>Chat</small></button>
 </div>
 
@@ -294,6 +331,23 @@ button{font-family:inherit;color:inherit}
   <div class="wbody" id="charBody"></div>
 </section>
 
+<section class="win panel" id="winSocial" hidden aria-label="Grupo e guilda">
+  <header><b>Grupo e guilda</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+  <div class="wbody" id="socialBody"></div>
+</section>
+
+<section class="win panel" id="winPlayer" hidden aria-label="Jogador">
+  <header><b id="playerTitle"></b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+  <div class="wbody" id="playerBody"></div>
+</section>
+
+<section class="win panel" id="winTrade" hidden aria-label="Troca">
+  <header><b id="tradeTitle">Troca</b><button class="x" type="button" data-close aria-label="Cancelar troca">×</button></header>
+  <div class="wbody" id="tradeBody"></div>
+</section>
+
+<div id="invites" aria-live="polite"></div>
+
 <div class="overlay" id="auth">
   <div class="panel">
     <h1>Reino De Claudonia</h1>
@@ -320,7 +374,7 @@ button{font-family:inherit;color:inherit}
 <div class="overlay" id="help" hidden>
   <div class="panel">
     <h1>Reino De Claudonia</h1>
-    <p>Fase 4: no nível 15, fale com um instrutor na vila para escolher sua classe. No nível 20, compre uma prancha ou vassoura com o Piloto Tito e voe até as ilhotas no céu.</p>
+    <p>Fase 5: aprimore e compre equipamentos com a Ferreira Brunna, na vila. Toque em outro jogador para chamar para o grupo, trocar itens ou entrar na guilda. No nível 15 escolha sua classe; no nível 20, voe.</p>
     <ul id="controls"></ul>
     <button class="big" id="start" type="button">Começar</button>
   </div>
@@ -359,6 +413,7 @@ const ITEMS = {
   pocao_mana:     {name:'Poção de Mana', icon:'🧪', tint:'blue', kind:'use', price:20, desc:'Recupera 50 de Mana.'},
   pocao_energia:  {name:'Poção de Energia', icon:'🧪', tint:'green', kind:'use', price:20, desc:'Recupera 40 de Energia.'},
   combustivel:    {name:'Combustível de Voo', icon:'🔥', kind:'use', price:60, desc:'Turbo de 12 segundos durante o voo.'},
+  pedra_aprimorar:{name:'Pedra de Aprimoramento', icon:'💎', kind:'upg', price:150, desc:'Usada pela Ferreira Brunna para aprimorar armas e armaduras.'},
   gosma:          {name:'Gosma de Bolota', icon:'🟢', kind:'mat', sell:3, desc:'Material de monstro. O Piloto Tito compra.'},
   pelo:           {name:'Pelo de Coelhorn', icon:'🐾', kind:'mat', sell:5, desc:'Material de monstro. O Piloto Tito compra.'},
   chapeu:         {name:'Chapéu de Cogumelo', icon:'🍄', kind:'mat', sell:8, desc:'Material de monstro. O Piloto Tito compra.'},
@@ -395,6 +450,15 @@ const STARTERS = ['espada_treino','espada_soldado','cajado_carvalho','varinha_ar
 const EQUIP_IDS = Object.keys(ITEMS).filter(k => ITEMS[k].kind==='eq' && ITEMS[k].slot!=='voo' && !STARTERS.includes(k));
 const SLOT_NAMES = {arma:'Arma', capacete:'Capacete', peitoral:'Peitoral', botas:'Botas', voo:'Voo'};
 const SHOP = ['prancha_madeira','vassoura_simples','prancha_veloz','vassoura_veloz','prancha_celeste','vassoura_celeste','combustivel','pocao_vida','pocao_mana','pocao_energia'];
+// Fase 5: ferreira (loja de equipamentos e aprimoramento)
+const FORGE_SHOP = ['pedra_aprimorar','espada_ferro','machado_rustico','gorro_couro','botas_viajante','tunica_reforcada','botas_ferro','capacete_ferro','peitoral_ferro','capacete_aco','peitoral_aco','botas_aco'];
+const priceOf = id => ITEMS[id].price || Math.round(30*Math.pow(ITEMS[id].req, 1.5) + 60);
+const sellPrice = (id, up) => Math.floor(priceOf(id)*0.25*(1 + 0.25*(up||0)));
+const canUpgrade = id => ITEMS[id] && ITEMS[id].kind === 'eq' && ITEMS[id].slot !== 'voo';
+const UP_CHANCE = [1, 1, 1, 1, 0.9, 0.8, 0.65, 0.5, 0.4, 0.3, 0.2]; // chance de chegar a +N
+const upStones = n => n <= 5 ? 1 : (n <= 8 ? 2 : 3);
+const upGold = n => 30*n*n + 20;
+const itemName = (id, up) => ITEMS[id].name + (up ? ` +${up}` : '');
 
 const SKILLS = {
   golpe_forte:  {cls:'aprendiz', name:'Golpe Forte', icon:'💥', req:1, fp:6, cd:4, type:'hit', mult:1.8, desc:'Um golpe com 180% do dano.'},
@@ -432,11 +496,14 @@ const maxLevel = () => ch.cls === 'aprendiz' ? 15 : 60;
 function freshChar(){
   return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null,
     inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],
-    eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null, voo:null}, hp:null, fp:null, mp:null};
+    eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null, voo:null}, equp:{}, hp:null, fp:null, mp:null};
 }
 let ch = freshChar();
 let dirty = false;
 const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
+// Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
+let party = {leader:null, members:[]}, trade = null, myGuild = null, guildList = null, guildAsked = false;
+const sendWs = msg => { if (online.ws && online.ws.readyState === 1 && online.myId){ online.ws.send(JSON.stringify(msg)); return true; } return false; };
 // Salvar = mandar o personagem para o servidor, que grava no banco.
 function save(){
   if (online.ws && online.ws.readyState === 1 && online.myId){ online.ws.send(JSON.stringify({t:'save', dados:ch})); dirty = false; }
@@ -447,8 +514,12 @@ const d = {}; // atributos derivados
 function derive(){
   if (!CLASSES[ch.cls]) ch.cls = 'aprendiz';
   const C = CLASSES[ch.cls];
-  const w = ch.eq.arma && ITEMS[ch.eq.arma] ? ITEMS[ch.eq.arma].atk : [1,3];
-  let armor = 0; ['capacete','peitoral','botas'].forEach(s=>{ if (ch.eq[s] && ITEMS[ch.eq[s]]) armor += ITEMS[ch.eq[s]].def; });
+  if (!ch.equp) ch.equp = {};
+  const upOf = s => ch.equp[s] || 0;
+  const w0 = ch.eq.arma && ITEMS[ch.eq.arma] ? ITEMS[ch.eq.arma].atk : [1,3];
+  const wm = ch.eq.arma && ITEMS[ch.eq.arma] ? 1 + 0.1*upOf('arma') : 1;
+  const w = [Math.round(w0[0]*wm), Math.round(w0[1]*wm)];
+  let armor = 0; ['capacete','peitoral','botas'].forEach(s=>{ if (ch.eq[s] && ITEMS[ch.eq[s]]) armor += Math.round(ITEMS[ch.eq[s]].def*(1 + 0.15*upOf(s))); });
   const main = ch[C.main];
   d.w = w;
   d.atkMin = w[0] + main*0.5 + ch.L*0.8;
@@ -470,8 +541,8 @@ derive();
    AJUDA
    ========================================================= */
 const controls = isTouch
-  ? [['Andar','Joystick à esquerda'],['Escolher alvo','Toque no monstro'],['Atacar','Toque de novo no alvo ou em ⚔️'],['Falar com NPC','Toque nele'],['Voar','🛹 na barra (nível 20)'],['Subir e descer','Botões Subir e Descer'],['Conversar','Botão 💬']]
-  : [['Andar','W A S D ou setas'],['Correr','Segure Shift'],['Pular','Espaço'],['Escolher alvo','Clique no monstro ou Tab'],['Atacar','Clique de novo ou tecla 1'],['Atalhos','Teclas 1 a 5'],['Mochila e herói','Teclas I e C'],['Falar com NPC','Clique nele'],['Voar','Tecla V (nível 20)'],['Subir e descer','Espaço e Q'],['Conversar','Enter']];
+  ? [['Andar','Joystick à esquerda'],['Escolher alvo','Toque no monstro'],['Atacar','Toque de novo no alvo ou em ⚔️'],['Falar com NPC','Toque nele'],['Grupo e troca','Toque em outro jogador'],['Voar','🛹 na barra (nível 20)'],['Subir e descer','Botões Subir e Descer'],['Conversar','Botão 💬 (/g grupo, /gu guilda)']]
+  : [['Andar','W A S D ou setas'],['Correr','Segure Shift'],['Pular','Espaço'],['Escolher alvo','Clique no monstro ou Tab'],['Atacar','Clique de novo ou tecla 1'],['Atalhos','Teclas 1 a 5'],['Mochila e herói','Teclas I e C'],['Falar com NPC','Clique nele'],['Grupo e troca','Clique em outro jogador; tecla G'],['Voar','Tecla V (nível 20)'],['Subir e descer','Espaço e Q'],['Conversar','Enter (/g grupo, /gu guilda)']];
 $('controls').innerHTML = controls.map(c=>`<li><b>${c[0]}</b><span>${c[1]}</span></li>`).join('');
 let helpOpen = true, deadOpen = false;
 const blocked = () => helpOpen || deadOpen;
@@ -877,18 +948,20 @@ function equip(invIndex){
   if (it.req > ch.L){ log(`Precisa do nível ${it.req}.`, 'bad'); return; }
   if (it.cls && it.cls !== ch.cls){ log(`Só ${CLASSES[it.cls].name} pode usar.`, 'bad'); return; }
   if (it.slot === 'voo' && player.flying){ log('Pouse antes de trocar.', 'bad'); return; }
-  const old = ch.eq[it.slot];
+  const old = ch.eq[it.slot], oldUp = ch.equp[it.slot] || 0;
   ch.inv.splice(invIndex,1);
-  if (old) ch.inv.push({id:old, n:1});
-  ch.eq[it.slot] = s.id; derive(); dirty = true; selInv = -1;
-  log(`Equipou ${it.name}.`, 'good'); refreshUI();
+  if (old) ch.inv.push(eqEntry(old, oldUp));
+  ch.eq[it.slot] = s.id; ch.equp[it.slot] = s.up || 0; derive(); dirty = true; selInv = -1;
+  log(`Equipou ${itemName(s.id, s.up)}.`, 'good'); refreshUI();
 }
 function unequip(slot){
   const id = ch.eq[slot]; if (!id) return;
   if (slot === 'voo' && player.flying){ log('Pouse antes de tirar.', 'bad'); return; }
   if (ch.inv.length >= INV_SIZE){ log('Mochila cheia.', 'bad'); return; }
-  ch.eq[slot] = null; ch.inv.push({id, n:1}); derive(); dirty = true; selEq = null; refreshUI();
+  ch.inv.push(eqEntry(id, ch.equp[slot])); ch.eq[slot] = null; ch.equp[slot] = 0; derive(); dirty = true; selEq = null; refreshUI();
 }
+// Equipamento na mochila: {id, n:1} e, se aprimorado, up (1 a 10).
+function eqEntry(id, up){ return up ? {id, n:1, up} : {id, n:1}; }
 
 /* =========================================================
    JOGADOR, COMBATE, EXPERIÊNCIA, CLASSES E VOO
@@ -972,6 +1045,8 @@ function killMonster(m){
   if (Math.random() < 0.14) spawnDrop(m.x, m.z, {id:'pocao_mana', n:1});
   if (Math.random() < 0.12) spawnDrop(m.x, m.z, {id:'pocao_energia', n:1});
   if (Math.random() < 0.55) spawnDrop(m.x, m.z, {id:m.type.mat, n:m.giant?5:1});
+  if (Math.random() < (m.giant ? 0.6 : 0.03 + m.lvl*0.002)) spawnDrop(m.x, m.z, {id:'pedra_aprimorar', n:1});
+  if (party.members.length > 1) sendWs({t:'pexp', lvl:m.lvl, exp:Math.min(400, m.exp)});
   if (Math.random() < (m.giant ? 0.7 : 0.05)){
     const pool = EQUIP_IDS.filter(id => ITEMS[id].req <= m.lvl + 2 && ITEMS[id].req >= m.lvl - 6);
     if (pool.length) spawnDrop(m.x, m.z, {id: pool[rndInt(0,pool.length-1)], n:1});
@@ -1170,7 +1245,7 @@ function finishQuest(cls){
   removeItem(q.item, q.n);
   ch.cls = cls; ch.quest = null; capWarned = false;
   ch.str = ch.sta = ch.dex = ch.int = 15; ch.pts = 2*(ch.L - 1);
-  const old = ch.eq.arma; ch.eq.arma = C.weapon; if (old) ch.inv.push({id:old, n:1});
+  const old = ch.eq.arma, oldUp = ch.equp.arma || 0; ch.eq.arma = C.weapon; ch.equp.arma = 0; if (old) ch.inv.push(eqEntry(old, oldUp));
   derive(); ch.hp = d.maxHp; ch.mp = d.maxMp; ch.fp = d.maxFp;
   buffs = []; refreshBuffs(); buildHotbar(); setHeroWeapon(hero, cls);
   banner(`Você agora é ${C.name}!`, 'Distribua seus pontos na janela Herói');
@@ -1185,6 +1260,7 @@ const NPCS = [
   {id:'mago', name:'Mestre Eldran', role:'Instrutor de Mago', x:-5, z:-4.5, tunic:0x4B3C8C, hair:0xDADADA},
   {id:'arqueiro', name:'Caçadora Nyra', role:'Instrutora de Arqueiro', x:5, z:-4.5, tunic:0x3C6B3A, hair:0x6B3A1E},
   {id:'voo', name:'Piloto Tito', role:'Mestre de Voo e mercador', x:0, z:-7.5, tunic:0x2F6FA8, hair:0xE07A2E},
+  {id:'ferreiro', name:'Ferreira Brunna', role:'Ferreira: aprimora, compra e vende equipamentos', x:4.5, z:7, tunic:0x6B4A2E, hair:0x2B2B2B},
 ];
 const npcObjs = NPCS.map(n=>{
   const h = makeHero({tunic:n.tunic, hair:n.hair}), y = heightAt(n.x, n.z);
@@ -1200,6 +1276,7 @@ function updateNpcs(t){
     n.h.torso.position.y = 1.35 + Math.sin(t*2 + i)*0.02;
     let show;
     if (n.id === 'voo') show = ch.L >= 20 && !ch.eq.voo && !ch.inv.some(s=> ITEMS[s.id] && ITEMS[s.id].slot === 'voo');
+    else if (n.id === 'ferreiro') show = false;
     else show = ch.cls === 'aprendiz' && ch.L >= 15 && (!ch.quest || ch.quest.cls === n.id);
     n.mark.visible = show; n.mark.position.y = 3.35 + Math.sin(t*3)*0.08;
   });
@@ -1229,6 +1306,8 @@ function renderNpc(){
     html += `<div class="gold" style="margin-top:10px">Seu ouro <b>${ch.gold.toLocaleString('pt-BR')}</b></div>
       <div class="actions"><button class="btn ghost" type="button" data-npc="sell" ${matValue ? '' : 'disabled'}>Vender materiais por ${matValue} ouro</button></div>`;
     if (qItem) html += `<p style="margin-top:8px;font-size:13px">Os materiais da sua prova de classe não entram na venda.</p>`;
+  } else if (n.id === 'ferreiro'){
+    html += forgeHTML();
   } else {
     const C = CLASSES[n.id], q = C.quest;
     html += `<p>${C.desc}</p>`;
@@ -1246,10 +1325,75 @@ function renderNpc(){
   $('npcBody').innerHTML = html;
 }
 function buy(id){
-  const it = ITEMS[id];
-  if (ch.gold < it.price){ log('Ouro insuficiente.', 'bad'); return; }
+  const it = ITEMS[id], price = priceOf(id);
+  if (ch.gold < price){ log('Ouro insuficiente.', 'bad'); return; }
   if (!canAdd(id)){ log('Mochila cheia.', 'bad'); return; }
-  ch.gold -= it.price; addItem(id, 1); log(`Comprou ${it.name}.`, 'gold'); dirty = true; save(); refreshUI(); renderNpc();
+  ch.gold -= price; addItem(id, 1); log(`Comprou ${it.name}.`, 'gold'); dirty = true; save(); refreshUI(); renderNpc();
+}
+
+/* ---------- Ferreira: aprimorar, comprar e vender ---------- */
+let forgeTab = 'up';
+function forgeHTML(){
+  const tabs = [['up','Aprimorar'],['buy','Comprar'],['sell','Vender']];
+  let html = `<div class="tabs">${tabs.map(([k,t])=>`<button type="button" data-ftab="${k}" class="${forgeTab===k?'on':''}">${t}</button>`).join('')}</div>`;
+  html += `<div class="gold" style="margin-top:8px">Seu ouro <b>${ch.gold.toLocaleString('pt-BR')}</b> · Pedras 💎 <b>${countItem('pedra_aprimorar')}</b></div>`;
+  if (trade){ return html + `<p class="note">Termine a troca com outro jogador antes de usar a ferraria.</p>`; }
+  if (forgeTab === 'up'){
+    html += `<p class="note">Cada nível deixa a arma 10% mais forte ou a armadura 15% mais resistente, até +10. Até +5 nada se perde. Do +6 em diante, se falhar, o item perde 1 nível.</p>`;
+    const rows = [];
+    Object.keys(SLOT_NAMES).forEach(sl=>{ const id = ch.eq[sl]; if (id && canUpgrade(id)) rows.push({key:'s:'+sl, id, up:ch.equp[sl]||0, where:'Equipado'}); });
+    ch.inv.forEach((s,i)=>{ if (canUpgrade(s.id)) rows.push({key:'i:'+i, id:s.id, up:s.up||0, where:'Na mochila'}); });
+    if (!rows.length) html += `<p class="note">Você não tem armas nem armaduras para aprimorar.</p>`;
+    rows.forEach(r=>{
+      const n = r.up + 1, max = r.up >= 10;
+      const info = max ? 'Nível máximo.' : `Para +${n}: ${Math.round(UP_CHANCE[n]*100)}% de chance, ${upStones(n)} 💎 e ${upGold(n)} ouro.`;
+      const ok = !max && countItem('pedra_aprimorar') >= upStones(n) && ch.gold >= upGold(n);
+      html += `<div class="row"><span class="si">${ITEMS[r.id].icon}</span><div><b>${itemName(r.id, r.up)}</b><span>${r.where}. ${info}</span></div><button class="btn" type="button" data-up="${r.key}" ${ok ? '' : 'disabled'}>Aprimorar</button></div>`;
+    });
+  } else if (forgeTab === 'buy'){
+    const list = FORGE_SHOP.concat(Object.keys(ITEMS).filter(k=> ITEMS[k].cls && ITEMS[k].cls === ch.cls && ITEMS[k].slot === 'arma'));
+    list.forEach(id=>{
+      const it = ITEMS[id], price = priceOf(id);
+      const extra = it.kind === 'eq' ? `${SLOT_NAMES[it.slot]}. ${it.atk ? `Ataque ${it.atk[0]} a ${it.atk[1]}` : `Defesa +${it.def}`}. Nível ${it.req}.` : it.desc;
+      html += `<div class="shoprow"><span class="si">${iconHTML(id)}</span><div><b>${it.name}</b><span>${extra}</span></div><button class="btn" type="button" data-buy="${id}" ${ch.gold < price ? 'disabled' : ''}>${price} ouro</button></div>`;
+    });
+  } else {
+    const rows = ch.inv.map((s,i)=>({s,i})).filter(({s})=> ITEMS[s.id] && ITEMS[s.id].kind === 'eq');
+    html += `<p class="note">A Ferreira compra armas, armaduras, pranchas e vassouras da sua mochila. Para vender, tire o item do corpo primeiro.</p>`;
+    if (!rows.length) html += `<p class="note">Nenhum equipamento na mochila.</p>`;
+    rows.forEach(({s,i})=>{
+      html += `<div class="row"><span class="si">${ITEMS[s.id].icon}</span><div><b>${itemName(s.id, s.up)}</b><span>Nível ${ITEMS[s.id].req}.</span></div><button class="btn ghost" type="button" data-sell="${i}">Vender por ${sellPrice(s.id, s.up)}</button></div>`;
+    });
+  }
+  return html;
+}
+function enhance(key){
+  const [kind, ref] = key.split(':');
+  const entry = kind === 'i' ? ch.inv[+ref] : null; // guarda o item: tirar as pedras pode mudar as posições da mochila
+  if (kind === 'i' && !entry) return;
+  const cur = kind === 's' ? (ch.equp[ref] || 0) : (entry.up || 0);
+  const id = kind === 's' ? ch.eq[ref] : entry.id;
+  if (!id || !canUpgrade(id) || cur >= 10) return;
+  const n = cur + 1, stones = upStones(n), gold = upGold(n);
+  if (countItem('pedra_aprimorar') < stones){ log(`Precisa de ${stones} Pedra${stones > 1 ? 's' : ''} de Aprimoramento.`, 'bad'); return; }
+  if (ch.gold < gold){ log('Ouro insuficiente.', 'bad'); return; }
+  const setUp = v => { if (kind === 's') ch.equp[ref] = v; else if (v) entry.up = v; else delete entry.up; };
+  removeItem('pedra_aprimorar', stones); ch.gold -= gold;
+  if (Math.random() < UP_CHANCE[n]){
+    setUp(n); log(`Sucesso! ${itemName(id, n)}.`, 'gold');
+    floatText(player.x, player.y+2.6, player.z, `+${n}!`, 'exp');
+    if (n >= 7) banner(`${itemName(id, n)}!`, 'Aprimoramento concluído');
+  } else if (n >= 6){
+    setUp(cur - 1); log(`Falhou... ${ITEMS[id].name} caiu para +${cur - 1}.`, 'bad');
+    floatText(player.x, player.y+2.6, player.z, 'Falhou', 'miss');
+  } else { log('Falhou. O item continua igual.', 'bad'); floatText(player.x, player.y+2.6, player.z, 'Falhou', 'miss'); }
+  derive(); dirty = true; save(); refreshUI(); renderNpc();
+}
+function sellEq(i){
+  const s = ch.inv[i]; if (!s || !ITEMS[s.id] || ITEMS[s.id].kind !== 'eq') return;
+  const v = sellPrice(s.id, s.up);
+  ch.inv.splice(i, 1); ch.gold += v; selInv = -1;
+  log(`Vendeu ${itemName(s.id, s.up)} por ${v} ouro.`, 'gold'); dirty = true; save(); refreshUI(); renderNpc();
 }
 function sellMats(){
   const qItem = ch.quest ? CLASSES[ch.quest.cls].quest.item : null; let total = 0;
@@ -1258,6 +1402,9 @@ function sellMats(){
 }
 $('winNpc').addEventListener('click', e=>{
   const b = e.target.closest('[data-buy]'); if (b){ buy(b.dataset.buy); return; }
+  const ft = e.target.closest('[data-ftab]'); if (ft){ forgeTab = ft.dataset.ftab; renderNpc(); return; }
+  const up = e.target.closest('[data-up]'); if (up){ enhance(up.dataset.up); return; }
+  const sl = e.target.closest('[data-sell]'); if (sl){ sellEq(+sl.dataset.sell); return; }
   const a = e.target.closest('[data-npc]'); if (!a || !npcOpen) return;
   const act = a.dataset.npc;
   if (act === 'accept'){ ch.quest = {cls:npcOpen.id}; log(`Prova de ${CLASSES[npcOpen.id].name} aceita.`, 'gold'); dirty = true; save(); }
@@ -1330,11 +1477,12 @@ function refreshTarget(){
 
 let selInv = -1, selEq = null;
 function iconHTML(id){ const it = ITEMS[id]; return it.tint ? `<span class="ico ${it.tint}">${it.icon}</span>` : it.icon; }
-function itemInfo(id){
-  const it = ITEMS[id]; let s = `<b>${it.name}</b><br>`;
+function itemInfo(id, up){
+  const it = ITEMS[id]; let s = `<b>${itemName(id, up)}</b><br>`;
   if (it.kind === 'eq'){
+    const wm = 1 + 0.1*(up||0), am = 1 + 0.15*(up||0);
     if (it.slot === 'voo') s += `${it.fly === 'board' ? 'Prancha' : 'Vassoura'} voadora. Velocidade ${it.spd}.`;
-    else s += `${SLOT_NAMES[it.slot]}. ` + (it.atk ? `Ataque ${it.atk[0]} a ${it.atk[1]}.` : `Defesa +${it.def}.`);
+    else s += `${SLOT_NAMES[it.slot]}. ` + (it.atk ? `Ataque ${Math.round(it.atk[0]*wm)} a ${Math.round(it.atk[1]*wm)}.` : `Defesa +${Math.round(it.def*am)}.`);
     if (it.cls) s += ` <span class="req ${it.cls !== ch.cls ? 'no' : ''}">Só ${CLASSES[it.cls].name}.</span>`;
     s += ` <span class="req ${it.req > ch.L ? 'no' : ''}">Nível ${it.req}.</span>`;
   } else s += it.desc;
@@ -1345,7 +1493,7 @@ function renderInv(){
   let html = '';
   for (let i=0;i<INV_SIZE;i++){
     const s = ch.inv[i];
-    html += s ? `<button class="cell ${selInv===i?'sel':''}" data-inv="${i}" type="button" aria-label="${ITEMS[s.id].name}">${iconHTML(s.id)}${ITEMS[s.id].kind!=='eq' ? `<span class="n">${s.n}</span>` : ''}</button>`
+    html += s ? `<button class="cell ${selInv===i?'sel':''}" data-inv="${i}" type="button" aria-label="${itemName(s.id, s.up)}">${iconHTML(s.id)}${ITEMS[s.id].kind!=='eq' ? `<span class="n">${s.n}</span>` : ''}${s.up ? `<span class="up">+${s.up}</span>` : ''}</button>`
               : `<div class="cell" aria-hidden="true"></div>`;
   }
   $('invGrid').innerHTML = html;
@@ -1355,12 +1503,13 @@ function renderInv(){
     let act = '';
     if (it.kind==='use') act = `<button class="btn" data-act="use" type="button">Usar</button>`;
     if (it.kind==='eq') act = `<button class="btn" data-act="equip" type="button" ${it.req > ch.L || (it.cls && it.cls !== ch.cls) ? 'disabled' : ''}>Equipar</button>`;
-    det.innerHTML = itemInfo(s.id) + `<div class="actions">${act}<button class="btn ghost" data-act="drop" type="button">Descartar</button></div>`;
+    det.innerHTML = itemInfo(s.id, s.up) + (trade ? `<p class="note">Durante a troca, use a janela Troca para oferecer itens.</p>`
+      : `<div class="actions">${act}<button class="btn ghost" data-act="drop" type="button">Descartar</button></div>`);
   } else det.textContent = ch.inv.length ? 'Toque em um item para ver os detalhes.' : 'A mochila está vazia. Derrote monstros para encontrar itens.';
 }
 $('winInv').addEventListener('click', e=>{
   const c = e.target.closest('[data-inv]'); if (c){ selInv = +c.dataset.inv; renderInv(); return; }
-  const a = e.target.closest('[data-act]'); if (!a || selInv < 0 || !ch.inv[selInv]) return;
+  const a = e.target.closest('[data-act]'); if (!a || selInv < 0 || !ch.inv[selInv] || trade) return;
   const s = ch.inv[selInv];
   if (a.dataset.act==='use'){ useItem(s.id); if (!ch.inv[selInv] || ch.inv[selInv].id !== s.id) selInv = -1; renderInv(); }
   if (a.dataset.act==='equip') equip(selInv);
@@ -1387,10 +1536,11 @@ function renderChar(){
     <div class="sub">Equipamento</div><div class="eq">`;
   Object.keys(SLOT_NAMES).forEach(sl=>{
     const id = ch.eq[sl];
-    html += `<button class="cell ${selEq===sl?'sel':''}" data-eq="${sl}" type="button">${id ? ITEMS[id].icon : ''}<small>${SLOT_NAMES[sl]}</small></button>`;
+    const up = id ? (ch.equp[sl] || 0) : 0;
+    html += `<button class="cell ${selEq===sl?'sel':''}" data-eq="${sl}" type="button">${id ? ITEMS[id].icon : ''}<small>${SLOT_NAMES[sl]}</small>${up ? `<span class="up">+${up}</span>` : ''}</button>`;
   });
   html += `</div><div class="detail" id="eqDetail">`;
-  if (selEq && ch.eq[selEq]) html += itemInfo(ch.eq[selEq]) + `<div class="actions"><button class="btn ghost" data-unequip="${selEq}" type="button">Tirar</button></div>`;
+  if (selEq && ch.eq[selEq]) html += itemInfo(ch.eq[selEq], ch.equp[selEq]) + `<div class="actions"><button class="btn ghost" data-unequip="${selEq}" type="button">Tirar</button></div>`;
   else html += 'Toque em um espaço para ver o item. Equipe itens pela mochila.';
   html += `</div><div class="actions"><button class="btn ghost" id="switchBtn" type="button">Trocar personagem</button><button class="btn ghost" id="resetBtn" type="button">Recomeçar do zero</button></div>`;
   $('charBody').innerHTML = html;
@@ -1443,6 +1593,9 @@ function refreshUI(){
   if (!$('winNpc').hidden) renderNpc();
   if (!$('winInv').hidden) renderInv();
   if (!$('winChar').hidden) renderChar();
+  if (!$('winSocial').hidden) renderSocial();
+  if (!$('winPlayer').hidden) renderPlayer();
+  if (!$('winTrade').hidden) renderTrade();
 }
 
 /* =========================================================
@@ -1454,7 +1607,7 @@ const joy = {id:null, x:0, y:0};
 const camPtrs = new Map(); let pinch = 0;
 
 addEventListener('keydown', e=>{
-  if (document.activeElement === $('chatIn') || blocked()) return;
+  if (document.activeElement === $('chatIn') || (document.activeElement && document.activeElement.tagName === 'INPUT') || blocked()) return;
   if (e.key === 'Enter'){ e.preventDefault(); openChat(); return; }
   const k = e.key.toLowerCase(); keys.add(k);
   if (k===' ' && !e.repeat){ jumpQueued = true; e.preventDefault(); }
@@ -1462,8 +1615,9 @@ addEventListener('keydown', e=>{
   if (k==='v' && !e.repeat) toggleFly();
   if (k==='i' && !e.repeat) openWin($('winInv'), 1);
   if (k==='c' && !e.repeat) openWin($('winChar'), -1);
+  if (k==='g' && !e.repeat) openSocial();
   if (k==='tab'){ e.preventDefault(); const n = nearestCycle(); if (n) selectTarget(n); }
-  if (k==='escape'){ if (target) selectTarget(null); else document.querySelectorAll('.win').forEach(w=> w.hidden = true); }
+  if (k==='escape'){ if (target) selectTarget(null); else { if (trade) sendWs({t:'tcancel'}); document.querySelectorAll('.win').forEach(w=> w.hidden = true); } }
   if (/^[1-9]$/.test(k) && !e.repeat) useSlot(+k - 1);
   if (k.startsWith('arrow')) e.preventDefault();
 });
@@ -1518,6 +1672,13 @@ function tap(cx, cy){
     const r = isTouch ? 1.3 : 1.0;
     if (ray.distanceSqToPoint(tmpV) < r*r){ const t = tmpV.distanceTo(ray.origin); if (t < bestT){ bestT = t; best = n; isNpc = true; } }
   });
+  let isPlayer = false;
+  others.forEach(o=>{
+    tmpV.set(o.x, o.y + 1.1, o.z);
+    const r = isTouch ? 1.3 : 1.0;
+    if (ray.distanceSqToPoint(tmpV) < r*r){ const t = tmpV.distanceTo(ray.origin); if (t < bestT){ bestT = t; best = o; isNpc = false; isPlayer = true; } }
+  });
+  if (best && isPlayer){ openPlayer(best); return; }
   if (best && isNpc){ goToNpc(best); return; }
   if (best){ if (best === target) startAttack(); else { selectTarget(best); autoAttack = false; queuedSkill = null; } }
   else if (target && !autoAttack) selectTarget(null);
@@ -1976,6 +2137,7 @@ function connect(){
   ws.onclose = ev=>{
     if (online.ws !== ws) return;
     online.ws = null; online.myId = null; clearOthers();
+    resetSocial();
     if ([4003,4004,4005,4006].includes(ev.code)) online.kicked = true;
     if (online.kicked || !currentChar){ setOnline('Desconectado', true); return; }
     setOnline('Sem conexão. Tentando de novo...', true);
@@ -1992,8 +2154,9 @@ function handle(m){
       log(`Bem-vindo ao Reino De Claudonia, ${m.char.nome}!`, 'good');
     }
     m.others.forEach(addOther); countOnline();
+    myGuild = m.guild || null; guildList = null; guildAsked = false;
     if (dirty) save();
-    online.last = '';
+    online.last = ''; online.hpKey = '';
   }
   else if (m.t === 'join'){ addOther(m); countOnline(); log(`${m.name} entrou na ilha.`); }
   else if (m.t === 'leave'){ const o = others.get(m.id); if (o){ log(`${o.name} saiu.`); removeOther(o); } countOnline(); }
@@ -2002,23 +2165,50 @@ function handle(m){
   }
   else if (m.t === 'info'){ const o = others.get(m.id); if (o){ o.L = m.L; setOtherLabel(o); } }
   else if (m.t === 'chat'){
-    chatLine(m.name, m.text);
+    chatLine(m.name, m.text, m.ch);
+    if (m.ch) return;
     if (m.id === online.myId) showBubble(hero.root, m.text, 'me');
     else { const o = others.get(m.id); if (o) showBubble(o.h.root, m.text, o); }
   }
   else if (m.t === 'erro'){ log(m.msg, 'bad'); }
+  else if (m.t === 'aviso'){ log(m.msg, 'good'); }
+  // grupo
+  else if (m.t === 'party'){
+    const before = new Set(party.members.map(x=> x.id));
+    const joined = m.members.length > 1 && before.size <= 1;
+    party = {leader:m.leader, members:m.members};
+    if (joined) log('Você entrou em um grupo. Escreva /g antes da mensagem para falar só com ele.', 'good');
+    others.forEach(o=>{ const inP = inParty(o.id); if (inP !== !!o.party){ o.party = inP; setOtherLabel(o); } });
+    online.hpKey = ''; renderParty(); if (!$('winSocial').hidden) renderSocial();
+  }
+  else if (m.t === 'php'){ const x = party.members.find(p=> p.id === m.id); if (x){ x.hp = m.hp; x.max = m.max; renderParty(); } }
+  else if (m.t === 'pexp'){ if (!deadOpen) gainExp({lvl:m.lvl, exp:m.exp}); }
+  else if (m.t === 'invite') showInvite(m);
+  // troca
+  else if (m.t === 'trade'){ trade = {with:m.with, name:m.name, mine:null, theirs:null, draft:{items:[], gold:0}}; openTrade(); }
+  else if (m.t === 'tstate'){ if (trade){ trade.mine = m.mine; trade.theirs = m.theirs; if (!trade.mine.lock) trade.draft = {items:m.mine.items.map(x=>({...x})), gold:m.mine.gold}; renderTrade(); } }
+  else if (m.t === 'tdone') applyTrade(m.give, m.get);
+  else if (m.t === 'tend'){ trade = null; $('winTrade').hidden = true; if (m.msg) log(m.msg, /concluída/.test(m.msg) ? 'gold' : 'bad'); refreshUI(); }
+  // guilda
+  else if (m.t === 'guild'){ myGuild = m.guild; guildList = null; guildAsked = false; if (myGuild) log(`Você agora faz parte da guilda ${myGuild.nome}. Escreva /gu antes da mensagem para falar com ela.`, 'gold'); else log('Você não está mais em uma guilda.'); if (!$('winSocial').hidden) renderSocial(); }
+  else if (m.t === 'gcreated'){ ch.gold -= m.cost; dirty = true; save(); refreshUI(); }
+  else if (m.t === 'gmembers'){ guildList = m.list; guildAsked = false; if (!$('winSocial').hidden) renderSocial(); }
+  else if (m.t === 'ginfo'){ const o = others.get(m.id); if (o){ o.g = m.g; setOtherLabel(o); } }
 }
 
 /* ---------- Outros jogadores ---------- */
 const PALETTE = [[0x3F6FB5,0x2B2B2B],[0xB5473F,0xF2D16B],[0x7A4FB5,0xE8E8E8],[0xD08A2E,0x5A3A22],[0x2E9C5A,0xB5473F],[0xC2408A,0x2B2B2B],[0x4A5568,0xF2A65A]];
+const dropSprite = s => { s.parent && s.parent.remove(s); s.material.map.dispose(); s.material.dispose(); };
 function setOtherLabel(o){
-  if (o.label){ o.h.root.remove(o.label); o.label.material.map.dispose(); o.label.material.dispose(); }
-  o.label = makeLabel(`${o.name}  Nv ${o.L}`, '#9FD4FF'); o.label.position.y = 2.8; o.h.root.add(o.label);
+  if (o.label) dropSprite(o.label);
+  if (o.glabel){ dropSprite(o.glabel); o.glabel = null; }
+  o.label = makeLabel(`${o.name}  Nv ${o.L}`, o.party ? '#9BE7A8' : '#9FD4FF'); o.label.position.y = 2.8; o.h.root.add(o.label);
+  if (o.g){ o.glabel = makeLabel(`«${o.g}»`, '#D9C2FF'); o.glabel.scale.set(3, 0.6, 1); o.glabel.position.y = 3.25; o.h.root.add(o.glabel); }
 }
 function addOther(p){
   if (others.has(p.id) || p.id === online.myId) return;
   const pal = PALETTE[p.id % PALETTE.length], h = makeHero({tunic:pal[0], hair:pal[1]});
-  const o = {id:p.id, name:p.name, L:p.L, h, label:null, x:p.x, y:p.y, z:p.z, f:p.f, tx:p.x, ty:p.y, tz:p.z, tf:p.f, a:0, phase:0, bubble:null, bubbleT:0};
+  const o = {id:p.id, name:p.name, L:p.L, g:p.g || null, party:inParty(p.id), h, label:null, glabel:null, x:p.x, y:p.y, z:p.z, f:p.f, tx:p.x, ty:p.y, tz:p.z, tf:p.f, a:0, phase:0, bubble:null, bubbleT:0};
   setOtherLabel(o);
   h.root.position.set(o.x,o.y,o.z);
   others.set(p.id, o);
@@ -2026,14 +2216,17 @@ function addOther(p){
 function removeOther(o){
   scene.remove(o.h.root); scene.remove(o.h.shadow);
   if (o.label){ o.label.material.map.dispose(); o.label.material.dispose(); }
+  if (o.glabel){ o.glabel.material.map.dispose(); o.glabel.material.dispose(); }
   others.delete(o.id);
+  if ($('winPlayer').dataset.id == o.id) $('winPlayer').hidden = true;
 }
 function clearOthers(){ [...others.values()].forEach(removeOther); }
 
 /* ---------- Chat ---------- */
-function chatLine(name, text){
-  const box = $('log'), el = document.createElement('div'); el.className = 'chat';
-  const b = document.createElement('b'); b.textContent = name + ': '; el.appendChild(b); el.appendChild(document.createTextNode(text));
+function chatLine(name, text, chan){
+  const box = $('log'), el = document.createElement('div'); el.className = 'chat' + (chan ? ' ' + chan : '');
+  const tag = chan === 'g' ? '[Grupo] ' : (chan === 'gu' ? '[Guilda] ' : '');
+  const b = document.createElement('b'); b.textContent = tag + name + ': '; el.appendChild(b); el.appendChild(document.createTextNode(text));
   box.appendChild(el); while (box.children.length > 6) box.firstChild.remove();
   setTimeout(()=>{ if (el.parentNode) el.remove(); }, 20500);
 }
@@ -2046,10 +2239,11 @@ $('bChat').addEventListener('click', ()=>{ if ($('chatBar').classList.contains('
 $('chatIn').addEventListener('keydown', e=>{
   e.stopPropagation();
   if (e.key === 'Enter'){
-    const text = e.target.value.trim();
+    let text = e.target.value.trim(), chan;
+    const pre = /^\/(gu|g)\s+/i.exec(text);
+    if (pre){ chan = pre[1].toLowerCase(); text = text.slice(pre[0].length).trim(); }
     if (text){
-      if (online.ws && online.ws.readyState === 1 && online.myId) online.ws.send(JSON.stringify({t:'chat', text}));
-      else log('Sem conexão com o servidor.', 'bad');
+      if (!sendWs(chan ? {t:'chat', text, ch:chan} : {t:'chat', text})) log('Sem conexão com o servidor.', 'bad');
     }
     e.target.value = ''; e.target.blur(); $('chatBar').classList.remove('open');
   } else if (e.key === 'Escape'){ e.target.blur(); $('chatBar').classList.remove('open'); }
@@ -2071,6 +2265,227 @@ function showBubble(root, text, owner){
 }
 function dropBubble(b){ b.root.remove(b.s); b.s.material.map.dispose(); b.s.material.dispose(); bubbles.splice(bubbles.indexOf(b),1); }
 
+/* ---------- Fase 5: grupo, guilda, convites e troca ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inParty = id => party.members.length > 1 && party.members.some(x=> x.id === id);
+function resetSocial(){
+  party = {leader:null, members:[]}; trade = null; myGuild = null; guildList = null; guildAsked = false;
+  $('winTrade').hidden = true; $('winPlayer').hidden = true; $('invites').innerHTML = '';
+  renderParty();
+}
+
+// Barra do grupo embaixo do painel de vida
+function renderParty(){
+  const hud = $('partyHud');
+  const list = party.members.length > 1 ? party.members.filter(x=> x.id !== online.myId) : [];
+  hud.innerHTML = list.map(x=>{
+    const o = others.get(x.id), far = !o || Math.hypot(o.x - player.x, o.z - player.z) > 40;
+    const pct = x.max ? Math.max(0, Math.min(100, x.hp/x.max*100)) : 0;
+    return `<div class="pm panel ${far ? 'far' : ''}"><b>${x.id === party.leader ? '👑 ' : ''}${esc(x.name)}</b> <span>Nv ${x.L}</span>
+      <div class="track"><div class="fill" style="width:${pct}%;background:var(--hp)"></div></div></div>`;
+  }).join('');
+  document.documentElement.style.setProperty('--partyH', list.length ? (hud.offsetHeight + 6) + 'px' : '0px');
+}
+
+// Janela "Grupo e guilda"
+let socialTab = 'grupo';
+function openSocial(){
+  const w = $('winSocial'); openWin(w, 1);
+  if (!w.hidden && socialTab === 'guilda' && myGuild) sendWs({t:'glist'});
+}
+function renderSocial(){
+  const old = $('gName'), typed = old ? old.value : '', focused = old && document.activeElement === old;
+  let html = `<div class="tabs"><button type="button" data-stab="grupo" class="${socialTab==='grupo'?'on':''}">Grupo</button><button type="button" data-stab="guilda" class="${socialTab==='guilda'?'on':''}">Guilda</button></div>`;
+  if (socialTab === 'grupo'){
+    if (party.members.length <= 1){
+      html += `<p class="note">Você não está em um grupo. ${isTouch ? 'Toque' : 'Clique'} em outro jogador e escolha "Chamar para o grupo". Cabem até 8 pessoas.</p>`;
+    } else {
+      const lead = party.leader === online.myId;
+      html += `<p class="note">${party.members.length} de 8 pessoas. Quem está no grupo e perto ganha 30% da experiência dos monstros que os outros derrotam.</p>`;
+      party.members.forEach(x=>{
+        const me = x.id === online.myId;
+        html += `<div class="row"><div><b>${x.id === party.leader ? '👑 ' : ''}${esc(x.name)}${me ? ' (você)' : ''}</b><span>Nível ${x.L}${x.id === party.leader ? ' · Líder' : ''}</span></div>${lead && !me ? `<button class="btn ghost" type="button" data-pkick="${x.id}">Retirar</button>` : ''}</div>`;
+      });
+      html += `<p class="note">Escreva <b>/g</b> antes da mensagem para falar só com o grupo.</p><div class="actions"><button class="btn ghost" type="button" id="pLeave">Sair do grupo</button></div>`;
+    }
+  } else if (!myGuild){
+    const can = ch.L >= 15 && ch.gold >= 1000;
+    html += `<p class="note">Você não está em uma guilda. Peça um convite ao líder de uma guilda ou crie a sua: precisa do nível 15 e custa 1.000 de ouro.</p>
+      <label class="note" style="display:block;margin:0">Nome da guilda<input id="gName" maxlength="16" autocomplete="off" placeholder="3 a 16 letras ou números"></label>
+      <div class="actions"><button class="btn" type="button" id="gCreate" ${can ? '' : 'disabled'}>Criar guilda (1.000 ouro)</button></div>
+      ${can ? '' : `<p class="note">${ch.L < 15 ? `Você está no nível ${ch.L}.` : `Você tem ${ch.gold.toLocaleString('pt-BR')} de ouro.`}</p>`}`;
+  } else {
+    const lead = myGuild.cargo === 'lider';
+    html += `<div class="gold">Guilda <b>${esc(myGuild.nome)}</b> · ${lead ? 'Você é o líder' : 'Membro'}</div>`;
+    if (!guildList){ html += `<p class="note">Carregando membros...</p>`; if (!guildAsked) guildAsked = sendWs({t:'glist'}); }
+    else guildList.forEach(x=>{
+      html += `<div class="row"><div><b><span class="dot ${x.online ? 'on' : ''}"></span>${esc(x.nome)}</b><span>${x.cargo === 'lider' ? 'Líder' : 'Membro'} · ${x.online ? 'online' : 'offline'}</span></div>${lead && x.cargo !== 'lider' ? `<button class="btn ghost" type="button" data-gkick="${esc(x.nome)}">Retirar</button>` : ''}</div>`;
+    });
+    html += `<p class="note">${lead ? `Para convidar, ${isTouch ? 'toque' : 'clique'} em outro jogador. ` : ''}Escreva <b>/gu</b> antes da mensagem para falar com a guilda. Máximo de 30 membros.</p>
+      <div class="actions"><button class="btn ghost" type="button" id="gLeave">${lead ? 'Desfazer a guilda' : 'Sair da guilda'}</button></div>`;
+  }
+  $('socialBody').innerHTML = html;
+  const inp = $('gName'); if (inp){ inp.value = typed; if (focused) inp.focus(); }
+}
+$('bSocial').addEventListener('click', openSocial);
+$('winSocial').addEventListener('click', e=>{
+  const tb = e.target.closest('[data-stab]');
+  if (tb){ socialTab = tb.dataset.stab; if (socialTab === 'guilda' && myGuild) sendWs({t:'glist'}); renderSocial(); return; }
+  const pk = e.target.closest('[data-pkick]'); if (pk){ sendWs({t:'pkick', id:+pk.dataset.pkick}); return; }
+  if (e.target.id === 'pLeave'){ sendWs({t:'pleave'}); return; }
+  if (e.target.id === 'gCreate'){
+    const nome = $('gName').value.trim().replace(/\s+/g, ' ');
+    if (!/^[A-Za-zÀ-ÿ0-9 ]{3,16}$/.test(nome)){ log('O nome da guilda precisa ter de 3 a 16 letras ou números.', 'bad'); return; }
+    save(); if (!sendWs({t:'gcreate', nome})) log('Sem conexão com o servidor.', 'bad'); return;
+  }
+  const gk = e.target.closest('[data-gkick]');
+  if (gk){ if (gk.dataset.confirm){ sendWs({t:'gkick', nome:gk.dataset.gkick}); } else { gk.dataset.confirm = '1'; gk.textContent = 'Confirmar'; } return; }
+  if (e.target.id === 'gLeave'){
+    const b = e.target;
+    if (b.dataset.confirm) sendWs({t:'gleave'});
+    else { b.dataset.confirm = '1'; b.textContent = myGuild && myGuild.cargo === 'lider' ? 'Toque de novo: a guilda acaba para todos' : 'Toque de novo para sair'; }
+  }
+});
+
+// Janela de outro jogador (ao tocar nele)
+function openPlayer(o){
+  const w = $('winPlayer'); w.dataset.id = o.id; w.hidden = false; w.style.zIndex = ++zTop;
+  $('playerTitle').textContent = o.name; renderPlayer();
+  w.style.left = Math.max(8, (innerWidth - w.offsetWidth)/2) + 'px'; w.style.top = (innerWidth < 760 ? 70 : 90) + 'px';
+}
+function renderPlayer(){
+  const w = $('winPlayer'), o = others.get(+w.dataset.id); if (!o){ w.hidden = true; return; }
+  const inMine = inParty(o.id), leadOk = party.members.length <= 1 || party.leader === online.myId;
+  const gLead = myGuild && myGuild.cargo === 'lider';
+  let html = `<p class="note" style="margin-top:0">Nível ${o.L}${o.g ? ` · Guilda ${esc(o.g)}` : ''}${inMine ? ' · No seu grupo' : ''}</p><div class="actions" style="flex-direction:column">`;
+  html += `<button class="btn" type="button" data-pinv="grupo" ${inMine || !leadOk ? 'disabled' : ''}>Chamar para o grupo</button>`;
+  html += `<button class="btn" type="button" data-pinv="troca" ${trade ? 'disabled' : ''}>Pedir troca de itens</button>`;
+  if (gLead) html += `<button class="btn" type="button" data-pinv="guilda" ${o.g ? 'disabled' : ''}>Convidar para a guilda</button>`;
+  html += `</div>`;
+  if (!leadOk && !inMine) html += `<p class="note">Só o líder do seu grupo pode chamar mais gente.</p>`;
+  $('playerBody').innerHTML = html;
+}
+$('winPlayer').addEventListener('click', e=>{
+  const b = e.target.closest('[data-pinv]'); if (!b) return;
+  if (!sendWs({t:'inv', kind:b.dataset.pinv, to:+$('winPlayer').dataset.id})) log('Sem conexão com o servidor.', 'bad');
+  $('winPlayer').hidden = true;
+});
+
+// Convites recebidos
+function showInvite(m){
+  const box = $('invites'), el = document.createElement('div'); el.className = 'panel';
+  const txt = m.kind === 'grupo' ? `<b>${esc(m.name)}</b> chamou você para o grupo.`
+    : m.kind === 'troca' ? `<b>${esc(m.name)}</b> quer trocar itens com você.`
+    : `<b>${esc(m.name)}</b> convidou você para a guilda <b>${esc(m.gname || '')}</b>.`;
+  el.innerHTML = `${txt}<div class="actions"><button class="btn" type="button" data-ok="1">Aceitar</button><button class="btn ghost" type="button" data-ok="0">Recusar</button></div>`;
+  const done = ok => { sendWs({t:'resp', kind:m.kind, from:m.from, ok}); el.remove(); };
+  el.querySelector('[data-ok="1"]').addEventListener('click', ()=> done(true));
+  el.querySelector('[data-ok="0"]').addEventListener('click', ()=> done(false));
+  box.appendChild(el); while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(()=>{ if (el.parentNode) el.remove(); }, 30000);
+}
+
+// Troca
+function openTrade(){
+  const w = $('winTrade'); w.hidden = false; w.style.zIndex = ++zTop;
+  $('tradeTitle').textContent = `Troca com ${trade.name}`;
+  $('winPlayer').hidden = true;
+  w.style.left = Math.max(8, (innerWidth - w.offsetWidth)/2) + 'px'; w.style.top = (innerWidth < 760 ? 60 : 80) + 'px';
+  renderTrade();
+}
+// quanto de cada linha da mochila já está na oferta
+function offeredUse(items){
+  const used = ch.inv.map(()=> 0);
+  items.forEach(it=>{
+    if (!ITEMS[it.id]) return;
+    if (ITEMS[it.id].kind === 'eq'){ const i = ch.inv.findIndex((s,k)=> !used[k] && s.id === it.id && (s.up||0) === (it.up||0)); if (i >= 0) used[i] = 1; }
+    else { let left = it.n; ch.inv.forEach((s,k)=>{ if (left > 0 && s.id === it.id){ const q = Math.min(left, s.n - used[k]); used[k] += q; left -= q; } }); }
+  });
+  return used;
+}
+function offerCells(items, mine){
+  let h = '';
+  for (let i = 0; i < 8; i++){
+    const it = items[i];
+    if (it && ITEMS[it.id]) h += `<button class="cell" type="button" ${mine ? `data-toff="${i}"` : ''} title="${esc(itemName(it.id, it.up))}">${iconHTML(it.id)}${ITEMS[it.id].kind !== 'eq' ? `<span class="n">${it.n}</span>` : ''}${it.up ? `<span class="up">+${it.up}</span>` : ''}</button>`;
+    else h += `<div class="cell" aria-hidden="true"></div>`;
+  }
+  return h;
+}
+function renderTrade(){
+  if (!trade || $('winTrade').hidden) return;
+  const mine = trade.mine || {items:[], gold:0, lock:false, ok:false}, theirs = trade.theirs || {items:[], gold:0, lock:false, ok:false};
+  const locked = mine.lock, view = locked ? mine : trade.draft;
+  const st = o => o.ok ? '<div class="st ok">Confirmou ✔</div>' : (o.lock ? '<div class="st ok">Pronto ✔</div>' : '<div class="st">Escolhendo...</div>');
+  let html = `<div class="tcols">
+    <div><h3>Você oferece</h3><div class="grid">${offerCells(view.items, !locked)}</div><div class="gold" style="margin:6px 0 0">Ouro <b>${view.gold.toLocaleString('pt-BR')}</b></div>${st(mine)}</div>
+    <div><h3>${esc(trade.name)} oferece</h3><div class="grid">${offerCells(theirs.items, false)}</div><div class="gold" style="margin:6px 0 0">Ouro <b>${theirs.gold.toLocaleString('pt-BR')}</b></div>${st(theirs)}</div>
+  </div>`;
+  if (!locked){
+    const used = offeredUse(trade.draft.items);
+    html += `<div class="sub">Sua mochila (toque para oferecer)</div><div class="grid">`;
+    ch.inv.forEach((s,i)=>{
+      if (!ITEMS[s.id]) return;
+      const left = s.n - used[i]; if (left <= 0) return;
+      html += `<button class="cell" type="button" data-tadd="${i}" title="${esc(itemName(s.id, s.up))}">${iconHTML(s.id)}${ITEMS[s.id].kind !== 'eq' ? `<span class="n">${left}</span>` : ''}${s.up ? `<span class="up">+${s.up}</span>` : ''}</button>`;
+    });
+    html += `</div><label class="note" style="display:block;margin-top:8px">Ouro para oferecer (você tem ${ch.gold.toLocaleString('pt-BR')})<input id="tGold" type="number" inputmode="numeric" min="0" max="${ch.gold}" value="${trade.draft.gold || ''}" placeholder="0"></label>`;
+  }
+  html += `<div class="actions">`;
+  if (!locked) html += `<button class="btn" type="button" id="tLock">Pronto</button>`;
+  else if (!theirs.lock) html += `<button class="btn" type="button" disabled>Esperando ${esc(trade.name)}...</button>`;
+  else if (!mine.ok) html += `<button class="btn" type="button" id="tOk">Confirmar troca</button>`;
+  else html += `<button class="btn" type="button" disabled>Esperando confirmar...</button>`;
+  html += `<button class="btn ghost" type="button" id="tCancel">Cancelar</button></div>
+    <p class="note">Toque em um item da sua oferta para tirar. Quando os dois tocarem em Pronto, confira os itens e toque em Confirmar.</p>`;
+  $('tradeBody').innerHTML = html;
+}
+function sendOffer(){ sendWs({t:'toffer', items:trade.draft.items, gold:trade.draft.gold}); renderTrade(); }
+$('winTrade').addEventListener('click', e=>{
+  if (!trade) return;
+  const add = e.target.closest('[data-tadd]');
+  if (add && !(trade.mine && trade.mine.lock)){
+    const s = ch.inv[+add.dataset.tadd], items = trade.draft.items; if (!s || !ITEMS[s.id]) return;
+    if (ITEMS[s.id].kind === 'eq'){ if (items.length >= 8){ log('Cabem 8 itens na troca.', 'bad'); return; } items.push({id:s.id, n:1, up:s.up||0}); }
+    else { const x = items.find(it=> it.id === s.id); if (x){ if (x.n < countItem(s.id)) x.n++; } else { if (items.length >= 8){ log('Cabem 8 itens na troca.', 'bad'); return; } items.push({id:s.id, n:1}); } }
+    sendOffer(); return;
+  }
+  const rm = e.target.closest('[data-toff]');
+  if (rm && !(trade.mine && trade.mine.lock)){ trade.draft.items.splice(+rm.dataset.toff, 1); sendOffer(); return; }
+  if (e.target.id === 'tLock'){
+    const g = trade.draft.gold;
+    if (g > ch.gold){ log('Você não tem esse ouro.', 'bad'); return; }
+    save(); sendWs({t:'tlock'}); return;
+  }
+  if (e.target.id === 'tOk'){ sendWs({t:'tok'}); return; }
+  if (e.target.id === 'tCancel'){ sendWs({t:'tcancel'}); return; }
+});
+$('winTrade').addEventListener('change', e=>{
+  if (e.target.id !== 'tGold' || !trade) return;
+  const v = Math.max(0, Math.min(ch.gold, Math.floor(+e.target.value || 0)));
+  trade.draft.gold = v; sendOffer();
+});
+$('winTrade').querySelector('[data-close]').addEventListener('click', ()=>{ if (trade) sendWs({t:'tcancel'}); });
+function applyTrade(give, get){
+  give.items.forEach(it=>{
+    if (!ITEMS[it.id]) return;
+    if (ITEMS[it.id].kind === 'eq'){ const i = ch.inv.findIndex(s=> s.id === it.id && (s.up||0) === (it.up||0)); if (i >= 0) ch.inv.splice(i, 1); }
+    else { let left = it.n; for (let i = ch.inv.length-1; i >= 0 && left > 0; i--){ const s = ch.inv[i]; if (s.id !== it.id) continue; const q = Math.min(left, s.n); s.n -= q; left -= q; if (s.n <= 0) ch.inv.splice(i, 1); } }
+  });
+  ch.gold = Math.max(0, ch.gold - give.gold);
+  const got = [];
+  get.items.forEach(it=>{
+    if (!ITEMS[it.id]) return;
+    if (ITEMS[it.id].kind === 'eq') ch.inv.push(eqEntry(it.id, it.up||0));
+    else { const s = ch.inv.find(s=> s.id === it.id); if (s) s.n += it.n; else ch.inv.push({id:it.id, n:it.n}); }
+    got.push((it.n > 1 ? it.n + ' ' : '') + itemName(it.id, it.up));
+  });
+  ch.gold += get.gold;
+  if (get.gold) got.push(`${get.gold.toLocaleString('pt-BR')} de ouro`);
+  if (got.length) log(`Você recebeu: ${got.join(', ')}.`, 'gold');
+  selInv = -1; dirty = true; save(); refreshUI();
+}
+
 /* ---------- A cada quadro ---------- */
 function updateOnline(dt, t){
   // envia a minha posição 10 vezes por segundo, só se mudou
@@ -2082,6 +2497,15 @@ function updateOnline(dt, t){
     const key = `${msg.x},${msg.y},${msg.z},${msg.f},${a}`;
     if (key !== online.last){ online.last = key; online.ws.send(JSON.stringify(msg)); }
   }
+  // vida para a barra do grupo, 2 vezes por segundo, só se mudou
+  online.partyT = (online.partyT || 0) + dt;
+  if (online.partyT >= 1 && party.members.length > 1){ online.partyT = 0; renderParty(); }
+  online.hpT = (online.hpT || 0) + dt;
+  if (online.hpT >= 0.5 && party.members.length > 1){
+    online.hpT = 0;
+    const hk = `${Math.ceil(ch.hp)}/${d.maxHp}`;
+    if (hk !== online.hpKey && sendWs({t:'hp', hp:Math.ceil(ch.hp), max:d.maxHp})) online.hpKey = hk;
+  }
   // move os outros suavemente
   others.forEach(o=>{
     const k = Math.min(1, dt*10), ox = o.x, oz = o.z;
@@ -2092,6 +2516,7 @@ function updateOnline(dt, t){
     const flyT = o.a === 5 ? 'broom' : (o.a === 4 ? 'board' : null);
     if ((h.flyType || null) !== flyT) showFlyerType(h, flyT);
     o.label.visible = Math.hypot(o.x - player.x, o.z - player.z) < 40;
+    if (o.glabel) o.glabel.visible = o.label.visible;
     const walk = sp > 0.6, inAir = o.y - g > 0.3;
     if (walk) o.phase += dt*(sp > 6.5 ? 13 : 9);
     const amp = walk && !inAir ? (sp > 6.5 ? 0.95 : 0.6) : 0, s = Math.sin(o.phase), kk = Math.min(1, dt*14);

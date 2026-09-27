@@ -23,10 +23,17 @@ regras de jogo.
 - `server.js`: Node.js + Express + ws. Confere o login no Supabase, repassa
   posições (10 vezes por segundo), chat e salva o personagem a cada 15 s.
   O servidor usa o token do próprio jogador, então o banco (RLS) só deixa
-  cada conta mexer nos próprios personagens.
+  cada conta mexer nos próprios personagens. Também cuida de grupo (em
+  memória), troca (confere a oferta contra os dados salvos e aplica nos
+  dois) e guilda (no banco).
 - `supabase/001_ilha_verde.sql`: tabela `iv_personagens` (nome único,
   `dados` em JSON com nível, atributos, classe, itens e equipamento), limite
   de 3 personagens por conta.
+- `supabase/002_guildas.sql`: `iv_guildas`, `iv_guilda_membros` e
+  `iv_guilda_convites`. Só entra quem o líder convidou; funções de apoio no
+  schema `iv_privado` (fora da API). Já aplicado no Supabase.
+- Itens aprimorados: na mochila a linha tem `up` (1 a 10); no corpo o nível
+  fica em `dados.equp[slot]`.
 
 ## Estado atual (fases do documento de design)
 - Fase 1: ilha 3D, personagem, câmera, controles de PC e celular. Pronta.
@@ -35,15 +42,19 @@ regras de jogo.
 - Fase 3: login, personagens, multiplayer (ver outros e chat). No ar.
 - Fase 4: classes no nível 15 (Guerreiro, Druida, Mago, Arqueiro) com prova
   de materiais, 3 habilidades por classe, Golem de Musgo (níveis 16 a 20),
-  voo com prancha ou vassoura no nível 20, Piloto Tito (loja). Enviada ao
-  GitHub em 27/09/2026 (commit 2d4115d); conferir se o Render publicou.
+  voo com prancha ou vassoura no nível 20, Piloto Tito (loja). No ar
+  (confirmado no Render em 27/09/2026).
+- Fase 5: Ferreira Brunna na vila (aprimorar +1 a +10 com Pedra de
+  Aprimoramento, comprar e vender equipamento), troca entre jogadores,
+  grupo de até 8 (30% da EXP para quem está perto, chat `/g`), guilda de até
+  30 (criar custa 1.000 de ouro no nível 15, chat `/gu`). Tocar em outro
+  jogador abre o menu. Testada em 27/09/2026 com um Supabase falso local.
 
 ## Limites conhecidos (próximos passos)
 - Os monstros ainda rodam no navegador de cada jogador: cada um vê os seus.
   Próximo passo: monstros, dano e drops decididos no servidor, o que também
   impede trapaças (hoje o servidor confia nos dados que o jogo manda).
-- Fase 5: aprimoramento de equipamento (+1 a +10), lojas, troca entre
-  jogadores, grupo de até 8 e guilda.
+- Grupo não é salvo: some quando alguém recarrega a página.
 - Fase 6: novas regiões, masmorras com chefe, subclasses e mascotes.
 
 ## Como testar antes de enviar
