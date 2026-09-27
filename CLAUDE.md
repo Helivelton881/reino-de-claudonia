@@ -29,9 +29,16 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
     vegetação usa InstancedMesh; peças dos monstros viram 1 a 3 malhas
     (`mergeBody`). Isso mantém o celular leve; siga esse padrão.
   - Colisões numa grade (`addCollider`, `colAt`), não num array percorrido.
-  - Visual: sombreado suave (Lambert), sombras reais só no PC (`HQ`), árvores de
-    copa fofa, grama em cartões com textura desenhada, personagem procedural em
-    estilo anime (`makeHero`, cabeça grande, rosto em textura).
+  - Visual: sombreado suave (Lambert), sombras reais só no PC (`HQ`).
+  - Vegetação, objetos da vila e 2 monstros vêm dos kits da Quaternius (versão 0.10), já
+    otimizados em `public/assets/world/` (nature.glb, props.glb, monsters/*.glb) por
+    `tools/otimizar_kits_quaternius.mjs`. Origem e licenças: `public/assets/vendor/quaternius/`.
+    `public/js/world-asset-manager.js` desenha cada modelo com InstancedMesh em blocos de 80 m
+    (cada bloco some longe da câmera; o celular desenha menos longe). As posições são calculadas
+    no index.html (`VEG`, `trees`, `PROPS_AT`), iguais para todos, com colisão na hora.
+    Folhas e grama vêm cinza no arquivo e recebem a cor de cada árvore (outono).
+    Quatro construções abertas mobiliadas: `OPEN_HALLS` (taverna, forja, alquimista, estalagem).
+    Orçamento medido: celular ~540 desenhos e ~1,1 milhão de triângulos por quadro.
 - Personagens GLB rigados (versão 0.7): `public/js/claudonia-character-config.js`
   (chave `USE_NEW_CHARACTER_MODEL`, caminhos, nomes das animações, ossos dos
   encaixes), `public/js/character-manager.js` e `public/js/animation-manager.js`

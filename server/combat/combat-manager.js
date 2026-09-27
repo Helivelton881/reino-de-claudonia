@@ -14,8 +14,10 @@ class CombatManager {
     const s=derivePlayer(player.dados); player.stats=s;
     for(const key of ['hp','mp','fp']) {
       const max=s[`max${key[0].toUpperCase()+key.slice(1)}`];
-      const saved=Number(player.dados[key]); player[key]=Number.isFinite(saved)?Math.max(0,Math.min(max,Math.round(saved))):max; player.dados[key]=player[key];
+      const raw=player.dados[key], saved=raw===null||raw===undefined||raw===''?NaN:Number(raw); player[key]=Number.isFinite(saved)?Math.max(0,Math.min(max,Math.round(saved))):max; player.dados[key]=player[key];
     }
+    // quem saiu do jogo morto volta vivo (como no Flyff): entrar com vida zero = vida cheia
+    if(player.hp<=0){player.hp=s.maxHp;player.dados.hp=player.hp;}
     player.maxHp=s.maxHp; player.cooldowns=new Map(); player.buffs=new Map(); player.dead=player.hp<=0; player.lastAttack=0;
   }
   refresh(player){ player.stats=derivePlayer(player.dados); player.maxHp=player.stats.maxHp; return player.stats; }

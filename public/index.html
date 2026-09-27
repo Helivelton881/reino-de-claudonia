@@ -999,7 +999,9 @@ for (let i=0;i<8;i++){
   bake(g);
 }
 // Casas de telhado redondo (desenho próprio)
+const COTTAGES = [];
 function cottage(x, z, s, roofColor, wallColor){
+  COTTAGES.push({x, z, s});
   const g = new THREE.Group(), y = heightAt(x,z);
   const base = new THREE.Mesh(new THREE.CylinderGeometry(2.9,3.1,0.6,28), flat(0x8E8272)); base.position.y = 0.1; g.add(base);
   const walls = new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.7,2.6,28), lam(wallColor)); walls.position.y = 1.6; g.add(walls);
@@ -1032,9 +1034,16 @@ function stall(x, z, color){
 }
 stall(22, -12, 0xC0392B); stall(-23, 10, 0x2E6FB5); stall(-10, -24, 0x6E8A3A);
 
-/* ---------- Vegetação ---------- */
-const dummy = new THREE.Object3D(), tint = new THREE.Color();
+/* ---------- Vegetação: Stylized Nature MegaKit (Quaternius, CC0) ----------
+   As posições são calculadas aqui (iguais para todos os jogadores, com colisão na hora) e os
+   modelos entram quando /assets/world/nature.glb termina de baixar (WorldAssetManager).
+   Cada região tem o seu jeito: pinheiros na Trilha dos Lobos e na serra, árvores retorcidas
+   na Mata das Teias e no Bosque dos Cogumelos, árvores secas e pedras no Planalto e nas Ruínas. */
+const tint = new THREE.Color();
+const worldAssets = new WorldAssetManager({scene, heightAt, highQuality:HQ, isMobile:isTouch});
+const WA = CLAUDONIA_WORLD_ASSETS;
 const inZoneCore = (x,z) => ZONES.some(zn => Math.hypot(x-zn.x, z-zn.z) < zn.r*0.55);
+const zoneKeyAt = (x,z) => { for (const zn of ZONES) if (Math.hypot(x-zn.x, z-zn.z) < zn.r + 10) return zn.key; return null; };
 function freeSpot(x, z, minTown){
   const dd = Math.hypot(x,z);
   if (dd < minTown || dd > R-4) return false;
@@ -1042,239 +1051,230 @@ function freeSpot(x, z, minTown){
   if (distPath(x,z) < 3.4) return false;
   return true;
 }
+// construções abertas da vila (taverna, forja, alquimista, estalagem): nada de planta dentro delas
+const OPEN_HALLS = [{x:0, z:27, title:'Taverna do Vale'}, {x:27, z:0, title:'Forja Real'}, {x:-27, z:0, title:'Casa do Alquimista'}, {x:-19, z:-19, title:'Estalagem'}];
+const nearHouse = (x, z, pad) => COTTAGES.some(c => Math.hypot(c.x-x, c.z-z) < 3.3*c.s + pad) || OPEN_HALLS.some(h => Math.hypot(h.x-x, h.z-z) < 5.6 + pad);
+const VEG = new Map();                                   // modelo -> [{x, z, rot, h (altura) ou s, color}]
+const vegAdd = (model, it) => { if (!VEG.has(model)) VEG.set(model, []); VEG.get(model).push(it); };
+const pick = list => list[Math.floor(rand()*list.length)];
+// cores de outono (as folhas vêm cinza do arquivo; cada árvore recebe a sua)
+function autumnLeaf(x, z){
+  const k = rand(), h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
+  return new THREE.Color().setHSL(h + (hash(x,z)-0.5)*0.02, h > 0.2 ? 0.45 : 0.75, (h > 0.2 ? 0.4 : 0.55) + hash(z,x)*0.08);
+}
 const trees = [];
 {
-  const occ = new Map(), MAXT = HQ ? 1300 : 750;
+  const occ = new Map(), MAXT = HQ ? 850 : 420;
   for (let i=0;i<9000 && trees.length<MAXT;i++){
     const a = rand()*Math.PI*2, rr = Math.sqrt(rand())*(R-6), x = Math.cos(a)*rr, z = Math.sin(a)*rr;
-    if (!freeSpot(x, z, 36) || (inZoneCore(x,z) && rand() < 0.8)) continue;
-    const k = cellKey(Math.floor(x/3.4), Math.floor(z/3.4)); if (occ.has(k)) continue; occ.set(k,1);
-    const r = rand();
-    trees.push({x,z,s:1.0+rand()*0.75, pine:r<0.16, rot:rand()*6.28, kind:r, v:Math.floor(rand()*3)});
+    if (!freeSpot(x, z, 36) || (inZoneCore(x,z) && rand() < 0.8) || nearHouse(x, z, 3)) continue;
+    const k = cellKey(Math.floor(x/3.6), Math.floor(z/3.6)); if (occ.has(k)) continue; occ.set(k,1);
+    const zk = zoneKeyAt(x,z), y = heightAt(x,z), r = rand();
+    let kind = 'common';
+    if (zk === 'aranha' || zk === 'cogumelo') kind = r < 0.55 ? 'twisted' : 'common';
+    else if (zk === 'golem' || zk === 'ciclope') kind = r < 0.45 ? 'dead' : 'pine';
+    else if (zk === 'javali') kind = r < 0.3 ? 'dead' : r < 0.5 ? 'pine' : 'common';
+    else if (zk === 'lobo' || y > 9) kind = r < 0.75 ? 'pine' : 'common';
+    else kind = r < 0.12 ? 'pine' : r < 0.15 ? 'dead' : 'common';
+    const t = {x, z, kind, rot:rand()*6.28, pine:kind === 'pine'};
+    if (kind === 'common'){
+      t.model = rand() < 0.5 ? 'CommonTree_3' : 'CommonTree_5'; t.h = 6 + rand()*3.5;
+      const green = zk === 'espirito' || (zk === 'coelhorn' && rand() < 0.5);
+      t.color = green ? new THREE.Color().setHSL(0.22 + rand()*0.08, 0.5, 0.45) : autumnLeaf(x,z);
+    } else if (kind === 'pine'){
+      t.model = 'Pine_2'; t.h = 7 + rand()*3.5;
+      t.color = new THREE.Color().setHSL(0.3 + hash(x,z)*0.06, 0.42, 0.34 + hash(z,x)*0.08);
+    } else if (kind === 'twisted'){
+      t.model = 'TwistedTree_1'; t.h = 7 + rand()*2.5;
+      t.color = new THREE.Color().setHSL(rand() < 0.5 ? 0.78 + rand()*0.06 : 0.36, 0.35, 0.36 + rand()*0.08);
+    } else { t.model = 'DeadTree_1'; t.h = 7 + rand()*3; }
+    trees.push(t); vegAdd(t.model, t);
+    addCollider({x, z, r: kind === 'twisted' ? 0.9 : 0.55});
   }
 }
-// Junta várias geometrias (com normais suaves e cores por vértice) numa só
-function joinGeos(list){
-  const pos = [], nor = [], col = [];
-  list.forEach(({g, c})=>{
-    const n = g.index ? g.toNonIndexed() : g;
-    const p = n.attributes.position.array, nn = n.attributes.normal.array, cc = n.attributes.color ? n.attributes.color.array : null;
-    for (let i=0;i<p.length;i+=3){ pos.push(p[i],p[i+1],p[i+2]); nor.push(nn[i],nn[i+1],nn[i+2]); if (cc) col.push(cc[i],cc[i+1],cc[i+2]); else col.push(c.r,c.g,c.b); }
-  });
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
-  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor,3));
-  out.setAttribute('color', new THREE.Float32BufferAttribute(col,3));
-  out.computeBoundingSphere(); return out;
-}
-// Copa fofa: bolas deformadas juntas, mais escuras embaixo e claras em cima
-function crownGeo(seed){
-  const r = mulberry32(seed), parts = [];
-  const blobs = [[0,0,0,1.55],[1.0,0.3,0.25,1.1],[-0.95,0.25,-0.25,1.15],[0.1,1.05,-0.1,1.05],[0.25,0.2,-1.0,1.0],[-0.25,0.3,1.0,1.0],[0.6,0.9,0.6,0.8]];
-  blobs.forEach(([bx,by,bz,br])=>{
-    const g = new THREE.IcosahedronGeometry(br*(0.9 + r()*0.2), 1), p = g.attributes.position, n = g.attributes.normal;
-    const cols = [], c = new THREE.Color();
-    for (let i=0;i<p.count;i++){
-      const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-      const k = 1 + (hash(Math.round(x*9)+seed, Math.round(y*9)*3 + Math.round(z*9)) - 0.5)*0.22;
-      p.setXYZ(i, x*k + bx, y*k + by, z*k + bz);
-      const lit = 0.55 + 0.5*smooth(-1.6, 2.2, y + by) + (hash(x*3+seed, z*3)-0.5)*0.12;
-      c.setRGB(lit, lit, lit); cols.push(c.r, c.g, c.b);
-    }
-    g.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
-    parts.push({g});
-  });
-  return joinGeos(parts);
-}
-function trunkGeo0(){
-  const g = new THREE.CylinderGeometry(0.2, 0.42, 3.4, 10, 6); g.translate(0,1.7,0);
-  const p = g.attributes.position;
-  for (let i=0;i<p.count;i++){ const y = p.getY(i); p.setX(i, p.getX(i)*(1 + 0.5*Math.max(0, 0.6-y)) + Math.sin(y*0.9)*0.12); p.setZ(i, p.getZ(i)*(1 + 0.5*Math.max(0, 0.6-y))); }
-  g.computeVertexNormals(); return g;
-}
-const trunkGeo = trunkGeo0();
-function pineGeo(){
-  const parts = [], c = new THREE.Color();
-  [[1.9,2.4,1.2],[1.5,2.1,2.4],[1.05,1.9,3.5],[0.6,1.4,4.4]].forEach(([r,h,y],i)=>{
-    const g = new THREE.ConeGeometry(r, h, 14, 2); g.translate(0,y,0);
-    const lit = 0.65 + i*0.12; parts.push({g, c:c.clone().setRGB(lit,lit,lit)});
-  });
-  return joinGeos(parts);
-}
-{
-  const bark = lam(0x5C3C22);
-  const trunks = new THREE.InstancedMesh(trunkGeo, bark, trees.length);
-  const rounds = trees.filter(t=>!t.pine), pines = trees.filter(t=>t.pine);
-  const leafMat = new THREE.MeshLambertMaterial({vertexColors:true});
-  const crowns = [0,1,2].map(v=> new THREE.InstancedMesh(crownGeo(11 + v*7), leafMat, rounds.filter(t=> t.v === v).length));
-  const cones = new THREE.InstancedMesh(pineGeo(), leafMat, pines.length);
-  trees.forEach((t,i)=>{
-    dummy.position.set(t.x,heightAt(t.x,t.z)-0.15,t.z); dummy.rotation.set(0,t.rot,0); dummy.scale.set(t.s, t.pine ? t.s*0.8 : t.s, t.s); dummy.updateMatrix();
-    trunks.setMatrixAt(i, dummy.matrix); addCollider({x:t.x,z:t.z,r:0.5*t.s});
-  });
-  const idx = [0,0,0];
-  rounds.forEach(t=>{
-    // outono: laranja, âmbar, amarelo, vermelho e alguns verdes
-    const k = t.kind, h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
-    tint.setHSL(h + (hash(t.x,t.z)-0.5)*0.02, h > 0.2 ? 0.45 : 0.72, (h > 0.2 ? 0.36 : 0.5) + hash(t.z,t.x)*0.08);
-    dummy.position.set(t.x, heightAt(t.x,t.z) + 3.9*t.s, t.z); dummy.rotation.set(0,t.rot,0); dummy.scale.setScalar(t.s); dummy.updateMatrix();
-    const m = crowns[t.v]; m.setMatrixAt(idx[t.v], dummy.matrix); m.setColorAt(idx[t.v], tint); idx[t.v]++;
-  });
-  pines.forEach((t,i)=>{
-    dummy.position.set(t.x, heightAt(t.x,t.z) + 0.6*t.s, t.z); dummy.rotation.set(0,t.rot,0); dummy.scale.setScalar(t.s); dummy.updateMatrix();
-    cones.setMatrixAt(i, dummy.matrix); cones.setColorAt(i, tint.setHSL(0.3+hash(t.x,t.z)*0.05, 0.45, 0.3+hash(t.z,t.x)*0.06));
-  });
-  [trunks, cones, ...crowns].forEach(m=>{ m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; m.castShadow = HQ; scene.add(m); });
-}
-// Espalha instâncias pelo mapa. Várias malhas podem dividir as mesmas posições (ex.: cogumelo = pé + chapéu).
-function scatterMany(list, count, place){
-  const meshes = list.map(([geo, mat])=> new THREE.InstancedMesh(geo, mat, count)); let n = 0;
+// Espalha plantas pequenas: place(x, z) devolve {model, h (altura) ou s (escala), color} ou null
+function scatterVeg(count, place){
+  let n = 0;
   for (let i=0;i<count*6 && n<count;i++){
     const a = rand()*Math.PI*2, rr = Math.sqrt(rand())*(R-6), x = Math.cos(a)*rr, z = Math.sin(a)*rr;
     const res = place(x, z); if (!res) continue;
-    dummy.position.set(x, heightAt(x,z) + (res.dy||0), z); dummy.rotation.set(res.rx||0, rand()*6.28, res.rz||0);
-    const s = res.s || 1; dummy.scale.set(s*(res.sx||1), s*(res.sy||1), s*(res.sz||1)); dummy.updateMatrix();
-    meshes.forEach((m,k)=>{ m.setMatrixAt(n, dummy.matrix); const c = res.cs ? res.cs[k] : res.c; if (c) m.setColorAt(n, c); });
-    n++;
+    res.x = x; res.z = z; res.rot = rand()*6.28; vegAdd(res.model, res); n++;
   }
-  meshes.forEach(m=>{ m.count = n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); });
-  return meshes;
 }
-const scatter = (geo, mat, count, place) => scatterMany([[geo, mat]], count, place)[0];
-// Plantas em "cartão" cruzado com textura desenhada (fica macio como grama de verdade)
-function crossCard(w, h){
-  const a = new THREE.PlaneGeometry(w, h).toNonIndexed(), b = a.clone(); b.rotateY(Math.PI/2);
-  const c = a.clone(); c.rotateY(Math.PI/4); const d = a.clone(); d.rotateY(-Math.PI/4);
-  const parts = [a,b,c,d], pos = [], uv = [], nor = [];
-  parts.forEach(g=>{ g.translate(0,h/2,0); pos.push(...g.attributes.position.array); uv.push(...g.attributes.uv.array); for (let i=0;i<g.attributes.position.count;i++) nor.push(0,1,0); });
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
-  out.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
-  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor,3));
-  return out;
-}
-const bladeTex = canvasTex(128, 128, (g, W, H)=>{
-  for (let i=0;i<11;i++){
-    const x0 = 20 + Math.random()*88, lean = (Math.random()-0.5)*50, top = 14 + Math.random()*40, w = 5 + Math.random()*5;
-    const grd = g.createLinearGradient(0, H, 0, top); grd.addColorStop(0, '#6a6a6a'); grd.addColorStop(1, '#ffffff');
-    g.fillStyle = grd; g.beginPath(); g.moveTo(x0 - w, H); g.quadraticCurveTo(x0 + lean*0.3, (H+top)/2, x0 + lean, top); g.quadraticCurveTo(x0 + lean*0.3 + w*0.4, (H+top)/2, x0 + w, H); g.fill();
-  }
+const lowGround = (x,z,town) => freeSpot(x,z,town) && heightAt(x,z) <= 9 && !nearHouse(x, z, 0.5);
+// grama
+scatterVeg(HQ ? 6000 : 2200, (x,z)=>{
+  if (Math.hypot(x,z) < TOWN+2 || Math.hypot(x-LAKE.x,z-LAKE.z) < LAKE.r+5 || heightAt(x,z) > 11 || nearHouse(x, z, 0)) return null;
+  const r = rand();
+  return {model: 'Grass_Common_Short', h:0.55+rand()*0.5,
+    color:new THREE.Color().setHSL(0.15+rand()*0.09, 0.55, 0.66+rand()*0.14)};
 });
-const flowerTex = canvasTex(128, 128, (g)=>{
-  const f = (x, y, r) => {
-    g.fillStyle = '#ffffff'; for (let k=0;k<5;k++){ const a = k/5*Math.PI*2; g.beginPath(); g.ellipse(x + Math.cos(a)*r*0.6, y + Math.sin(a)*r*0.6, r*0.55, r*0.38, a, 0, Math.PI*2); g.fill(); }
-    g.fillStyle = '#FFE070'; g.beginPath(); g.arc(x, y, r*0.3, 0, Math.PI*2); g.fill();
-    g.strokeStyle = '#7a9a52'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y + r*0.4); g.lineTo(x + (Math.random()-0.5)*6, 128); g.stroke();
-  };
-  f(40, 50, 18); f(88, 36, 16); f(66, 76, 14);
+// flores
+scatterVeg(HQ ? 1200 : 450, (x,z)=>{
+  if (!lowGround(x,z,TOWN+3)) return null;
+  const zk = zoneKeyAt(x,z); if ((zk === 'golem' || zk === 'ciclope') && rand() < 0.8) return null;
+  return {model: 'Flower_3_Group', h:0.7+rand()*0.5,
+    color:new THREE.Color().setHSL(0.25+rand()*0.06, 0.5, 0.42)};
 });
-const grassMat = new THREE.MeshLambertMaterial({map:bladeTex, alphaTest:0.45, side:THREE.DoubleSide});
-scatter(crossCard(1.2, 0.9), grassMat, HQ ? 9000 : 4500, (x,z)=>{
-  if (Math.hypot(x,z) < TOWN+2 || Math.hypot(x-LAKE.x,z-LAKE.z) < LAKE.r || heightAt(x,z) > 11) return null;
-  return {s:0.7+rand()*0.8, c:tint.setHSL(0.16+rand()*0.08, 0.42, 0.36+rand()*0.14)};
+// plantas de folha (samambaia, folhas grandes, trevo)
+scatterVeg(HQ ? 800 : 350, (x,z)=>{
+  if (!lowGround(x,z,TOWN+4)) return null;
+  const zk = zoneKeyAt(x,z), m = pick(['Fern_1','Fern_1','Plant_1_Big','Clover_2']);
+  const h = m === 'Plant_1_Big' ? 1.6+rand()*0.8 : m === 'Fern_1' ? 1.1+rand()*0.6 : 0.6+rand()*0.4;
+  const autumn = rand() < 0.3 && zk !== 'aranha' && zk !== 'cogumelo';
+  return {model:m, h, color:autumn ? new THREE.Color().setHSL(0.09+rand()*0.04, 0.7, 0.68) : new THREE.Color().setHSL(0.24+rand()*0.08, 0.5, 0.52+rand()*0.1)};
 });
-scatter(crossCard(0.9, 0.8), new THREE.MeshLambertMaterial({map:flowerTex, alphaTest:0.45, side:THREE.DoubleSide}), HQ ? 2200 : 1100, (x,z)=>{
-  if (!freeSpot(x,z,TOWN+3) || heightAt(x,z) > 9) return null;
-  const pal = [0xFFFFFF,0xFF8A8A,0xFFD76A,0xC9A8FF,0xFFA8DA];
-  return {s:0.7+rand()*0.6, c:tint.setHex(pal[Math.floor(rand()*pal.length)])};
+// arbustos
+scatterVeg(HQ ? 320 : 120, (x,z)=>{
+  if (!freeSpot(x,z,TOWN+6) || heightAt(x,z) > 10 || nearHouse(x, z, 1)) return null;
+  const m = rand() < 0.45 ? 'Bush_Common_Flowers' : 'Bush_Common', h = 1.2+rand()*0.9;
+  if (h > 1.8) addCollider({x, z, r:0.7});
+  return {model:m, h, color: rand() < 0.4 ? autumnLeaf(x,z) : new THREE.Color().setHSL(0.25+rand()*0.07, 0.45, 0.38)};
 });
-{
-  // plantas de folha larga (folhas curvas, suaves)
-  const leaf = new THREE.PlaneGeometry(0.75, 2.3, 1, 4), parts = [];
-  for (let k=0;k<6;k++){
-    const g = leaf.clone(); g.translate(0,1.15,0);
-    const p = g.attributes.position; for (let i=0;i<p.count;i++){ const y = p.getY(i); p.setZ(i, -0.18*y*y); p.setX(i, p.getX(i)*(1 - Math.abs(y-1.1)/1.6)); }
-    g.rotateX(-0.55); g.rotateY(k/6*Math.PI*2); g.computeVertexNormals(); parts.push({g, c:new THREE.Color(1,1,1)});
-  }
-  scatter(joinGeos(parts), new THREE.MeshLambertMaterial({vertexColors:true, side:THREE.DoubleSide}), HQ ? 800 : 450, (x,z)=>{
-    if (!freeSpot(x,z,TOWN+4) || heightAt(x,z) > 9) return null;
-    return {s:0.8+rand()*0.9, c:tint.setHSL(0.2+rand()*0.07, 0.5, 0.3+rand()*0.1)};
+// cogumelos (muitos no Bosque dos Cogumelos e na Mata das Teias)
+scatterVeg(HQ ? 360 : 200, (x,z)=>{
+  if (!lowGround(x,z,TOWN+6)) return null;
+  const zk = zoneKeyAt(x,z), forest = zk === 'cogumelo' || zk === 'aranha';
+  if (!forest && rand() < 0.6) return null;
+  return {model: rand() < 0.7 ? 'Mushroom_Common' : 'Mushroom_Laetiporus', h: (forest ? 0.6 : 0.4) + rand()*0.5};
+});
+// pedras (mais no Planalto do Musgo, nas Ruínas e na Colina)
+scatterVeg(HQ ? 340 : 240, (x,z)=>{
+  if (Math.hypot(x,z) < TOWN+8 || distPath(x,z) < 3 || Math.hypot(x-LAKE.x,z-LAKE.z) < LAKE.r+6 || nearHouse(x, z, 1)) return null;
+  const zk = zoneKeyAt(x,z); if (!(zk === 'golem' || zk === 'ciclope' || zk === 'javali') && rand() < 0.45) return null;
+  const h = 0.5 + rand()*1.9; if (h > 1.2) addCollider({x, z, r:0.35*h + 0.2});
+  return {model: rand() < 0.5 ? 'Rock_Medium_1' : 'Rock_Medium_3', h};
+});
+// pedrinhas perto dos caminhos
+scatterVeg(HQ ? 500 : 220, (x,z)=>{
+  const dp = distPath(x,z); if (dp > 5.5 || dp < 1.2 || Math.hypot(x,z) < TOWN || nearHouse(x, z, 0)) return null;
+  return {model: 'Pebble_Round_1', s:2.2+rand()*2};
+});
+// distância em que cada tipo some (o celular desenha menos longe) e quem faz sombra
+const VEG_FAR = m => /Tree|Pine/.test(m) ? (HQ ? 180 : 85) : /Rock|Bush/.test(m) ? (HQ ? 130 : 70) : /Grass|Pebble/.test(m) ? (HQ ? 60 : 36) : (HQ ? 90 : 50);
+const natureReady = worldAssets.loadKit(WA.nature).then(K=>{
+  let total = 0;
+  VEG.forEach((items, name)=>{
+    const model = K.get(name); if (!model){ console.warn('[Mundo] modelo não achado:', name); return; }
+    items.forEach(it=>{ if (it.h) it.s = it.h / model.height; });
+    worldAssets.instance(model, items, {far:VEG_FAR(name), shadow:/Tree|Pine|Rock_Medium/.test(name)}); total += items.length;
   });
-}
-{
-  // cogumelos: pé e chapéu na mesma posição
-  const stem = new THREE.CylinderGeometry(0.1,0.14,0.42,10); stem.translate(0,0.21,0);
-  const cap = new THREE.SphereGeometry(0.3,16,8,0,Math.PI*2,0,Math.PI/2); cap.translate(0,0.38,0);
-  scatterMany([[stem, lam(0xF1E6CF)], [cap, shiny(0xffffff, 60)]], 420, (x,z)=>{
-    if (!freeSpot(x,z,TOWN+6) || heightAt(x,z) > 9) return null;
-    return {s:0.8+rand()*1.4, cs:[null, new THREE.Color(rand() < 0.6 ? 0xC8452F : 0xA8703A)]};
-  });
-}
-{
-  const rockGeo = new THREE.DodecahedronGeometry(0.8, 1), p = rockGeo.attributes.position;
-  for (let i=0;i<p.count;i++){ const k = 1 + (hash(Math.round(p.getX(i)*7), Math.round(p.getY(i)*7) + Math.round(p.getZ(i)*7)*3) - 0.5)*0.25; p.setXYZ(i, p.getX(i)*k, p.getY(i)*k, p.getZ(i)*k); }
-  rockGeo.computeVertexNormals();
-  const rocks = scatter(rockGeo, lam(0xffffff), 300, (x,z)=>{
-    if (Math.hypot(x,z) < TOWN+8 || distPath(x,z) < 3) return null;
-    const s = 0.5+rand()*1.6; if (s > 1.1) addCollider({x,z,r:0.65*s});
-    return {s, sy:0.7, c:tint.setHSL(0.08, 0.06+rand()*0.06, 0.52+rand()*0.12)};
-  });
-  rocks.castShadow = HQ;
-}
+  console.info(`[Mundo] Natureza pronta: ${total} plantas e pedras (${VEG.size} modelos).`);
+  return K;
+}).catch(e=>{ console.warn('[Mundo] nature.glb não carregou; mapa sem a vegetação nova.', e); return null; });
 
 finishBake();
 
-/* ---------- Kits externos: marcos regionais e interiores da vila ---------- */
-const worldAssets = new WorldAssetManager({scene, heightAt, highQuality:HQ});
-const WA = CLAUDONIA_WORLD_ASSETS, NATURE = WA.paths.nature, PROPS = WA.paths.props, MONSTER_KIT = WA.paths.monsters;
-
-function placeRegionLandmarks(){
-  ZONES.forEach((zone, zi)=>{
-    const models = WA.regions[zone.key];
-    // Seis peças por região: suficientes para dar identidade sem sacrificar FPS.
-    for(let i=0;i<6;i++){
-      const name=models[i%models.length], angle=(i/6)*Math.PI*2+zi*.61, radius=zone.r*(.68+(i%2)*.34);
-      const x=zone.x+Math.cos(angle)*radius, z=zone.z+Math.sin(angle)*radius;
-      const isTree=/Tree|Pine/.test(name), isRock=/Rock/.test(name);
-      worldAssets.place(NATURE+name+'.gltf',{
-        x,z,rotation:angle+Math.PI*.35,height:WA.heights[name],scale:.9+((zi*7+i*3)%5)*.06,maxDistance:HQ?150:105
-      });
-      if(isTree||isRock)addCollider({x,z,r:isTree?1.15:1.0});
-    }
-  });
+/* ---------- Vila: objetos do Fantasy Props MegaKit (Quaternius, CC0) ----------
+   Barracas com caixotes e barris, carroças, portas das casas com barris e baldes, campo de treino
+   com bonecos e quatro construções abertas (taverna, forja, alquimista e estalagem) mobiliadas.
+   Os modelos vêm em metros; o jogo usa ~1,35 unidade por metro (o personagem tem 2,35). */
+const PROP_SCALE = 1.35;
+const PROPS_AT = new Map();                               // modelo -> [{x, z, y?, rot, s, solid}]
+const SOLID_PROP = /^(Barrel|Crate|Stall|Table|Bookcase|Cabinet|Bed|Workbench|Anvil|Cauldron|Dummy|WeaponStand|Chest|FarmCrate|Shelf_Arch|BookStand)/;
+function propAt(model, x, z, rot, o){
+  o = o || {};
+  const it = {x, z, rot:rot||0, s:PROP_SCALE*(o.s||1), solid:o.solid !== undefined ? o.solid : SOLID_PROP.test(model) && o.y === undefined};
+  if (o.y !== undefined) it.y = o.y;
+  if (!PROPS_AT.has(model)) PROPS_AT.set(model, []);
+  PROPS_AT.get(model).push(it); return it;
 }
-
-function townPoint(cx,cz,rot,lx,lz){
-  const c=Math.cos(rot),s=Math.sin(rot);return{x:cx+lx*c+lz*s,z:cz-lx*s+lz*c};
-}
-function makeOpenInterior({x,z,rot,title,props}){
+// só coloca se não cair num caminho nem em cima de outra coisa
+const propFree = (x,z,pad) => distPath(x,z) > 3 && !blockedAt(x,z,pad||1.1);
+// Construções abertas: piso, três paredes e telhado; a frente aberta vira para a praça.
+function makeOpenInterior({x,z,title,props}){
+  const rot = Math.atan2(x, z);                           // frente (lado aberto, -Z local) para o centro da vila
   const g=new THREE.Group(), floorMat=lam(0x7C5638), wallMat=lam(0xD9C39C), beamMat=lam(0x5A3827), roofMat=lam(0x7A3E32);
   const floor=box(8,.25,6,floorMat,0,.12,0), back=box(8,4.3,.28,wallMat,0,2.15,2.86);
   const left=box(.28,4.3,6,wallMat,-3.86,2.15,0),right=box(.28,4.3,6,wallMat,3.86,2.15,0);
   const roof=box(8.7,.28,6.7,roofMat,0,4.42,0);g.add(floor,back,left,right,roof);
   [-3.65,3.65].forEach(bx=>{g.add(box(.22,4.5,.22,beamMat,bx,2.25,2.66));g.add(box(.22,4.5,.22,beamMat,bx,2.25,-2.66));});
   const sign=makeLabel(title,'#fff1c8');sign.position.set(0,4.25,-3.18);sign.scale.setScalar(.72);g.add(sign);
-  g.position.set(x,heightAt(x,z),z);g.rotation.y=rot;scene.add(g);
-  props.forEach(([model,lx,lz,h,lr=0,ground=true,y=0])=>{
+  const y0 = heightAt(x,z);
+  g.position.set(x,y0,z);g.rotation.y=rot;scene.add(g);
+  // paredes sólidas (círculos pequenos ao longo das paredes)
+  for (let k=-3.6;k<=3.61;k+=0.9){ const p=townPoint(x,z,rot,k,2.86); addCollider({x:p.x,z:p.z,r:0.45}); }
+  for (let k=-2.4;k<=2.41;k+=0.9) [-3.86,3.86].forEach(sx=>{ const p=townPoint(x,z,rot,sx,k); addCollider({x:p.x,z:p.z,r:0.45}); });
+  // móveis: [modelo, x local, z local, giro local, altura acima do piso (só para o que fica em cima de algo), escala]
+  props.forEach(([model,lx,lz,lr=0,up,s])=>{
     const p=townPoint(x,z,rot,lx,lz);
-    worldAssets.place(PROPS+model+'.gltf',{x:p.x,z:p.z,y:ground?undefined:heightAt(x,z)+y,rotation:rot+lr,height:h,ground,maxDistance:95});
+    propAt(model, p.x, p.z, rot+lr, {y:y0+0.25+(up||0), s, solid:up === undefined && SOLID_PROP.test(model)});
   });
 }
-function buildTownInteriors(){
-  makeOpenInterior({x:0,z:27,rot:0,title:'Taverna do Vale',props:[
-    ['Table_Large',0,.4,1.05],['Chair_1',-2,-.6,1.05,0],['Chair_1',2,-.6,1.05,Math.PI],['Barrel_Apples',-2.9,1.9,1.25],['Bench',0,2.15,1.1],['Chandelier',0,.2,1.25,0,false,3.65]
-  ]});
-  makeOpenInterior({x:27,z:0,rot:-Math.PI/2,title:'Forja Real',props:[
-    ['Workbench_Drawers',0,1.9,1.35],['Anvil',-2,.25,1.05],['Crate_Wooden',2.8,1.9,1.05],['Stool',1,-.7,.72],['Lantern_Wall',-2.8,2.45,.75,0,false,2.15]
-  ]});
-  makeOpenInterior({x:-27,z:0,rot:Math.PI/2,title:'Casa do Alquimista',props:[
-    ['Bookcase_2',-2.4,2.15,2.45],['Cabinet',2.35,2.15,2.1],['Cauldron',0,.55,1.3],['Shelf_Arch',0,2.35,1.9],['Potion_1',-1.1,-.45,.48],['SmallBottles_1',1.1,-.45,.55]
-  ]});
+function townPoint(cx,cz,rot,lx,lz){
+  const c=Math.cos(rot),s=Math.sin(rot);return{x:cx+lx*c+lz*s,z:cz-lx*s+lz*c};
 }
-placeRegionLandmarks();
-buildTownInteriors();
+function buildTownProps(){
+  const TOP = 0.81*PROP_SCALE;                             // altura do tampo da mesa grande
+  const [HT, HF, HA, HE] = OPEN_HALLS;
+  makeOpenInterior({...HT, props:[
+    ['Table_Large',-0.6,0.3,0],['Chair_1',-2.2,0.3,Math.PI/2],['Chair_1',1.0,0.3,-Math.PI/2],
+    ['Mug',-1.1,0.2,0,TOP],['Mug',-0.2,0.45,0,TOP],['Pot_1',-0.6,0.3,0,TOP],['Candle_1',0.1,0.1,0,TOP],
+    ['Barrel_Holder',2.7,1.7,Math.PI],['Barrel_Apples',-3.0,1.9,0],['Barrel',-3.0,0.8,0],['Bench',0,2.2,Math.PI],
+    ['Stool',2.2,-0.9,0],['Stool',-2.6,-1.2,0],['Chandelier',-0.6,0.3,0,2.35],
+  ]});
+  makeOpenInterior({...HF, props:[
+    ['Anvil',-1.2,0.2,0],['Workbench',1.6,2.0,Math.PI],['Pickaxe_Bronze',1.2,2.0,Math.PI/2,0.89*PROP_SCALE],['Axe_Bronze',2.1,2.0,0,0.89*PROP_SCALE],
+    ['WeaponStand',-2.6,2.1,Math.PI],['Crate_Wooden',3.0,0.4,0],['Crate_Metal',3.0,-0.9,0.3],['Whetstone',-3.0,-0.6,Math.PI/2],
+    ['Stool',0.3,-0.6,0],['Lantern_Wall',0,2.55,Math.PI,2.0],['Shield_Wooden',-1.2,2.6,Math.PI,1.6],
+  ]});
+  makeOpenInterior({...HA, props:[
+    ['Bookcase_2',-2.3,2.2,Math.PI],['Cabinet',2.3,2.2,Math.PI],['Cauldron',0,0.5,0],['Shelf_Arch',0,2.4,Math.PI],
+    ['BookStand',-2.6,-0.2,Math.PI/2],['Table_Large',2.3,0,Math.PI/2],['Potion_1',2.1,-0.4,0,TOP],['Potion_2',2.4,0.3,0,TOP],
+    ['SmallBottles_1',2.3,-0.9,0,TOP],['Book_Stack_1',2.5,0.9,0,TOP],['CandleStick_Triple',-3.1,1.2,0],['Vase_2',-3.1,-1.9,0],
+  ]});
+  makeOpenInterior({...HE, props:[
+    ['Bed_Twin1',-2.6,1.2,Math.PI],['Bed_Twin1',2.6,1.2,Math.PI],['Nightstand_Shelf',0,2.4,Math.PI],['Chest_Wood',-2.6,-1.4,0],
+    ['Chest_Wood',2.6,-1.4,0],['Candle_1',0,2.4,0,1.1*PROP_SCALE],['Bag',-0.9,-1.7,0.4],['Pouch_Large',0.8,-1.8,0],
+  ]});
+  // barracas da feira: caixotes, barris e cestos ao lado
+  [[22,-12],[-23,10],[-10,-24]].forEach(([sx,sz],i)=>{
+    const a = Math.atan2(-sx,-sz), tx = Math.cos(a), tz = -Math.sin(a);
+    [['FarmCrate_Apple',2.3],['Barrel',-2.3],[i%2 ? 'FarmCrate_Carrot' : 'Crate_Wooden',3.4]].forEach(([m,d])=>{
+      const x = sx + tx*d, z = sz + tz*d; if (propFree(x,z,0.9)) propAt(m, x, z, a);
+    });
+  });
+  // carroças da feira e campo de treino com bonecos (só onde houver espaço)
+  [[15,20],[-15,-9],[20,-20]].forEach(([x,z])=>{ if (propFree(x,z,2.2)) propAt('Stall_Cart_Empty', x, z, Math.atan2(-x,-z)+Math.PI/2); });
+  [[-12,21],[-9.5,23],[-14.5,19]].forEach(([x,z])=>{ if (propFree(x,z,1)) propAt('Dummy', x, z, Math.atan2(-x,-z)); });
+  if (propFree(-16.5,23,1)) propAt('WeaponStand', -16.5, 23, Math.atan2(16.5,-23));
+  // portas das casas: barril, caixote, balde, cestos de feira
+  const doorKit = [['Barrel','Crate_Wooden'],['Bucket_Wooden_1','Barrel_Apples'],['FarmCrate_Carrot','Barrel'],['Crate_Wooden','Bench'],['Vase_2','FarmCrate_Apple']];
+  COTTAGES.forEach((c,i)=>{
+    const r = Math.hypot(c.x,c.z), dx = -c.x/r, dz = -c.z/r, px = -dz, pz = dx, out = 3.4*c.s;
+    doorKit[i%doorKit.length].forEach((m,k)=>{
+      const side = k ? -1 : 1, x = c.x + dx*out + px*side*2.1*c.s, z = c.z + dz*out + pz*side*2.1*c.s;
+      if (propFree(x,z,0.8)) propAt(m, x, z, Math.atan2(dx,dz) + (k ? 0.4 : -0.3));
+    });
+  });
+}
+buildTownProps();
+const propsReady = worldAssets.loadKit(WA.props).then(K=>{
+  let total = 0;
+  PROPS_AT.forEach((items, name)=>{
+    const model = K.get(name); if (!model){ console.warn('[Mundo] objeto não achado:', name); return; }
+    items.forEach(it=>{ if (it.solid) addCollider({x:it.x, z:it.z, r:Math.max(0.35, model.radius*it.s*0.8)}); });
+    worldAssets.instance(model, items, {far:HQ ? 120 : 80, shadow:true}); total += items.length;
+  });
+  console.info(`[Mundo] Vila pronta: ${total} objetos.`);
+}).catch(e=>console.warn('[Mundo] props.glb não carregou.', e));
 
 /* ---------- Ilhotas voadoras e nuvens ---------- */
-const isles = [], ISLE_CROWN = crownGeo(5);
+const isles = [];
 [[250,14,-60,13],[-260,24,-40,15],[60,8,265,11],[-170,34,210,14],[210,28,160,10],[-40,44,-270,16],[160,20,-220,12],[-280,16,120,11]].forEach(([x,y,z,r])=>{
   const g = new THREE.Group();
   g.add(underside(r, r*1.6, 14));
   const top = new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.6,14), flat(0x7A9A42)); top.position.y = 0.3; g.add(top);
-  for (let k=0;k<3;k++){
-    const a = k*2.1, tx = Math.cos(a)*r*0.45, tz = Math.sin(a)*r*0.45;
-    const tr = new THREE.Mesh(trunkGeo, flat(0x6A4526)); tr.position.set(tx,0.4,tz); g.add(tr);
-    const cr = new THREE.Mesh(ISLE_CROWN, new THREE.MeshLambertMaterial({vertexColors:true, color:[0xE0782E,0xEAA83A,0x7A9A42][k]})); cr.position.set(tx,3.9,tz); cr.scale.setScalar(0.9); g.add(cr);
-  }
+  // três árvores do kit de natureza em cada ilhota (entram quando o kit carrega)
+  natureReady.then(K=>{
+    if (!K) return;
+    for (let k=0;k<3;k++){
+      const a = k*2.1, tx = Math.cos(a)*r*0.45, tz = Math.sin(a)*r*0.45, model = K.get(['CommonTree_3','CommonTree_5','Pine_2'][k]);
+      if (!model) continue;
+      const t = worldAssets.clone(model, [0xE0782E,0xEAA83A,0x5E8A3A][k]), sc = 6.5 / model.height;
+      t.scale.setScalar(sc); t.position.set(tx, 0.6 + t.userData.baseY*sc, tz); t.rotation.y = a; g.add(t);
+    }
+  });
   g.position.set(x,y,z); scene.add(g); isles.push({g,y,ph:rand()*6,x,z,r});
 });
 const clouds = [], cloudGeo = new THREE.IcosahedronGeometry(1,2), cloudMat = flat(0xFFF8EE,{transparent:true, opacity:0.93});
@@ -1488,7 +1488,7 @@ if (charSys && charSys.enabled){
   charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
 // Diagnóstico: só com ?debug=1 no endereço (para testar os personagens sem mexer no código)
-if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, get player(){ return player; }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
+if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
 // Estado de animação do seu personagem (chamado todo quadro)
 function animateLocalGLB(h, moving, speed){
   const a = h.anim;
@@ -1750,7 +1750,7 @@ function createMonster(key, giant, net){
   scene.add(m.mesh); monsters.push(m);
   const premium=WA.monsterVariants[key];
   // Chefes e uma amostra dos monstros online usam os modelos do Bestiary.
-  if(premium&&(m.giant||(net&&Number(net.id)%4===0)))worldAssets.replaceMonster(m,MONSTER_KIT+premium,T.h);
+  if(premium&&(m.giant||(net&&Number(net.id)%4===0)))worldAssets.replaceMonster(m,WA.monsters+premium,T.h);
   return m;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(()=> monsters.forEach(refreshLabel));
@@ -3041,7 +3041,7 @@ function frame(){
   let cy = camTarget.y + Math.sin(pitch)*dist;
   if (Math.hypot(cx,cz) < R) cy = Math.max(cy, heightAt(cx,cz) + 0.6);
   camera.position.set(cx,cy,cz); camera.lookAt(camTarget);
-  worldAssets.update(camera.position);
+  worldAssets.update(camera.position, dt);
 
   clouds.forEach(c=>{ c.a += c.v*dt; c.g.position.set(Math.cos(c.a)*c.r, c.y, Math.sin(c.a)*c.r); });
   isles.forEach(i=>{ i.g.position.y = i.y + Math.sin(t*0.5 + i.ph)*0.8; });

@@ -22,3 +22,16 @@ test('morte e recompensa acontecem uma única vez',()=>{
 });
 
 test('rejeita habilidade inexistente e recurso insuficiente',()=>{const x=setup();assert.equal(x.combat.skill(x.p,{skillId:'admin_kill',monsterId:7}),false);x.p.fp=0;assert.equal(x.combat.skill(x.p,{skillId:'golpe_forte',monsterId:7}),false);assert.equal(x.monster.hp,20);});
+
+test('personagem novo (vida ainda não salva) entra com a vida cheia, não morto',()=>{
+  const players=new Map(),p={id:2,ws:{},x:0,z:0,dados:{L:1,cls:'aprendiz',str:15,sta:15,dex:15,int:15,hp:null,mp:null,fp:null,eq:{arma:'espada_treino'},inv:[]}};
+  const combat=new CombatManager({players,send:()=>{},now:()=>0,rng:()=>0,awardExperience:()=>{},onMonsterDeath:()=>{}});
+  combat.initializePlayer(p);
+  assert.ok(p.hp>0);assert.equal(p.hp,p.stats.maxHp);assert.equal(p.mp,p.stats.maxMp);assert.equal(p.fp,p.stats.maxFp);assert.equal(p.dead,false);
+});
+
+test('quem saiu morto volta com a vida cheia',()=>{
+  const p={id:3,ws:{},x:0,z:0,dados:{L:5,cls:'aprendiz',str:15,sta:15,dex:15,int:15,hp:0,mp:3,fp:4,eq:{arma:'espada_treino'},inv:[]}};
+  const combat=new CombatManager({players:new Map(),send:()=>{},now:()=>0,rng:()=>0,awardExperience:()=>{},onMonsterDeath:()=>{}});
+  combat.initializePlayer(p);assert.equal(p.hp,p.stats.maxHp);assert.equal(p.dead,false);assert.equal(p.mp,3);
+});
