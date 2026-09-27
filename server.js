@@ -1,6 +1,7 @@
 // Reino De Claudonia - servidor (Fases 3 a 5)
 // Serve os arquivos do jogo, confere o login no Supabase e mantém os jogadores
-// conectados por WebSocket (posições, chat, salvamento, grupo, troca e guilda).
+// conectados por WebSocket: posições, chat, salvamento, grupo, troca, loja pessoal e guilda.
+// As regras de grupo, loja e guilda seguem as do Flyff; nomes e textos são nossos.
 
 const path = require('path');
 const http = require('http');
@@ -12,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY; // chave pública (anon/publishable)
 const MAX_JOGADORES = 100;
+const MUNDO = 420; // metade do tamanho do mundo (para conferir posições)
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Configure as variáveis SUPABASE_URL e SUPABASE_ANON_KEY.');
@@ -49,8 +51,12 @@ function broadcast(msg, except) {
   for (const p of players.values()) if (p !== except && p.ws.readyState === 1) p.ws.send(s);
 }
 const num = (v, min, max) => (typeof v === 'number' && Number.isFinite(v)) ? Math.min(max, Math.max(min, v)) : null;
-const resumo = p => ({ id: p.id, name: p.name, L: p.L, x: p.x, y: p.y, z: p.z, f: p.f, g: p.guild ? p.guild.nome : null });
 const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+const perto = (a, b, d) => Math.hypot(a.x - b.x, a.z - b.z) < d;
+const resumo = p => ({ id: p.id, name: p.name, L: p.L, x: p.x, y: p.y, z: p.z, f: p.f,
+  g: p.guild ? p.guild.nome : null, s: p.shop ? p.shop.title : null });
+const aviso = (p, msg) => send(p.ws, { t: 'aviso', msg });
+const erro = (p, msg) => send(p.ws, { t: 'erro', msg });
 
 async function salvar(p) {
   if (!p.dirty && !p.posDirty) return;
@@ -60,6 +66,46 @@ async function salvar(p) {
     .eq('id', p.charId);
   if (error) { console.error(`Erro ao salvar ${p.name}:`, error.message); p.dirty = true; }
 }
+
+/* ---------- Itens na mochila (usado por troca, loja e doação) ---------- */
+// Linha de item: {id, n} (empilha) ou equipamento {id, n:1, up} (up = aprimoramento).
+function lerItens(lista, max){
+  if (!Array.isArray(lista) || lista.length > max) return null;
+  const items = [];
+  for (const it of lista){
+    if (!it || typeof it.id !== 'string' || !/^[a-z_]{1,40}$/.test(it.id) || !inteiro(it.n, 1, 9999)) return null;
+    if (it.up !== undefined && !inteiro(it.up, 0, 10)) return null;
+    const x = it.up !== undefined ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: it.n };
+    if (it.price !== undefined){ if (!inteiro(it.price, 1, 1e9)) return null; x.price = it.price; }
+    items.push(x);
+  }
+  return items;
+}
+// Tira itens e ouro de uma cópia da mochila. Devolve a mochila nova, ou null se faltar algo.
+function tirarItens(dados, items, gold){
+  if ((dados.gold || 0) < gold) return null;
+  const inv = (Array.isArray(dados.inv) ? dados.inv : []).filter(Boolean).map(s => ({ ...s }));
+  for (const it of items){
+    if (it.up !== undefined){
+      const i = inv.findIndex(s => s.id === it.id && (s.up || 0) === it.up && s.n === 1);
+      if (i < 0) return null;
+      inv.splice(i, 1);
+    } else {
+      let falta = it.n;
+      for (const s of inv) if (s.id === it.id && s.up === undefined && falta > 0){ const k = Math.min(falta, s.n); s.n -= k; falta -= k; }
+      if (falta > 0) return null;
+    }
+  }
+  return inv.filter(s => s.n > 0);
+}
+function porItens(inv, items){
+  for (const it of items){
+    if (it.up !== undefined) inv.push(it.up ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: 1 });
+    else { const s = inv.find(s => s.id === it.id && s.up === undefined); if (s) s.n += it.n; else inv.push({ id: it.id, n: it.n }); }
+  }
+  return inv;
+}
+const semPreco = items => items.map(({ price, ...x }) => x);
 
 /* ---------- WebSocket ---------- */
 wss.on('connection', ws => {
@@ -85,14 +131,15 @@ wss.on('connection', ws => {
         for (const o of players.values()) {
           if (o.charId === row.id) { send(o.ws, { t: 'erro', msg: 'Este personagem entrou em outro aparelho.' }); o.ws.close(4005); }
         }
-        p = {
+        const novo = {
           id: nextId++, ws, userId: data.user.id, charId: row.id, name: row.nome, token: m.token,
           L: (row.dados && row.dados.L) || 1, x: row.pos_x, y: 0, z: row.pos_z, f: 0, a: 0,
           dados: row.dados || {}, dirty: false, posDirty: false, moved: true, lastChat: 0,
-          hp: 0, maxHp: 1, party: null, trade: null, guild: null, invites: new Map(), lastInv: 0, expBucket: 20
+          hp: 0, maxHp: 1, party: null, trade: null, shop: null, guild: null, invites: new Map(), lastInv: 0, expBucket: 20
         };
-        await carregarGuilda(p);
+        await carregarGuilda(novo);
         if (ws.readyState !== 1) return;
+        p = novo;
         players.set(p.id, p);
         clearTimeout(semLogin);
         send(ws, {
@@ -112,10 +159,11 @@ wss.on('connection', ws => {
 
     switch (m.t) {
       case 'pos': {
-        const x = num(m.x, -200, 200), y = num(m.y, -80, 120), z = num(m.z, -200, 200), f = num(m.f, -1000, 1000);
+        const x = num(m.x, -MUNDO, MUNDO), y = num(m.y, -80, 160), z = num(m.z, -MUNDO, MUNDO), f = num(m.f, -1000, 1000);
         if (x === null || y === null || z === null || f === null) return;
+        if (p.shop && Math.hypot(x - p.x, z - p.z) > 0.5) fecharLoja(p);
         p.x = x; p.y = y; p.z = z; p.f = f;
-        p.a = [0, 1, 2, 3, 4, 5].includes(m.a) ? m.a : 0; // 4 = prancha, 5 = vassoura
+        p.a = [0, 1, 2, 3, 4, 5, 6].includes(m.a) ? m.a : 0; // 4 = prancha, 5 = vassoura, 6 = sentado na loja
         p.moved = true; p.posDirty = true;
         break;
       }
@@ -127,10 +175,10 @@ wss.on('connection', ws => {
         p.lastChat = agora;
         const msg = { t: 'chat', id: p.id, name: p.name, text };
         if (m.ch === 'g'){
-          if (!p.party) return send(ws, { t: 'erro', msg: 'Você não está em um grupo.' });
-          msg.ch = 'g'; for (const id of p.party.members){ const o = players.get(id); if (o) send(o.ws, msg); }
+          if (!p.party) return erro(p, 'Você não está em um grupo.');
+          msg.ch = 'g'; paraGrupo(p.party, msg);
         } else if (m.ch === 'gu'){
-          if (!p.guild) return send(ws, { t: 'erro', msg: 'Você não está em uma guilda.' });
+          if (!p.guild) return erro(p, 'Você não está em uma guilda.');
           msg.ch = 'gu'; for (const o of players.values()) if (o.guild && o.guild.id === p.guild.id) send(o.ws, msg);
         } else broadcast(msg);
         break;
@@ -150,36 +198,35 @@ wss.on('connection', ws => {
         if (p.party) for (const id of p.party.members){ const o = players.get(id); if (o && o !== p) send(o.ws, { t: 'php', id: p.id, hp: p.hp, max: p.maxHp }); }
         break;
       }
-      case 'pexp': {
-        // Experiência dividida: quem está no grupo e perto ganha 30% do monstro que o outro derrotou.
-        if (!p.party || !inteiro(m.lvl, 1, 60) || !inteiro(m.exp, 1, 400) || p.expBucket < 1) return;
-        p.expBucket--;
-        const exp = Math.max(1, Math.round(m.exp * 0.3));
-        for (const id of p.party.members){
-          const o = players.get(id);
-          if (o && o !== p && Math.hypot(o.x - p.x, o.z - p.z) < 40) send(o.ws, { t: 'pexp', lvl: m.lvl, exp, from: p.name });
-        }
-        break;
-      }
+      case 'pkill': monstroDoGrupo(p, m); break;
       case 'inv': convidar(p, m); break;
       case 'resp': responder(p, m); break;
       case 'pleave': sairDoGrupo(p); break;
       case 'pkick': {
         const alvo = players.get(m.id);
         if (p.party && p.party.leader === p.id && alvo && alvo !== p && alvo.party === p.party){
-          send(alvo.ws, { t: 'erro', msg: 'Você foi retirado do grupo.' });
+          erro(alvo, 'Você foi retirado do grupo.');
           sairDoGrupo(alvo);
         }
         break;
       }
+      case 'pmode': if (p.party && p.party.leader === p.id && ['nivel', 'contrib'].includes(m.mode)){ p.party.mode = m.mode; enviarGrupo(p.party); } break;
+      case 'padv': grupoAvancado(p); break;
+      case 'pskill': habilidadeDoGrupo(p, m); break;
       case 'toffer': ofertaTroca(p, m); break;
       case 'tlock': travarTroca(p); break;
       case 'tok': confirmarTroca(p); break;
       case 'tcancel': if (p.trade) fimTroca(p.trade, `${p.name} cancelou a troca.`); break;
+      case 'shopopen': abrirLoja(p, m); break;
+      case 'shopclose': fecharLoja(p); break;
+      case 'shopview': verLoja(p, m); break;
+      case 'shopbuy': comprarNaLoja(p, m); break;
       case 'gcreate': criarGuilda(p, m); break;
       case 'gleave': sairDaGuilda(p); break;
       case 'gkick': expulsarDaGuilda(p, m); break;
       case 'glist': listarGuilda(p); break;
+      case 'gdonate': doarParaGuilda(p, m); break;
+      case 'grank': mudarCargo(p, m); break;
       case 'token':
         if (typeof m.token === 'string') p.token = m.token;
         break;
@@ -191,6 +238,7 @@ wss.on('connection', ws => {
     if (!p) return;
     players.delete(p.id);
     if (p.trade) fimTroca(p.trade, `${p.name} saiu do jogo. Troca cancelada.`);
+    if (p.shop) fecharLoja(p);
     sairDoGrupo(p, true);
     broadcast({ t: 'leave', id: p.id });
     p.posDirty = true;
@@ -203,7 +251,7 @@ wss.on('connection', ws => {
 /* ---------- Convites (grupo, troca e guilda) ---------- */
 const TIPOS = { grupo: 1, troca: 1, guilda: 1 };
 const MAX_GRUPO = 8;
-const perto = (a, b, d) => Math.hypot(a.x - b.x, a.z - b.z) < d;
+const podeConvidarGuilda = g => g && (g.cargo === 'lider' || g.cargo === 'conselheiro');
 
 function podeConvidar(p, alvo, kind){
   if (kind === 'grupo'){
@@ -213,9 +261,10 @@ function podeConvidar(p, alvo, kind){
   } else if (kind === 'troca'){
     if (p.trade) return 'Você já está em uma troca.';
     if (alvo.trade) return `${alvo.name} já está trocando com alguém.`;
+    if (p.shop || alvo.shop) return 'Não dá para trocar com a loja pessoal aberta.';
     if (!perto(p, alvo, 12)) return 'Chegue mais perto para trocar.';
   } else if (kind === 'guilda'){
-    if (!p.guild || p.guild.cargo !== 'lider') return 'Só o líder da guilda pode convidar.';
+    if (!podeConvidarGuilda(p.guild)) return 'Só o líder ou um conselheiro pode convidar para a guilda.';
     if (alvo.guild) return `${alvo.name} já está em uma guilda.`;
   }
   return null;
@@ -224,35 +273,50 @@ function convidar(p, m){
   const alvo = players.get(m.to), agora = Date.now();
   if (!TIPOS[m.kind] || !alvo || alvo === p || agora - p.lastInv < 1000) return;
   p.lastInv = agora;
-  const erro = podeConvidar(p, alvo, m.kind);
-  if (erro) return send(p.ws, { t: 'erro', msg: erro });
+  const e = podeConvidar(p, alvo, m.kind);
+  if (e) return erro(p, e);
   alvo.invites.set(`${m.kind}:${p.id}`, agora + 30000);
   send(alvo.ws, { t: 'invite', kind: m.kind, from: p.id, name: p.name, gname: m.kind === 'guilda' ? p.guild.nome : undefined });
-  send(p.ws, { t: 'aviso', msg: `Convite enviado a ${alvo.name}.` });
+  aviso(p, `Convite enviado a ${alvo.name}.`);
 }
 async function responder(p, m){
   const chave = `${m.kind}:${m.from}`, validade = p.invites.get(chave);
   if (!validade) return;
   p.invites.delete(chave);
   const de = players.get(m.from);
-  if (!de) return send(p.ws, { t: 'erro', msg: 'Quem convidou saiu do jogo.' });
-  if (validade < Date.now()) return send(p.ws, { t: 'erro', msg: 'O convite expirou.' });
-  if (!m.ok) return send(de.ws, { t: 'aviso', msg: `${p.name} recusou o convite.` });
-  const erro = podeConvidar(de, p, m.kind);
-  if (erro) return send(p.ws, { t: 'erro', msg: erro });
+  if (!de) return erro(p, 'Quem convidou saiu do jogo.');
+  if (validade < Date.now()) return erro(p, 'O convite expirou.');
+  if (!m.ok) return aviso(de, `${p.name} recusou o convite.`);
+  const e = podeConvidar(de, p, m.kind);
+  if (e) return erro(p, e);
   if (m.kind === 'grupo') entrarNoGrupo(de, p);
   else if (m.kind === 'troca') iniciarTroca(de, p);
   else if (m.kind === 'guilda') await entrarNaGuilda(de, p);
 }
 
-/* ---------- Grupo (até 8) ---------- */
+/* ---------- Grupo (até 8, com nível, pontos e habilidades como no Flyff) ---------- */
+// Nível do grupo: sobe com monstros derrotados por quem está junto. No nível 10 o líder
+// pode tornar o grupo avançado; só grupo avançado passa do 10 e usa habilidades.
+const GRUPO_MAX_NIVEL = 10, GRUPO_MAX_AVANCADO = 40;
+const grupoExpNeed = L => Math.round(60 * Math.pow(L, 1.4));
+const HAB_GRUPO = {
+  cadeia:   { name: 'Ataque em Cadeia', custo: 3, nivel: 12 },
+  estudo:   { name: 'Foco nos Estudos', custo: 4, nivel: 15 },
+  sorte:    { name: 'Sorte Grande', custo: 5, nivel: 18 },
+  presente: { name: 'Caixa de Presente', custo: 8, nivel: 25 },
+};
+const paraGrupo = (party, msg) => { for (const id of party.members){ const o = players.get(id); if (o) send(o.ws, msg); } };
 function enviarGrupo(party){
+  const agora = Date.now();
+  for (const k of Object.keys(party.skills)) if (party.skills[k] <= agora) delete party.skills[k];
   const members = [...party.members].map(id => players.get(id)).filter(Boolean)
     .map(o => ({ id: o.id, name: o.name, L: o.L, hp: o.hp, max: o.maxHp }));
-  for (const id of party.members){ const o = players.get(id); if (o) send(o.ws, { t: 'party', leader: party.leader, members }); }
+  const skills = {}; for (const [k, t] of Object.entries(party.skills)) skills[k] = Math.ceil((t - agora) / 1000);
+  paraGrupo(party, { t: 'party', leader: party.leader, members, level: party.level, exp: party.exp, need: grupoExpNeed(party.level),
+    points: party.points, advanced: party.advanced, mode: party.mode, skills });
 }
 function entrarNoGrupo(lider, p){
-  if (!lider.party) lider.party = { leader: lider.id, members: new Set([lider.id]) };
+  if (!lider.party) lider.party = { leader: lider.id, members: new Set([lider.id]), level: 1, exp: 0, points: 0, advanced: false, mode: 'nivel', skills: {} };
   lider.party.members.add(p.id); p.party = lider.party;
   enviarGrupo(lider.party);
 }
@@ -263,13 +327,68 @@ function sairDoGrupo(p, desconectou){
   if (party.members.size <= 1){
     for (const id of party.members){
       const o = players.get(id); if (!o) continue;
-      o.party = null; send(o.ws, { t: 'party', leader: null, members: [] }); send(o.ws, { t: 'aviso', msg: 'O grupo foi desfeito.' });
+      o.party = null; send(o.ws, { t: 'party', leader: null, members: [] }); aviso(o, 'O grupo foi desfeito.');
     }
     party.members.clear();
     return;
   }
   if (party.leader === p.id) party.leader = party.members.values().next().value;
   enviarGrupo(party);
+}
+// Membros ativos: perto (40 m) e até 19 níveis abaixo do mais alto do grupo.
+function ativos(party, centro){
+  const perto40 = [...party.members].map(id => players.get(id)).filter(o => o && perto(o, centro, 40));
+  const topo = Math.max(...perto40.map(o => o.L));
+  return perto40.filter(o => topo - o.L <= 19);
+}
+function monstroDoGrupo(p, m){
+  if (!inteiro(m.lvl, 1, 80) || !inteiro(m.exp, 1, 5000) || p.expBucket < 1) return;
+  p.expBucket--;
+  const party = p.party;
+  if (!party){ send(p.ws, { t: 'pexp', lvl: m.lvl, exp: m.exp }); return; }
+  const lista = ativos(party, p);
+  if (!lista.includes(p)) lista.push(p);
+  let total = m.exp;
+  if (lista.length >= 2){
+    const porMembro = party.advanced ? 0.07 : 0.04, porAtivo = party.advanced ? 0.25 : 0.135;
+    total *= 1 + porMembro * party.members.size + porAtivo * lista.length;
+    if (party.skills.estudo > Date.now()) total *= 1.15;
+    // o grupo também ganha experiência própria
+    const cap = party.advanced ? GRUPO_MAX_AVANCADO : GRUPO_MAX_NIVEL;
+    if (party.level < cap){
+      party.exp += m.lvl;
+      let subiu = false;
+      while (party.level < cap && party.exp >= grupoExpNeed(party.level)){
+        party.exp -= grupoExpNeed(party.level); party.level++; party.points += party.advanced ? 6 : 2; subiu = true;
+      }
+      if (party.level >= cap) party.exp = 0;
+      if (subiu) paraGrupo(party, { t: 'aviso', msg: `O grupo subiu para o nível ${party.level}!` });
+    }
+    enviarGrupo(party);
+  }
+  const somaNiveis = lista.reduce((a, o) => a + o.L, 0);
+  for (const o of lista){
+    const parte = party.mode === 'contrib' || lista.length < 2 ? total / lista.length : total * o.L / somaNiveis;
+    send(o.ws, { t: 'pexp', lvl: m.lvl, exp: Math.max(1, Math.round(parte)), from: o === p ? undefined : p.name });
+  }
+}
+function grupoAvancado(p){
+  const party = p.party;
+  if (!party || party.leader !== p.id || party.advanced) return;
+  if (party.level < GRUPO_MAX_NIVEL) return erro(p, `O grupo precisa chegar ao nível ${GRUPO_MAX_NIVEL} para virar avançado.`);
+  party.advanced = true; enviarGrupo(party);
+  paraGrupo(party, { t: 'aviso', msg: 'O grupo agora é avançado: habilidades de grupo liberadas!' });
+}
+function habilidadeDoGrupo(p, m){
+  const party = p.party, h = HAB_GRUPO[m.id];
+  if (!party || !h || party.leader !== p.id) return;
+  if (!party.advanced) return erro(p, 'Habilidades de grupo só no grupo avançado.');
+  if (party.level < h.nivel) return erro(p, `${h.name} libera no nível ${h.nivel} do grupo.`);
+  if (party.points < h.custo) return erro(p, `${h.name} custa ${h.custo} pontos de grupo.`);
+  party.points -= h.custo;
+  party.skills[m.id] = Math.max(Date.now(), party.skills[m.id] || 0) + 60000;
+  enviarGrupo(party);
+  paraGrupo(party, { t: 'aviso', msg: `${p.name} ativou ${h.name} por 1 minuto.` });
 }
 
 /* ---------- Troca entre jogadores ---------- */
@@ -289,46 +408,16 @@ function fimTroca(tr, msg){
   for (const x of [tr.a, tr.b]) send(x.ws, { t: 'tend', msg });
 }
 function ofertaTroca(p, m){
-  const tr = p.trade; if (!tr || !Array.isArray(m.items) || m.items.length > 8 || !inteiro(m.gold, 0, 1e9)) return;
-  const items = [];
-  for (const it of m.items){
-    if (!it || typeof it.id !== 'string' || !/^[a-z_]{1,40}$/.test(it.id) || !inteiro(it.n, 1, 9999)) return;
-    if (it.up !== undefined && !inteiro(it.up, 0, 10)) return;
-    items.push(it.up !== undefined ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: it.n });
-  }
-  tr.o.set(p.id, { items, gold: m.gold, lock: false, ok: false });
+  const tr = p.trade; if (!tr || !inteiro(m.gold, 0, 1e9)) return;
+  const items = lerItens(m.items, 8); if (!items) return;
+  tr.o.set(p.id, { items: semPreco(items), gold: m.gold, lock: false, ok: false });
   for (const o of tr.o.values()){ o.lock = false; o.ok = false; }
   estadoTroca(tr);
-}
-// Tira a oferta de uma cópia da mochila. Devolve a mochila sem os itens, ou null se faltar algo.
-// Equipamentos vêm com "up" (nível de aprimoramento); os outros itens se empilham.
-function tirarOferta(dados, oferta){
-  if ((dados.gold || 0) < oferta.gold) return null;
-  const inv = (Array.isArray(dados.inv) ? dados.inv : []).filter(Boolean).map(s => ({ ...s }));
-  for (const it of oferta.items){
-    if (it.up !== undefined){
-      const i = inv.findIndex(s => s.id === it.id && (s.up || 0) === it.up && s.n === 1);
-      if (i < 0) return null;
-      inv.splice(i, 1);
-    } else {
-      let falta = it.n;
-      for (const s of inv) if (s.id === it.id && s.up === undefined && falta > 0){ const k = Math.min(falta, s.n); s.n -= k; falta -= k; }
-      if (falta > 0) return null;
-    }
-  }
-  return inv.filter(s => s.n > 0);
-}
-function porOferta(inv, oferta){
-  for (const it of oferta.items){
-    if (it.up !== undefined) inv.push(it.up ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: 1 });
-    else { const s = inv.find(s => s.id === it.id && s.up === undefined); if (s) s.n += it.n; else inv.push({ id: it.id, n: it.n }); }
-  }
-  return inv;
 }
 function travarTroca(p){
   const tr = p.trade; if (!tr) return;
   const minha = tr.o.get(p.id);
-  if (!tirarOferta(p.dados, minha)) return send(p.ws, { t: 'erro', msg: 'Os itens oferecidos não estão mais na sua mochila.' });
+  if (!tirarItens(p.dados, minha.items, minha.gold)) return erro(p, 'Os itens oferecidos não estão mais na sua mochila.');
   minha.lock = true; estadoTroca(tr);
 }
 function confirmarTroca(p){
@@ -338,9 +427,9 @@ function confirmarTroca(p){
   tr.o.get(p.id).ok = true;
   if (!oa.ok || !ob.ok) return estadoTroca(tr);
   if (!perto(tr.a, tr.b, 20)) return fimTroca(tr, 'Vocês se afastaram. Troca cancelada.');
-  const invA = tirarOferta(tr.a.dados, oa), invB = tirarOferta(tr.b.dados, ob);
+  const invA = tirarItens(tr.a.dados, oa.items, oa.gold), invB = tirarItens(tr.b.dados, ob.items, ob.gold);
   if (!invA || !invB) return fimTroca(tr, 'Os itens mudaram na mochila. Troca cancelada.');
-  porOferta(invA, ob); porOferta(invB, oa);
+  porItens(invA, ob.items); porItens(invB, oa.items);
   if (invA.length > 24) return fimTroca(tr, `A mochila de ${tr.a.name} ficaria cheia. Troca cancelada.`);
   if (invB.length > 24) return fimTroca(tr, `A mochila de ${tr.b.name} ficaria cheia. Troca cancelada.`);
   tr.a.dados = { ...tr.a.dados, inv: invA, gold: (tr.a.dados.gold || 0) - oa.gold + ob.gold };
@@ -353,64 +442,124 @@ function confirmarTroca(p){
   console.log(`Troca: ${tr.a.name} <-> ${tr.b.name}`);
 }
 
-/* ---------- Guilda (salva no banco) ---------- */
-const CUSTO_GUILDA = 1000, NIVEL_GUILDA = 15;
+/* ---------- Loja pessoal (o jogador senta e vende para os outros) ---------- */
+function abrirLoja(p, m){
+  if (p.shop) return;
+  if (p.trade) return erro(p, 'Termine a troca antes de abrir a loja.');
+  const title = typeof m.title === 'string' ? m.title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 30) : '';
+  const items = lerItens(m.items, 8);
+  if (!title) return erro(p, 'Dê um nome para a sua loja.');
+  if (!items || !items.length || items.some(it => !it.price)) return erro(p, 'Coloque pelo menos um item com preço.');
+  if (!tirarItens(p.dados, semPreco(items), 0)) return erro(p, 'Os itens da loja não estão na sua mochila.');
+  p.shop = { title, items };
+  send(p.ws, { t: 'shopmine', open: true, title, items });
+  broadcast({ t: 'shopinfo', id: p.id, title }, p);
+}
+function fecharLoja(p, msg){
+  if (!p.shop) return;
+  p.shop = null;
+  send(p.ws, { t: 'shopmine', open: false, msg });
+  broadcast({ t: 'shopinfo', id: p.id, title: null }, p);
+}
+function verLoja(p, m){
+  const s = players.get(m.id);
+  if (!s || !s.shop) return erro(p, 'Essa loja fechou.');
+  send(p.ws, { t: 'shop', id: s.id, name: s.name, title: s.shop.title, items: s.shop.items });
+}
+function comprarNaLoja(p, m){
+  const s = players.get(m.id);
+  if (!s || !s.shop || s === p) return erro(p, 'Essa loja fechou.');
+  if (!perto(p, s, 15)) return erro(p, 'Chegue mais perto da loja.');
+  const it = s.shop.items[m.idx];
+  if (!it || !inteiro(m.n, 1, it.n) || (it.up !== undefined && m.n !== 1)) return verLoja(p, m);
+  const lote = it.up !== undefined ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: m.n };
+  const custo = it.price * m.n;
+  if ((p.dados.gold || 0) < custo) return erro(p, 'Ouro insuficiente.');
+  const invS = tirarItens(s.dados, [lote], 0);
+  if (!invS){ fecharLoja(s, 'Um item da sua loja não estava mais na mochila. A loja fechou.'); return erro(p, 'Essa loja fechou.'); }
+  const invP = porItens((p.dados.inv || []).filter(Boolean).map(x => ({ ...x })), [lote]);
+  if (invP.length > 24) return erro(p, 'Sua mochila está cheia.');
+  s.dados = { ...s.dados, inv: invS, gold: (s.dados.gold || 0) + custo };
+  p.dados = { ...p.dados, inv: invP, gold: (p.dados.gold || 0) - custo };
+  s.dirty = p.dirty = true; salvar(s); salvar(p);
+  it.n -= m.n;
+  if (it.n <= 0) s.shop.items.splice(m.idx, 1);
+  send(p.ws, { t: 'sbought', item: lote, cost: custo, seller: s.name });
+  send(s.ws, { t: 'ssold', item: lote, cost: custo, buyer: p.name });
+  if (!s.shop.items.length) fecharLoja(s, 'Você vendeu tudo! A loja fechou.');
+  else { send(s.ws, { t: 'shopmine', open: true, title: s.shop.title, items: s.shop.items }); verLoja(p, m); }
+  console.log(`Loja: ${p.name} comprou de ${s.name} por ${custo}`);
+}
+
+/* ---------- Guilda (salva no banco, com nível e cargos como no Flyff) ---------- */
+const CUSTO_GUILDA = 10000, NIVEL_GUILDA = 20, FUNDADORES = 2;
+// Pontos de guilda por material doado (metade do nível do monstro que o deixa cair).
+const PONTOS_MATERIAL = { gosma: 1, pelo: 3, chapeu: 5, presa: 7, musgo: 9, pele_lobo: 12, seda: 16, essencia: 21, nucleo: 27 };
+const CARGOS = ['lider', 'conselheiro', 'capitao', 'apoiador', 'novato'];
+
 async function carregarGuilda(p){
   try {
     const { data, error } = await dbDoJogador(p.token).from('iv_guilda_membros')
-      .select('cargo,guilda_id,iv_guildas(nome)').eq('personagem_id', p.charId).maybeSingle();
+      .select('cargo,guilda_id,iv_guildas(nome,nivel,exp)').eq('personagem_id', p.charId).maybeSingle();
     if (error) throw error;
-    p.guild = data && data.iv_guildas ? { id: data.guilda_id, nome: data.iv_guildas.nome, cargo: data.cargo } : null;
+    p.guild = data && data.iv_guildas ? { id: data.guilda_id, nome: data.iv_guildas.nome, cargo: data.cargo, nivel: data.iv_guildas.nivel || 1 } : null;
   } catch (err) { console.error(`Guilda de ${p.name}:`, err.message); p.guild = null; }
 }
 function avisarGuilda(p){
   send(p.ws, { t: 'guild', guild: p.guild });
   broadcast({ t: 'ginfo', id: p.id, g: p.guild ? p.guild.nome : null }, p);
 }
+const daGuilda = gid => [...players.values()].filter(o => o.guild && o.guild.id === gid);
+
+// Como no Flyff: o líder precisa de um grupo com mais 2 pessoas por perto, sem guilda.
 async function criarGuilda(p, m){
-  if (p.guild) return send(p.ws, { t: 'erro', msg: 'Você já está em uma guilda.' });
+  if (p.guild) return erro(p, 'Você já está em uma guilda.');
   const nome = typeof m.nome === 'string' ? m.nome.trim().replace(/\s+/g, ' ') : '';
-  if (!/^[A-Za-zÀ-ÿ0-9 ]{3,16}$/.test(nome)) return send(p.ws, { t: 'erro', msg: 'O nome da guilda precisa ter de 3 a 16 letras ou números.' });
-  if (p.L < NIVEL_GUILDA) return send(p.ws, { t: 'erro', msg: `Criar guilda libera no nível ${NIVEL_GUILDA}.` });
-  if ((p.dados.gold || 0) < CUSTO_GUILDA) return send(p.ws, { t: 'erro', msg: `Criar guilda custa ${CUSTO_GUILDA} de ouro.` });
+  if (!/^[A-Za-zÀ-ÿ0-9 ]{3,16}$/.test(nome)) return erro(p, 'O nome da guilda precisa ter de 3 a 16 letras ou números.');
+  if (p.L < NIVEL_GUILDA) return erro(p, `Criar guilda libera no nível ${NIVEL_GUILDA}.`);
+  if ((p.dados.gold || 0) < CUSTO_GUILDA) return erro(p, `Criar guilda custa ${CUSTO_GUILDA.toLocaleString('pt-BR')} de ouro.`);
+  if (!p.party || p.party.leader !== p.id) return erro(p, 'Para fundar uma guilda, seja o líder de um grupo com mais 2 pessoas.');
+  const fundadores = [...p.party.members].map(id => players.get(id)).filter(o => o && o !== p && !o.guild && perto(o, p, 15));
+  if (fundadores.length < FUNDADORES) return erro(p, 'Precisa de mais 2 pessoas do grupo, sem guilda, perto de você.');
   if (p.criandoGuilda) return;
   p.criandoGuilda = true;
   try {
     const db = dbDoJogador(p.token);
     const { data: g, error } = await db.from('iv_guildas').insert({ nome, lider: p.charId }).select('id,nome').single();
     if (error){
-      if (error.code === '23505') return send(p.ws, { t: 'erro', msg: 'Esse nome de guilda já existe. Escolha outro.' });
+      if (error.code === '23505') return erro(p, 'Esse nome de guilda já existe. Escolha outro.');
       throw error;
     }
     const { error: e2 } = await db.from('iv_guilda_membros').insert({ personagem_id: p.charId, guilda_id: g.id, nome: p.name, cargo: 'lider' });
     if (e2){ await db.from('iv_guildas').delete().eq('id', g.id); throw e2; }
-    p.guild = { id: g.id, nome: g.nome, cargo: 'lider' };
+    p.guild = { id: g.id, nome: g.nome, cargo: 'lider', nivel: 1 };
     p.dados = { ...p.dados, gold: (p.dados.gold || 0) - CUSTO_GUILDA }; p.dirty = true;
     send(p.ws, { t: 'gcreated', cost: CUSTO_GUILDA });
     avisarGuilda(p);
+    for (const f of fundadores) await entrarNaGuilda(p, f);
     console.log(`Guilda criada: ${g.nome} (${p.name})`);
   } catch (err) {
     console.error('Erro ao criar guilda:', err.message);
-    send(p.ws, { t: 'erro', msg: 'Não foi possível criar a guilda agora.' });
+    erro(p, 'Não foi possível criar a guilda agora.');
   } finally { p.criandoGuilda = false; }
 }
-async function entrarNaGuilda(lider, p){
-  const gid = lider.guild.id, gnome = lider.guild.nome;
+async function entrarNaGuilda(quemConvida, p){
+  const g = quemConvida.guild; if (!g) return;
   try {
-    const { error: e1 } = await dbDoJogador(lider.token).from('iv_guilda_convites').insert({ guilda_id: gid, personagem_id: p.charId });
+    const { error: e1 } = await dbDoJogador(quemConvida.token).from('iv_guilda_convites').insert({ guilda_id: g.id, personagem_id: p.charId });
     if (e1 && e1.code !== '23505') throw e1; // 23505: o convite já existia
-    const { error: e2 } = await dbDoJogador(p.token).from('iv_guilda_membros').insert({ personagem_id: p.charId, guilda_id: gid, nome: p.name, cargo: 'membro' });
-    await dbDoJogador(p.token).from('iv_guilda_convites').delete().eq('guilda_id', gid).eq('personagem_id', p.charId);
+    const { error: e2 } = await dbDoJogador(p.token).from('iv_guilda_membros').insert({ personagem_id: p.charId, guilda_id: g.id, nome: p.name, cargo: 'novato' });
+    await dbDoJogador(p.token).from('iv_guilda_convites').delete().eq('guilda_id', g.id).eq('personagem_id', p.charId);
     if (e2){
-      if (e2.code === 'P0002') return send(p.ws, { t: 'erro', msg: 'A guilda já tem 30 membros.' });
+      if (e2.code === 'P0002') return erro(p, 'A guilda está cheia. Ela precisa subir de nível para aceitar mais gente.');
       throw e2;
     }
-    p.guild = { id: gid, nome: gnome, cargo: 'membro' };
+    p.guild = { id: g.id, nome: g.nome, cargo: 'novato', nivel: g.nivel };
     avisarGuilda(p);
-    for (const o of players.values()) if (o.guild && o.guild.id === gid) send(o.ws, { t: 'aviso', msg: `${p.name} entrou na guilda.` });
+    for (const o of daGuilda(g.id)) aviso(o, `${p.name} entrou na guilda.`);
   } catch (err) {
     console.error('Erro ao entrar na guilda:', err.message);
-    send(p.ws, { t: 'erro', msg: 'Não foi possível entrar na guilda agora.' });
+    erro(p, 'Não foi possível entrar na guilda agora.');
   }
 }
 async function sairDaGuilda(p){
@@ -420,9 +569,9 @@ async function sairDaGuilda(p){
     if (g.cargo === 'lider'){
       const { error } = await db.from('iv_guildas').delete().eq('id', g.id);
       if (error) throw error;
-      for (const o of players.values()) if (o.guild && o.guild.id === g.id){
+      for (const o of daGuilda(g.id)){
         o.guild = null; avisarGuilda(o);
-        if (o !== p) send(o.ws, { t: 'aviso', msg: `A guilda ${g.nome} foi desfeita pelo líder.` });
+        if (o !== p) aviso(o, `A guilda ${g.nome} foi desfeita pelo líder.`);
       }
     } else {
       const { error } = await db.from('iv_guilda_membros').delete().eq('personagem_id', p.charId);
@@ -431,7 +580,7 @@ async function sairDaGuilda(p){
     }
   } catch (err) {
     console.error('Erro ao sair da guilda:', err.message);
-    send(p.ws, { t: 'erro', msg: 'Não foi possível sair da guilda agora.' });
+    erro(p, 'Não foi possível sair da guilda agora.');
   }
 }
 async function expulsarDaGuilda(p, m){
@@ -439,29 +588,78 @@ async function expulsarDaGuilda(p, m){
   if (!g || g.cargo !== 'lider' || typeof m.nome !== 'string' || m.nome === p.name) return;
   try {
     const { error } = await dbDoJogador(p.token).from('iv_guilda_membros').delete()
-      .eq('guilda_id', g.id).eq('nome', m.nome).eq('cargo', 'membro');
+      .eq('guilda_id', g.id).eq('nome', m.nome).neq('cargo', 'lider');
     if (error) throw error;
-    for (const o of players.values()) if (o.name === m.nome && o.guild && o.guild.id === g.id){
-      o.guild = null; avisarGuilda(o); send(o.ws, { t: 'aviso', msg: `Você foi retirado da guilda ${g.nome}.` });
+    for (const o of daGuilda(g.id)) if (o.name === m.nome){
+      o.guild = null; avisarGuilda(o); aviso(o, `Você foi retirado da guilda ${g.nome}.`);
     }
     listarGuilda(p);
   } catch (err) {
     console.error('Erro ao retirar da guilda:', err.message);
-    send(p.ws, { t: 'erro', msg: 'Não foi possível retirar o membro agora.' });
+    erro(p, 'Não foi possível retirar o membro agora.');
   }
 }
 async function listarGuilda(p){
   const g = p.guild; if (!g) return;
-  const { data, error } = await dbDoJogador(p.token).from('iv_guilda_membros')
-    .select('nome,cargo').eq('guilda_id', g.id).order('entrou_em');
+  const db = dbDoJogador(p.token);
+  const [{ data, error }, { data: info }] = await Promise.all([
+    db.from('iv_guilda_membros').select('nome,cargo,contribuicao').eq('guilda_id', g.id).order('entrou_em'),
+    db.from('iv_guildas').select('nivel,exp').eq('id', g.id).maybeSingle()
+  ]);
   if (error) return console.error('Erro ao listar guilda:', error.message);
-  const on = new Set([...players.values()].filter(o => o.guild && o.guild.id === g.id).map(o => o.name));
-  send(p.ws, { t: 'gmembers', list: data.map(r => ({ nome: r.nome, cargo: r.cargo, online: on.has(r.nome) })) });
+  if (info) for (const o of daGuilda(g.id)) o.guild.nivel = info.nivel;
+  const on = new Set(daGuilda(g.id).map(o => o.name));
+  send(p.ws, { t: 'gmembers', nivel: info ? info.nivel : 1, exp: info ? info.exp : 0,
+    list: data.map(r => ({ nome: r.nome, cargo: r.cargo, contrib: r.contribuicao || 0, online: on.has(r.nome) })) });
+}
+// Doar ouro e materiais sobe o nível da guilda (como no Flyff).
+async function doarParaGuilda(p, m){
+  const g = p.guild; if (!g || p.doando) return;
+  const gold = inteiro(m.gold, 0, 1e9) ? m.gold : -1;
+  const items = lerItens(m.items || [], 24);
+  if (gold < 0 || !items || items.some(it => it.up !== undefined || !PONTOS_MATERIAL[it.id])) return;
+  const pontos = Math.floor(gold / 10) + items.reduce((a, it) => a + PONTOS_MATERIAL[it.id] * it.n, 0);
+  if (pontos < 1) return erro(p, 'Doe pelo menos 10 de ouro ou um material de monstro.');
+  const inv = tirarItens(p.dados, items, gold);
+  if (!inv) return erro(p, 'Você não tem o que tentou doar.');
+  p.doando = true;
+  try {
+    const { data, error } = await dbDoJogador(p.token).rpc('iv_guilda_doar', { p_personagem: p.charId, p_pontos: pontos });
+    if (error) throw error;
+    p.dados = { ...p.dados, inv, gold: (p.dados.gold || 0) - gold }; p.dirty = true; salvar(p);
+    const r = Array.isArray(data) ? data[0] : data;
+    send(p.ws, { t: 'gdonated', gold, items, pontos });
+    const subiu = r && r.nivel > (g.nivel || 1);
+    for (const o of daGuilda(g.id)){
+      if (r) o.guild.nivel = r.nivel;
+      aviso(o, subiu ? `${p.name} doou e a guilda subiu para o nível ${r.nivel}!` : `${p.name} doou ${pontos} pontos para a guilda.`);
+    }
+    listarGuilda(p);
+  } catch (err) {
+    console.error('Erro ao doar para a guilda:', err.message);
+    erro(p, 'Não foi possível doar agora.');
+  } finally { p.doando = false; }
+}
+async function mudarCargo(p, m){
+  const g = p.guild;
+  if (!g || g.cargo !== 'lider' || typeof m.nome !== 'string' || !CARGOS.includes(m.cargo) || m.cargo === 'lider') return;
+  try {
+    const { error } = await dbDoJogador(p.token).rpc('iv_guilda_cargo', { p_guilda: g.id, p_nome: m.nome, p_cargo: m.cargo });
+    if (error){
+      if (error.code === 'P0003') return erro(p, error.message);
+      throw error;
+    }
+    for (const o of daGuilda(g.id)) if (o.name === m.nome){ o.guild.cargo = m.cargo; send(o.ws, { t: 'guild', guild: o.guild }); }
+    listarGuilda(p);
+  } catch (err) {
+    console.error('Erro ao mudar cargo:', err.message);
+    erro(p, 'Não foi possível mudar o cargo agora.');
+  }
 }
 
 /* ---------- Rotinas ---------- */
-// Recarrega o limite da experiência dividida (evita abuso).
-setInterval(() => { for (const p of players.values()) p.expBucket = Math.min(20, p.expBucket + 4); }, 1000);
+// Recarrega o limite de experiência de monstros (evita abuso).
+setInterval(() => { for (const p of players.values()) p.expBucket = Math.min(30, p.expBucket + 6); }, 1000);
 
 // Posições: 10 vezes por segundo, só de quem se mexeu.
 setInterval(() => {

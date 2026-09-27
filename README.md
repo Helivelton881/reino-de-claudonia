@@ -1,14 +1,15 @@
-# Reino De Claudonia (Fases 3 a 5)
+# Reino De Claudonia (versão 0.6)
 
 MMORPG 3D de navegador. Já tem: login, até 3 personagens por conta,
 outros jogadores visíveis na ilha, chat, progresso salvo no banco,
 4 classes (Guerreiro, Druida, Mago, Arqueiro) com prova no nível 15,
 habilidades por classe e voo de prancha ou vassoura a partir do nível 20.
 
-Fase 5: aprimoramento de armas e armaduras (+1 a +10) e loja de
-equipamentos com a Ferreira Brunna, troca de itens e ouro entre jogadores,
-grupo de até 8 (com experiência dividida e chat `/g`) e guildas de até
-30 membros (salvas no banco, chat `/gu`).
+Fase 5, com as regras do Flyff: aprimoramento +1 a +10 (com risco de quebrar
+do +4 em diante e pergaminhos de proteção e sorte), loja pessoal, troca de
+itens e ouro, grupo de até 8 com nível, pontos e habilidades de grupo, e
+guildas com nível, doações e cargos. O mundo virou um continente de outono
+com 9 regiões de monstros até o nível 60.
 
 ## Peças
 - `public/index.html`: o jogo (Three.js) com login e escolha de personagem.
@@ -16,8 +17,9 @@ grupo de até 8 (com experiência dividida e chat `/g`) e guildas de até
   das posições, do chat e do salvamento (WebSocket em `/ws`).
 - `supabase/001_ilha_verde.sql`: tabela `iv_personagens` com regras de
   segurança (cada conta só vê e altera os próprios personagens).
-- `supabase/002_guildas.sql`: guildas, membros e convites, com regras de
-  segurança (só entra quem foi convidado pelo líder).
+- `supabase/002_guildas.sql` e `supabase/003_guilda_niveis.sql`: guildas,
+  membros, convites, nível, doações e cargos, com regras de segurança
+  (só entra quem foi convidado).
 
 ## Variáveis de ambiente (no Render)
 - `SUPABASE_URL`: endereço do projeto Supabase.
