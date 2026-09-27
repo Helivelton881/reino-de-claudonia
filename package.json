@@ -1,11 +1,12 @@
 {
   "name": "reino-de-claudonia",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Reino De Claudonia - MMORPG 3D de navegador",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"

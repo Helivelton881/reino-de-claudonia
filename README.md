@@ -1,4 +1,4 @@
-# Reino De Claudonia (versão 0.6)
+# Reino De Claudonia (versão 0.9)
 
 MMORPG 3D de navegador. Já tem: login, até 3 personagens por conta,
 outros jogadores visíveis na ilha, chat, progresso salvo no banco,
@@ -14,7 +14,10 @@ com 9 regiões de monstros até o nível 60.
 ## Peças
 - `public/index.html`: o jogo (Three.js) com login e escolha de personagem.
 - `server.js`: servidor Node.js. Serve o jogo, confere o login e cuida
-  das posições, do chat e do salvamento (WebSocket em `/ws`).
+  das posições, do chat, do salvamento e integra os módulos autoritativos
+  (WebSocket em `/ws`).
+- `server/world`, `server/combat`, `server/loot`, `server/economy` e
+  `server/data`: simulação de monstros, combate, drops, inventário e tabelas.
 - `supabase/001_ilha_verde.sql`: tabela `iv_personagens` com regras de
   segurança (cada conta só vê e altera os próprios personagens).
 - `supabase/002_guildas.sql` e `supabase/003_guilda_niveis.sql`: guildas,
@@ -28,18 +31,29 @@ com 9 regiões de monstros até o nível 60.
 Nenhuma chave secreta é usada.
 
 ## Rodar no computador
-```
+```sh
 npm install
 SUPABASE_URL=... SUPABASE_ANON_KEY=... npm start
 ```
 Depois abra http://localhost:3000
+
+Testes automatizados:
+
+```sh
+npm test
+```
+
+`COMBATE_AUTORITATIVO=0` reativa temporariamente a simulação legada no
+cliente para rollback. O padrão é `1` (servidor autoritativo).
 
 ## Publicar no Render
 - Tipo: Web Service, ambiente Node.
 - Build: `npm install`
 - Start: `npm start`
 
-## Limites desta fase
-- Os monstros ainda são simulados no navegador de cada jogador.
-- O servidor confia nos dados de nível e itens enviados pelo jogo.
-Os dois pontos passam para o servidor na próxima etapa.
+## Combate autoritativo
+
+O servidor agora cria os monstros, executa IA e aggro, valida alcance,
+cooldown e recursos, calcula dano, morte, experiência, drops e coleta. O
+cliente desenha o resultado e envia apenas intenções (`attack`, `skill`,
+`pickup`, `itemUse`). Consulte `docs/phase-6-authoritative-combat.md`.

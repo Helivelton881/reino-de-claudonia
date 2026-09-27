@@ -8,12 +8,19 @@ const http = require('http');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const { createClient } = require('@supabase/supabase-js');
+const { ZONES, MONSTER_TYPES } = require('./server/data/monsters');
+const SpawnManager = require('./server/world/spawn-manager');
+const MonsterManager = require('./server/world/monster-manager');
+const CombatManager = require('./server/combat/combat-manager');
+const LootManager = require('./server/loot/loot-manager');
+const EconomyManager = require('./server/economy/economy-manager');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY; // chave pública (anon/publishable)
 const MAX_JOGADORES = 100;
 const MUNDO = 420; // metade do tamanho do mundo (para conferir posições)
+const COMBATE_AUTORITATIVO = process.env.COMBATE_AUTORITATIVO !== '0';
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Configure as variáveis SUPABASE_URL e SUPABASE_ANON_KEY.');
@@ -57,6 +64,24 @@ const resumo = p => ({ id: p.id, name: p.name, L: p.L, x: p.x, y: p.y, z: p.z, f
   g: p.guild ? p.guild.nome : null, s: p.shop ? p.shop.title : null });
 const aviso = (p, msg) => send(p.ws, { t: 'aviso', msg });
 const erro = (p, msg) => send(p.ws, { t: 'erro', msg });
+
+const spawnManager = new SpawnManager(ZONES);
+const emitirPerto = (point, msg) => { for (const p of players.values()) if (perto(point, p, 110)) send(p.ws, msg); };
+let lootManager;
+const combatManager = new CombatManager({
+  players, send,
+  awardExperience: (killer, monster) => premiarMonstro(killer, monster),
+  onMonsterDeath: (monster, killer) => {
+    const allowedIds = killer.party ? [...killer.party.members] : [killer.id];
+    const luck = killer.party && killer.party.skills.sorte > Date.now() ? 2 : 1;
+    const copies = killer.party && killer.party.skills.presente > Date.now() ? 2 : 1;
+    lootManager.spawn(monster, killer, { allowedIds, luck, copies });
+  }
+});
+const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, spawnManager, players, send });
+lootManager = new LootManager({ players, send, emitNearby:emitirPerto });
+const economyManager = new EconomyManager({send});
+combatManager.setMonsterManager(monsterManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
 
 async function salvar(p) {
   if (!p.dirty && !p.posDirty) return;
@@ -135,8 +160,10 @@ wss.on('connection', ws => {
           id: nextId++, ws, userId: data.user.id, charId: row.id, name: row.nome, token: m.token,
           L: (row.dados && row.dados.L) || 1, x: row.pos_x, y: 0, z: row.pos_z, f: 0, a: 0,
           dados: row.dados || {}, dirty: false, posDirty: false, moved: true, lastChat: 0,
-          hp: 0, maxHp: 1, party: null, trade: null, shop: null, guild: null, invites: new Map(), lastInv: 0, expBucket: 20
+          hp: 0, maxHp: 1, party: null, trade: null, shop: null, guild: null, invites: new Map(), lastInv: 0, expBucket: 20,
+          lastPosAt: Date.now()
         };
+        if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         await carregarGuilda(novo);
         if (ws.readyState !== 1) return;
         p = novo;
@@ -145,7 +172,11 @@ wss.on('connection', ws => {
         send(ws, {
           t: 'welcome', id: p.id,
           char: { nome: row.nome, x: row.pos_x, z: row.pos_z }, guild: p.guild,
-          others: [...players.values()].filter(o => o !== p).map(resumo)
+          others: [...players.values()].filter(o => o !== p).map(resumo),
+          authoritativeCombat: COMBATE_AUTORITATIVO,
+          monsters: COMBATE_AUTORITATIVO ? monsterManager.snapshotFor(p) : [],
+          loot: COMBATE_AUTORITATIVO ? lootManager.snapshotFor(p) : [],
+          combat: COMBATE_AUTORITATIVO ? { hp:p.hp,maxHp:p.stats.maxHp,mp:p.mp,maxMp:p.stats.maxMp,fp:p.fp,maxFp:p.stats.maxFp } : null
         });
         broadcast({ t: 'join', ...resumo(p) }, p);
         console.log(`Entrou: ${p.name} (${players.size} online)`);
@@ -161,9 +192,14 @@ wss.on('connection', ws => {
       case 'pos': {
         const x = num(m.x, -MUNDO, MUNDO), y = num(m.y, -80, 160), z = num(m.z, -MUNDO, MUNDO), f = num(m.f, -1000, 1000);
         if (x === null || y === null || z === null || f === null) return;
-        if (p.shop && Math.hypot(x - p.x, z - p.z) > 0.5) fecharLoja(p);
+        const agora=Date.now(), elapsed=Math.max(0.05,(agora-p.lastPosAt)/1000), distance=Math.hypot(x-p.x,z-p.z);
+        const speedLimit=[4,5].includes(m.a)?38:22;
+        if (COMBATE_AUTORITATIVO && distance > speedLimit*elapsed+3) return send(p.ws,{t:'positionReject',x:p.x,y:p.y,z:p.z});
+        p.lastPosAt=agora;
+        if (p.shop && distance > 0.5) fecharLoja(p);
         p.x = x; p.y = y; p.z = z; p.f = f;
         p.a = [0, 1, 2, 3, 4, 5, 6].includes(m.a) ? m.a : 0; // 4 = prancha, 5 = vassoura, 6 = sentado na loja
+        if (COMBATE_AUTORITATIVO && [4,5].includes(p.a) && !(p.dados.eq && p.dados.eq.voo)) p.a=0;
         p.moved = true; p.posDirty = true;
         break;
       }
@@ -186,19 +222,38 @@ wss.on('connection', ws => {
       case 'save': {
         if (!m.dados || typeof m.dados !== 'object' || Array.isArray(m.dados)) return;
         if (JSON.stringify(m.dados).length > 20000) return;
-        p.dados = m.dados; p.dirty = true;
-        const L = num(m.dados.L, 1, 200);
-        if (L && L !== p.L) { p.L = L; broadcast({ t: 'info', id: p.id, L }); if (p.party) enviarGrupo(p.party); }
+        if (COMBATE_AUTORITATIVO) {
+          const protectedKeys=new Set(['L','exp','gold','inv','hp','mp','fp','eq','equp','str','sta','dex','int','pts','cls','upPity']);
+          for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
+          Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
+        } else p.dados = m.dados;
+        p.dirty = true;
+        if (!COMBATE_AUTORITATIVO) {
+          const L = num(m.dados.L, 1, 200);
+          if (L && L !== p.L) { p.L = L; broadcast({ t: 'info', id: p.id, L }); if (p.party) enviarGrupo(p.party); }
+        }
         break;
       }
       case 'hp': {
+        if (COMBATE_AUTORITATIVO) break;
         const max = num(m.max, 1, 100000), hp = num(m.hp, 0, 100000);
         if (max === null || hp === null) return;
         p.hp = Math.round(Math.min(hp, max)); p.maxHp = Math.round(max);
         if (p.party) for (const id of p.party.members){ const o = players.get(id); if (o && o !== p) send(o.ws, { t: 'php', id: p.id, hp: p.hp, max: p.maxHp }); }
         break;
       }
-      case 'pkill': monstroDoGrupo(p, m); break;
+      case 'pkill': if (!COMBATE_AUTORITATIVO) monstroDoGrupo(p, m); break;
+      case 'attack': if (COMBATE_AUTORITATIVO) combatManager.attack(p,m); break;
+      case 'skill': if (COMBATE_AUTORITATIVO) combatManager.skill(p,m); break;
+      case 'pickup': if (COMBATE_AUTORITATIVO) lootManager.pickup(p,m.id); break;
+      case 'itemUse': if (COMBATE_AUTORITATIVO) combatManager.useItem(p,m); break;
+      case 'equipment': if (COMBATE_AUTORITATIVO) combatManager.equipment(p,m); break;
+      case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
+      case 'classChange': if (COMBATE_AUTORITATIVO) combatManager.changeClass(p,m); break;
+      case 'resetCharacter': if (COMBATE_AUTORITATIVO) combatManager.resetPlayer(p); break;
+      case 'economy': if (COMBATE_AUTORITATIVO) economyManager.act(p,m); break;
+      case 'combatRespawn': if (COMBATE_AUTORITATIVO) combatManager.respawn(p,0,5); break;
+      case 'worldSnapshot': if (COMBATE_AUTORITATIVO) send(p.ws,{t:'worldSnapshot',monsters:monsterManager.snapshotFor(p),loot:lootManager.snapshotFor(p)}); break;
       case 'inv': convidar(p, m); break;
       case 'resp': responder(p, m); break;
       case 'pleave': sairDoGrupo(p); break;
@@ -370,6 +425,38 @@ function monstroDoGrupo(p, m){
   for (const o of lista){
     const parte = party.mode === 'contrib' || lista.length < 2 ? total / lista.length : total * o.L / somaNiveis;
     send(o.ws, { t: 'pexp', lvl: m.lvl, exp: Math.max(1, Math.round(parte)), from: o === p ? undefined : p.name });
+  }
+}
+
+// Versão autoritativa: nível e experiência vêm do monstro do servidor e o resultado
+// é aplicado ao personagem antes de ser enviado ao cliente.
+function premiarMonstro(killer, monster){
+  let lista=[killer], total=monster.exp;
+  const party=killer.party;
+  if(party){
+    lista=ativos(party,killer); if(!lista.includes(killer))lista.push(killer);
+    if(lista.length>=2){
+      const porMembro=party.advanced?0.07:0.04,porAtivo=party.advanced?0.25:0.135;
+      total*=1+porMembro*party.members.size+porAtivo*lista.length;
+      if(party.skills.estudo>Date.now())total*=1.15;
+      const cap=party.advanced?GRUPO_MAX_AVANCADO:GRUPO_MAX_NIVEL;
+      if(party.level<cap){party.exp+=monster.level;while(party.level<cap&&party.exp>=grupoExpNeed(party.level)){party.exp-=grupoExpNeed(party.level);party.level++;party.points+=party.advanced?6:2;}if(party.level>=cap)party.exp=0;}
+      enviarGrupo(party);
+    }
+  }
+  const somaNiveis=lista.reduce((sum,p)=>sum+p.L,0);
+  for(const p of lista){
+    let amount=party&&(party.mode!=='contrib'&&lista.length>=2)?total*p.L/somaNiveis:total/lista.length;
+    const diff=p.L-monster.level;
+    if(monster.level-p.L>=16)amount=0;else if(diff>=10)amount*=.1;else if(diff>=5)amount*=.4;
+    if(p.guild)amount*=1+Math.min(10,p.guild.nivel||1)/100;
+    amount=Math.max(0,Math.round(amount));
+    const cls=p.dados.cls||'aprendiz',cap=cls==='aprendiz'?15:60;
+    let leveled=false;p.dados.exp=Math.max(0,Math.floor(p.dados.exp||0))+amount;
+    while(p.L<cap&&p.dados.exp>=Math.round(28*Math.pow(p.L,1.65)+22)){p.dados.exp-=Math.round(28*Math.pow(p.L,1.65)+22);p.L++;p.dados.L=p.L;p.dados.pts=Math.max(0,Math.floor(p.dados.pts||0))+2;leveled=true;}
+    if(p.L>=cap)p.dados.exp=0;
+    if(leveled){combatManager.refresh(p);p.hp=p.stats.maxHp;p.mp=p.stats.maxMp;p.fp=p.stats.maxFp;Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});broadcast({t:'info',id:p.id,L:p.L});if(p.party)enviarGrupo(p.party);}
+    p.dirty=true;send(p.ws,{t:'expGain',amount,monsterLevel:monster.level,L:p.L,exp:p.dados.exp,pts:p.dados.pts,leveled,combat:{hp:p.hp,maxHp:p.stats.maxHp,mp:p.mp,maxMp:p.stats.maxMp,fp:p.fp,maxFp:p.stats.maxFp}});
   }
 }
 function grupoAvancado(p){
@@ -658,6 +745,13 @@ async function mudarCargo(p, m){
 }
 
 /* ---------- Rotinas ---------- */
+let ultimoTickMonstros=Date.now();
+setInterval(()=>{
+  if(!COMBATE_AUTORITATIVO)return;
+  const now=Date.now(),dt=Math.min(.25,(now-ultimoTickMonstros)/1000);ultimoTickMonstros=now;
+  monsterManager.tick(dt);combatManager.tick(dt);lootManager.tick();
+},100);
+
 // Recarrega o limite de experiência de monstros (evita abuso).
 setInterval(() => { for (const p of players.values()) p.expBucket = Math.min(30, p.expBucket + 6); }, 1000);
 
