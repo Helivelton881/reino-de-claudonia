@@ -26,8 +26,9 @@ jobs:
           cat .upload/part*.txt | tr -d '\r\n ' | base64 --decode > /tmp/reino-project.tar.xz
           mkdir -p /tmp/reino-project
           tar -xJf /tmp/reino-project.tar.xz -C /tmp/reino-project
-          cp -a /tmp/reino-project/reino-de-claudonia/. .
-          rm -rf .upload
+          cp -a /tmp/reino-project/. .
+          rm -rf .upload .restore
+          rm -f .github/workflows/restore-project.yml
 
       - name: Commit restored project
         shell: bash
