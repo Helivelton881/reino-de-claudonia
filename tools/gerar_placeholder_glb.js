@@ -7,7 +7,7 @@
 //
 // O arquivo segue o mesmo padrão que o exportador glTF do Blender: 1,75 m de altura,
 // frente virada para +Z, ossos com nomes Hips/Spine/Chest/Neck/Head/UpperArm_L/... e
-// animações Idle, Walk, Run, Attack, Hit, Death, Jump, Cast, FlyIdle e FlyForward.
+// animações Idle, Walk, Run, Attack_01, Hit, Death, Jump, Cast, FlyIdle e FlyForward.
 const fs = require('fs');
 const path = require('path');
 
@@ -95,7 +95,7 @@ const CLIPS = {
     LowerLeg_L: [[0.3], [1.1], [0.3]], LowerLeg_R: [[1.1], [0.3], [1.1]],
     UpperArm_L: [[0.8, OUT], [-0.8, OUT], [0.8, OUT]], UpperArm_R: [[-0.8, -OUT], [0.8, -OUT], [-0.8, -OUT]],
     LowerArm_L: [[-0.9], [-0.9], [-0.9]], LowerArm_R: [[-0.9], [-0.9], [-0.9]] } },
-  Attack: { t: [0, 0.2, 0.4, 0.6], bones: {
+  Attack_01: { t: [0, 0.2, 0.4, 0.6], bones: {
     UpperArm_R: [[0, -OUT], [-2.6, -OUT], [0.4, -OUT], [0, -OUT]], Chest: [[0, 0, 0], [0, 0, 0.3], [0, 0, -0.35], [0, 0, 0]] } },
   Hit: { t: [0, 0.15, 0.4], bones: { Chest: [[0], [-0.35], [0]], Head: [[0], [-0.3], [0]] } },
   Death: { t: [0, 0.6, 1.2], bones: { Hips: [[0], [-0.9], [-1.5]], UpperArm_L: [[0, OUT], [0, 0.6], [0, 1.2]], UpperArm_R: [[0, -OUT], [0, -0.6], [0, -1.2]] },

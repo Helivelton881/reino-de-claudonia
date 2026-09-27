@@ -486,6 +486,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="/js/claudonia-character-config.js"></script>
 <script src="/js/animation-manager.js"></script>
+<script src="/js/equipment-manager.js"></script>
 <script src="/js/character-manager.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="/config.js"></script>
@@ -1275,7 +1276,9 @@ function areaName(x, z){
 }
 
 /* =========================================================
-   HERÓI (estilo anime: cabeça grande, rosto desenhado, formas redondas)
+   HERÓI LEGADO (procedural): makeLegacyHero()
+   Reserva enquanto o personagem GLB (CharacterManager) não estiver validado.
+   Também é usado pelos NPCs e moradores da vila. Só será removido depois do GLB aprovado.
    ========================================================= */
 const SKIN = 0xF7D7BE;
 const faceCache = new Map();
@@ -1313,7 +1316,7 @@ function faceTex(eye, hair, female){
   });
   faceCache.set(key, tex); return tex;
 }
-function makeHero(opts){
+function makeLegacyHero(opts){
   opts = opts || {};
   const root = new THREE.Group(); root.rotation.order = 'YXZ';
   const tunicC = new THREE.Color(opts.tunic || 0x2E9C8F);
@@ -1381,7 +1384,7 @@ function makeHero(opts){
   scene.add(root);
   return {root, legL, legR, armL, armR, torso, shadow, back, hand};
 }
-const hero = makeHero({eye:0x3A6FB8}); hero.opts = {eye:0x3A6FB8};
+const hero = makeLegacyHero({eye:0x3A6FB8}); hero.opts = {eye:0x3A6FB8};
 
 /* ---------- Personagens GLB rigados (CharacterManager + AnimationManager) ----------
    O personagem antigo aparece na hora; quando o GLB termina de carregar, cada personagem
@@ -1391,7 +1394,8 @@ const CHAR_CFG = window.CLAUDONIA_CHARACTER_CONFIG || {USE_NEW_CHARACTER_MODEL:f
 const USE_NEW_CHARACTER_MODEL = !!CHAR_CFG.USE_NEW_CHARACTER_MODEL;
 const charSys = USE_NEW_CHARACTER_MODEL && window.ClaudoniaCharacterManager
   ? new ClaudoniaCharacterManager(THREE, scene, CHAR_CFG, {isMobile:isTouch, shadows:HQ}) : null;
-if (USE_NEW_CHARACTER_MODEL && !(charSys && charSys.available)) console.warn('[Personagem] Carregador de GLB indisponível: usando o personagem antigo.');
+if (!USE_NEW_CHARACTER_MODEL) console.info('[Character] USE_NEW_CHARACTER_MODEL = false. fallback active');
+else if (!(charSys && charSys.available)) console.warn('[Character] GLTFLoader indisponível. fallback active');
 function blobShadow(){
   const s = new THREE.Mesh(new THREE.CircleGeometry(0.6,20), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:HQ ? 0.14 : 0.25, depthWrite:false}));
   s.rotation.x = -Math.PI/2; scene.add(s); return s;
@@ -1409,7 +1413,7 @@ function glbHero(opts){
 // Cria o personagem de um jogador: GLB se já estiver pronto, senão o antigo.
 function makeCharacter(opts){
   const g = glbHero(opts); if (g) return g;
-  const h = makeHero(opts); h.opts = opts || {}; return h;
+  const h = makeLegacyHero(opts); h.opts = opts || {}; return h;
 }
 // Troca um personagem antigo pelo GLB mantendo o mesmo objeto (o resto do jogo não percebe).
 function upgradeCharacter(h, local){
@@ -1421,7 +1425,7 @@ function upgradeCharacter(h, local){
   scene.remove(h.root); scene.remove(h.shadow);
   const cls = h.weaponCls, fly = h.flyType, flyColor = h.flyColor;
   Object.keys(h).forEach(k=> delete h[k]); Object.assign(h, g);
-  if (local) h.view.local = true;
+  if (local) charSys.setLocal(h.view);
   if (cls) setHeroWeapon(h, cls);
   if (fly) showFlyerType(h, fly, flyColor);
 }
@@ -1430,7 +1434,7 @@ if (charSys && charSys.enabled){
     upgradeCharacter(hero, true);
     try { others.forEach(o=> upgradeCharacter(o.h)); } catch (e) {}
   });
-  charSys.load().then(ok=>{ if (!ok) console.info('[Personagem] Usando o personagem antigo:', charSys.error); });
+  charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
 // Diagnóstico: só com ?debug=1 no endereço (para testar os personagens sem mexer no código)
 if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, get player(){ return player; }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
@@ -2028,9 +2032,18 @@ function weaponMesh(cls){
 function setHeroWeapon(h, cls){
   h.weaponCls = cls;
   if (h.isGLB){
+    // arma antiga (weaponMesh) na hora; se existir um GLB de arma configurado, troca quando carregar
     const b = weaponMesh(cls), hd = weaponMesh(cls);
-    charSys.equip(h.view, 'back', b); charSys.equip(h.view, 'hand_r', hd);
-    hd.visible = false; h.back = b; h.hand = hd; return;
+    charSys.equip(h.view, 'back', b); charSys.equip(h.view, 'weapon', hd);
+    hd.visible = false; h.back = b; h.hand = hd;
+    const eq = charSys.equipment, url = eq.weaponUrl(cls);
+    if (url) eq.loadAsset(url).then(g=>{
+      if (!g || h.weaponCls !== cls || !h.isGLB) return;
+      const nb = eq.instance(g), nh = eq.instance(g);
+      nb.visible = h.back.visible; nh.visible = h.hand.visible;
+      charSys.equip(h.view, 'back', nb); charSys.equip(h.view, 'weapon', nh); h.back = nb; h.hand = nh;
+    });
+    return;
   }
   h.torso.remove(h.back); h.armR.remove(h.hand);
   h.back = weaponMesh(cls); h.back.position.set(0, 0.02, -0.3); h.back.rotation.z = 0.7; h.torso.add(h.back);
@@ -2116,7 +2129,7 @@ const NPCS = [
   {id:'ferreiro', long:true, eye:0x8A3A2A, name:'Ferreira Brunna', tag:'[Ferreira] Brunna', role:'Ferreira: aprimora, compra e vende equipamentos', x:6, z:9.5, tunic:0x6B4A2E, hair:0x2B2B2B},
 ];
 const npcObjs = NPCS.map(n=>{
-  const h = makeHero({tunic:n.tunic, hair:n.hair, long:!!n.long, eye:n.eye}), y = heightAt(n.x, n.z);
+  const h = makeLegacyHero({tunic:n.tunic, hair:n.hair, long:!!n.long, eye:n.eye}), y = heightAt(n.x, n.z);
   if (n.id !== 'voo'){ setHeroWeapon(h, n.id); }
   h.root.position.set(n.x, y, n.z); h.root.rotation.y = Math.atan2(-n.x, -n.z); h.shadow.position.set(n.x, y + 0.05, n.z);
   const lab = makeLabel(n.tag, '#D9C8FF'); lab.position.y = 2.8; h.root.add(lab);
@@ -2131,7 +2144,7 @@ const FALAS = ['Que dia bonito para caçar Bolotas!', 'Dizem que o Ciclope guard
   'Procuro alguém para formar um grupo...', 'Os javalis andam bravos hoje.', 'Minha avó dizia que o outono aqui nunca acaba.'];
 const villagers = [['[Moradora] Clara',0xC96A8A,0x6B3A1E],['[Morador] Tobias',0x7A8A3A,0x2B2B2B],['[Moradora] Dália',0xE0A33A,0xF2D16B],
   ['[Morador] Otto',0x5A6A8A,0xDADADA],['[Vendedor] Beto',0xB5532F,0x3B2A1E],['[Moradora] Íris',0x3A8A7A,0xE07A2E]].map(([label,tunic,hair],i)=>{
-  const h = makeHero({tunic, hair, long:/Morador(a)\]|Moradora/.test(label) && /a\]/.test(label), eye:[0x3A6FB8,0x2E8A5A,0x8A5A2A,0x6A4AB8,0x3A6FB8,0x2E8A8A][i]}), a = i/6*Math.PI*2, x = Math.cos(a)*12, z = Math.sin(a)*12;
+  const h = makeLegacyHero({tunic, hair, long:/Morador(a)\]|Moradora/.test(label) && /a\]/.test(label), eye:[0x3A6FB8,0x2E8A5A,0x8A5A2A,0x6A4AB8,0x3A6FB8,0x2E8A8A][i]}), a = i/6*Math.PI*2, x = Math.cos(a)*12, z = Math.sin(a)*12;
   h.root.remove(h.back); h.torso.remove(h.back);
   const lab = makeLabel(label, '#E8DCC0'); lab.position.y = 2.8; h.root.add(lab);
   return {h, x, z, gx:x, gz:z, face:a, phase:0, wait:rnd(1,5), talk:rnd(6,20), lab};

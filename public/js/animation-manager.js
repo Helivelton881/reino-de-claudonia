@@ -1,7 +1,8 @@
 // Reino De Claudonia - AnimationManager
 // Controla as animações de UM personagem com THREE.AnimationMixer, usando uma máquina de estados:
 //   estados de base (repetem): Idle, Walk, Run, FlyIdle, FlyForward, Jump, Death
-//   estados de ação (tocam uma vez e voltam para a base): Attack, Hit, Cast
+//   estados de ação (tocam uma vez e voltam para a base): Attack (clipe Attack_01), Hit, Cast
+// A Action só é trocada quando o estado muda (nada é reiniciado a cada quadro); a troca usa crossfade.
 // O jogo chama setState() todo quadro com o estado de base e trigger() quando algo acontece
 // (golpe, dano, magia). Se o arquivo não tiver alguma animação, usa uma parecida (fallback).
 (function(){
@@ -71,6 +72,7 @@
       this._go(state, false, true);
     }
     _go(state, instant, restart){
+      if (this.current !== state && this.onChange && this.current) this.onChange(this.current, state);   // log só quando o estado muda
       const next = this.actions[state]; if (!next) { this.current = state; return; }
       const prev = this.current && this.actions[this.current];
       if (prev === next && !restart){ this.current = state; return; }

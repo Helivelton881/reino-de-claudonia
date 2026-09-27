@@ -39,7 +39,11 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   `public/assets/characters/base_male.glb` (ainda não existe: o jogo usa o
   `makeHero` como reserva). Boneco de teste: `?personagem=placeholder`
   (gerado por `tools/gerar_placeholder_glb.js`). Diagnóstico: `?debug=1`.
-  Os NPCs e moradores continuam com `makeHero`.
+  Os NPCs e moradores continuam com `makeLegacyHero` (o antigo `makeHero`, reserva do GLB).
+  Equipamentos: `public/js/equipment-manager.js` (slots, âncoras Weapon_R/Weapon_L/Back/Head,
+  armas GLB em `weaponModels`). Escala: `CHARACTER_HEIGHT/SCALE/Y_OFFSET/ROTATION_OFFSET`.
+  Logs com prefixo `[Character]`. Teste de ponta a ponta: Chrome invisível com a placa de vídeo
+  (`--use-angle=d3d11`); sem placa de vídeo roda a ~1 quadro por segundo.
 - Scripts `blender_etapa_*.py` na raiz são do dono (modelagem no Blender);
   não mexer e não enviar ao GitHub sem ele pedir.
 - `server.js`: Node.js + Express + ws. Confere o login no Supabase, repassa
