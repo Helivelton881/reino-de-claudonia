@@ -103,20 +103,23 @@ button{font-family:inherit;color:inherit}
 
 /* Ícones de poção */
 .ico{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1}
-.ico.red{background:rgba(229,72,77,.55)} .ico.green{background:rgba(53,183,121,.55)}
+.ico.red{background:rgba(229,72,77,.55)} .ico.green{background:rgba(53,183,121,.55)} .ico.blue{background:rgba(61,139,255,.55)}
 
 /* Controles de toque */
-#joy,#jump{display:none}
+#joy,#jump,#down{display:none}
 .touch #joy{display:block;position:fixed;left:calc(env(safe-area-inset-left,0px) + 22px);
-  bottom:calc(env(safe-area-inset-bottom,0px) + 100px);width:128px;height:128px;border-radius:50%;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 150px);width:128px;height:128px;border-radius:50%;
   background:rgba(14,40,62,.35);border:2px solid rgba(255,255,255,.35)}
 #knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
   background:rgba(244,250,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .touch #jump{display:grid;place-items:center;position:fixed;right:calc(env(safe-area-inset-right,0px) + 22px);
-  bottom:calc(env(safe-area-inset-bottom,0px) + 110px);width:74px;height:74px;border-radius:50%;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 172px);width:74px;height:74px;border-radius:50%;
   background:rgba(242,193,78,.9);color:#3A2A05;font-weight:800;font-size:15px;line-height:1;border:none}
-.touch .slot:nth-child(n+6){display:none}
-.touch .menu{top:auto;transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 200px)}
+.touch .hotbar{display:grid;grid-template-columns:repeat(5,46px)}
+.touch.flying #down{display:grid;place-items:center;position:fixed;right:calc(env(safe-area-inset-right,0px) + 26px);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 96px);width:66px;height:66px;border-radius:50%;
+  background:rgba(61,139,255,.9);color:#fff;font-weight:800;font-size:14px;line-height:1;border:none}
+.touch .menu{top:auto;transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 262px)}
 
 /* Janelas */
 .win{position:fixed;width:min(340px,94vw);max-height:72%;display:flex;flex-direction:column;z-index:20}
@@ -147,7 +150,7 @@ button{font-family:inherit;color:inherit}
 .derived{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13.5px;color:var(--ink-soft);margin:10px 0}
 .derived span:nth-child(even){color:var(--ink);text-align:right;font-weight:700}
 .sub{font-size:14px;font-weight:800;margin:12px 0 6px}
-.eq{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.eq{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
 .eq .cell{aspect-ratio:auto;height:62px;align-content:center;gap:0}
 .eq .cell small{font-size:10.5px;color:var(--ink-soft)}
 .pts{font-size:13.5px;color:var(--ink-soft);margin-bottom:8px} .pts b{color:var(--gold)}
@@ -183,7 +186,7 @@ button{font-family:inherit;color:inherit}
 @media (max-width:760px){
   .target{padding-top:calc(env(safe-area-inset-top,0px) + 150px)}
   .target .panel{width:200px}
-  .log{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 240px);width:min(260px,62vw)}
+  .log{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 290px);width:min(250px,58vw)}
 }
 @media (max-width:420px){.status .panel{width:186px}#mini{width:104px;height:104px}.slot{width:46px;height:46px}}
 /* Login e personagens */
@@ -210,6 +213,16 @@ button{font-family:inherit;color:inherit}
 .log .chat{color:#CFE9FF} .log .chat b{color:#9FD4FF}
 #online{font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.7)} #online.bad{color:var(--danger)}
 @media (max-width:1000px){#chatBar{bottom:calc(env(safe-area-inset-bottom,0px) + 118px)}}
+.buffs{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;font-size:12px}
+.buffs:empty{display:none}
+.buffs span{background:rgba(242,193,78,.2);border-radius:6px;padding:1px 6px}
+#npcBody p{margin:0 0 10px;font-size:14.5px;line-height:1.4}
+#npcBody .role{color:var(--gold);font-weight:700;margin-bottom:6px}
+.shoprow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--panel-edge)}
+.shoprow div{flex:1;line-height:1.2} .shoprow b{font-size:14.5px}
+.shoprow div span{display:block;font-size:12.5px;color:var(--ink-soft)}
+.shoprow .btn{flex:none;padding:0 10px;height:36px;font-size:13.5px}
+.si{width:34px;text-align:center;font-size:22px}
 #err{position:fixed;inset:0;display:none;place-items:center;padding:24px;text-align:center;font-size:17px;background:#0E283E}
 </style>
 </head>
@@ -218,10 +231,11 @@ button{font-family:inherit;color:inherit}
 
 <div class="status">
   <div class="panel">
-    <div class="who"><div class="lvl" id="lvl">1</div><div><b id="myName">Aventureiro</b><span>Aprendiz</span></div></div>
+    <div class="who"><div class="lvl" id="lvl">1</div><div><b id="myName">Aventureiro</b><span id="myCls">Aprendiz</span></div></div>
     <div class="bar"><i>Vida</i><div class="track"><div class="fill" id="hpF" style="background:var(--hp)"></div><em id="hpT"></em></div></div>
     <div class="bar"><i>Mana</i><div class="track"><div class="fill" id="mpF" style="background:var(--mp)"></div><em id="mpT"></em></div></div>
     <div class="bar"><i>Energia</i><div class="track"><div class="fill" id="fpF" style="background:var(--fp)"></div><em id="fpT"></em></div></div>
+    <div class="buffs" id="buffs"></div>
   </div>
 </div>
 
@@ -238,7 +252,7 @@ button{font-family:inherit;color:inherit}
   <canvas id="mini" width="264" height="264" aria-label="Minimapa"></canvas>
   <div class="area" id="area">Ilha Verde</div>
   <div id="online">Desconectado</div>
-  <div id="fps" title="Toque ou tecla F para esconder">-- fps</div>
+  <div id="fps" title="Toque ou tecla P para esconder">-- fps</div>
 </div>
 
 <div class="menu">
@@ -254,6 +268,7 @@ button{font-family:inherit;color:inherit}
 
 <div id="joy" aria-hidden="true"><div id="knob"></div></div>
 <button id="jump" type="button">Pular</button>
+<button id="down" type="button">Descer</button>
 
 <div id="chatBar"><input id="chatIn" maxlength="120" placeholder="Enter para conversar" autocomplete="off" enterkeyhint="send" aria-label="Mensagem do chat"></div>
 <div id="floats"></div>
@@ -267,6 +282,11 @@ button{font-family:inherit;color:inherit}
     <div class="grid" id="invGrid"></div>
     <div class="detail" id="invDetail"></div>
   </div>
+</section>
+
+<section class="win panel" id="winNpc" hidden aria-label="Conversa">
+  <header><b id="npcTitle"></b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+  <div class="wbody" id="npcBody"></div>
 </section>
 
 <section class="win panel" id="winChar" hidden aria-label="Personagem">
@@ -300,7 +320,7 @@ button{font-family:inherit;color:inherit}
 <div class="overlay" id="help" hidden>
   <div class="panel">
     <h1>Reino De Claudonia</h1>
-    <p>Fase 3: o jogo agora é online. Outros jogadores aparecem na ilha e o progresso fica salvo na sua conta. Os monstros ainda são só seus; eles ficam compartilhados na próxima etapa.</p>
+    <p>Fase 4: no nível 15, fale com um instrutor na vila para escolher sua classe. No nível 20, compre uma prancha ou vassoura com o Piloto Tito e voe até as ilhotas no céu.</p>
     <ul id="controls"></ul>
     <button class="big" id="start" type="button">Começar</button>
   </div>
@@ -335,46 +355,84 @@ const MAX_LEVEL = 15;
 const expNeed = L => Math.round(28*Math.pow(L,1.65) + 22);
 
 const ITEMS = {
-  pocao_vida:     {name:'Poção de Vida', icon:'🧪', tint:'red', kind:'use', desc:'Recupera 80 de Vida.'},
-  pocao_energia:  {name:'Poção de Energia', icon:'🧪', tint:'green', kind:'use', desc:'Recupera 40 de Energia.'},
-  gosma:          {name:'Gosma de Bolota', icon:'🟢', kind:'mat', desc:'Material de monstro. Terá uso nas lojas e na criação de itens.'},
-  pelo:           {name:'Pelo de Coelhorn', icon:'🐾', kind:'mat', desc:'Material de monstro. Terá uso nas lojas e na criação de itens.'},
-  chapeu:         {name:'Chapéu de Cogumelo', icon:'🍄', kind:'mat', desc:'Material de monstro. Terá uso nas lojas e na criação de itens.'},
-  presa:          {name:'Presa de Javali', icon:'🦷', kind:'mat', desc:'Material de monstro. Terá uso nas lojas e na criação de itens.'},
+  pocao_vida:     {name:'Poção de Vida', icon:'🧪', tint:'red', kind:'use', price:20, desc:'Recupera 80 de Vida.'},
+  pocao_mana:     {name:'Poção de Mana', icon:'🧪', tint:'blue', kind:'use', price:20, desc:'Recupera 50 de Mana.'},
+  pocao_energia:  {name:'Poção de Energia', icon:'🧪', tint:'green', kind:'use', price:20, desc:'Recupera 40 de Energia.'},
+  combustivel:    {name:'Combustível de Voo', icon:'🔥', kind:'use', price:60, desc:'Turbo de 12 segundos durante o voo.'},
+  gosma:          {name:'Gosma de Bolota', icon:'🟢', kind:'mat', sell:3, desc:'Material de monstro. O Piloto Tito compra.'},
+  pelo:           {name:'Pelo de Coelhorn', icon:'🐾', kind:'mat', sell:5, desc:'Material de monstro. O Piloto Tito compra.'},
+  chapeu:         {name:'Chapéu de Cogumelo', icon:'🍄', kind:'mat', sell:8, desc:'Material de monstro. O Piloto Tito compra.'},
+  presa:          {name:'Presa de Javali', icon:'🦷', kind:'mat', sell:12, desc:'Material de monstro. O Piloto Tito compra.'},
+  musgo:          {name:'Musgo Rúnico', icon:'🌱', kind:'mat', sell:18, desc:'Material de monstro. O Piloto Tito compra.'},
   espada_treino:  {name:'Espada de Treino', icon:'🗡️', kind:'eq', slot:'arma', req:1, atk:[4,7]},
   espada_ferro:   {name:'Espada de Ferro', icon:'🗡️', kind:'eq', slot:'arma', req:5, atk:[8,12]},
   machado_rustico:{name:'Machado Rústico', icon:'🪓', kind:'eq', slot:'arma', req:10, atk:[12,18]},
+  espada_soldado: {name:'Espada de Soldado', icon:'🗡️', kind:'eq', slot:'arma', req:15, atk:[16,22], cls:'guerreiro'},
+  machado_guerra: {name:'Machado de Guerra', icon:'🪓', kind:'eq', slot:'arma', req:18, atk:[22,30], cls:'guerreiro'},
+  cajado_carvalho:{name:'Cajado de Carvalho', icon:'🌿', kind:'eq', slot:'arma', req:15, atk:[13,18], cls:'druida'},
+  cajado_runico:  {name:'Cajado Rúnico', icon:'🌿', kind:'eq', slot:'arma', req:18, atk:[18,25], cls:'druida'},
+  varinha_arcana: {name:'Varinha Arcana', icon:'🪄', kind:'eq', slot:'arma', req:15, atk:[15,21], cls:'mago'},
+  cetro_cristal:  {name:'Cetro de Cristal', icon:'🔮', kind:'eq', slot:'arma', req:18, atk:[21,29], cls:'mago'},
+  arco_curto:     {name:'Arco Curto', icon:'🏹', kind:'eq', slot:'arma', req:15, atk:[14,20], cls:'arqueiro'},
+  arco_longo:     {name:'Arco Longo', icon:'🏹', kind:'eq', slot:'arma', req:18, atk:[20,28], cls:'arqueiro'},
   gorro_couro:    {name:'Gorro de Couro', icon:'🧢', kind:'eq', slot:'capacete', req:3, def:2},
   botas_viajante: {name:'Botas de Viajante', icon:'🥾', kind:'eq', slot:'botas', req:4, def:2},
   tunica_reforcada:{name:'Túnica Reforçada', icon:'🥋', kind:'eq', slot:'peitoral', req:6, def:4},
   botas_ferro:    {name:'Botas de Ferro', icon:'🥾', kind:'eq', slot:'botas', req:10, def:4},
   capacete_ferro: {name:'Capacete de Ferro', icon:'⛑️', kind:'eq', slot:'capacete', req:12, def:5},
   peitoral_ferro: {name:'Peitoral de Ferro', icon:'🛡️', kind:'eq', slot:'peitoral', req:12, def:8},
+  capacete_aco:   {name:'Capacete de Aço', icon:'⛑️', kind:'eq', slot:'capacete', req:18, def:8},
+  peitoral_aco:   {name:'Peitoral de Aço', icon:'🛡️', kind:'eq', slot:'peitoral', req:18, def:12},
+  botas_aco:      {name:'Botas de Aço', icon:'🥾', kind:'eq', slot:'botas', req:18, def:6},
+  prancha_madeira:{name:'Prancha de Madeira', icon:'🛹', kind:'eq', slot:'voo', req:20, spd:14, fly:'board', price:300, color:0xA8703A},
+  vassoura_simples:{name:'Vassoura Simples', icon:'🧹', kind:'eq', slot:'voo', req:20, spd:14, fly:'broom', price:300, color:0xA8703A},
+  prancha_veloz:  {name:'Prancha Veloz', icon:'🛹', kind:'eq', slot:'voo', req:20, spd:18, fly:'board', price:1500, color:0x3F8CFF},
+  vassoura_veloz: {name:'Vassoura Veloz', icon:'🧹', kind:'eq', slot:'voo', req:20, spd:18, fly:'broom', price:1500, color:0x3F8CFF},
+  prancha_celeste:{name:'Prancha Celeste', icon:'🛹', kind:'eq', slot:'voo', req:20, spd:22, fly:'board', price:4000, color:0xF2C14E},
+  vassoura_celeste:{name:'Vassoura Celeste', icon:'🧹', kind:'eq', slot:'voo', req:20, spd:22, fly:'broom', price:4000, color:0xF2C14E},
 };
-const EQUIP_IDS = Object.keys(ITEMS).filter(k => ITEMS[k].kind==='eq' && k!=='espada_treino');
-const SLOT_NAMES = {arma:'Arma', capacete:'Capacete', peitoral:'Peitoral', botas:'Botas'};
+const STARTERS = ['espada_treino','espada_soldado','cajado_carvalho','varinha_arcana','arco_curto'];
+const EQUIP_IDS = Object.keys(ITEMS).filter(k => ITEMS[k].kind==='eq' && ITEMS[k].slot!=='voo' && !STARTERS.includes(k));
+const SLOT_NAMES = {arma:'Arma', capacete:'Capacete', peitoral:'Peitoral', botas:'Botas', voo:'Voo'};
+const SHOP = ['prancha_madeira','vassoura_simples','prancha_veloz','vassoura_veloz','prancha_celeste','vassoura_celeste','combustivel','pocao_vida','pocao_mana','pocao_energia'];
 
 const SKILLS = {
-  golpe_forte: {name:'Golpe Forte', icon:'💥', req:1, fp:6, cd:4, desc:'Um golpe com 180% do dano.'},
-  corte_duplo: {name:'Corte Duplo', icon:'⚡', req:8, fp:10, cd:7, desc:'Dois cortes rápidos com 120% do dano cada.'},
+  golpe_forte:  {cls:'aprendiz', name:'Golpe Forte', icon:'💥', req:1, fp:6, cd:4, type:'hit', mult:1.8, desc:'Um golpe com 180% do dano.'},
+  corte_duplo:  {cls:'aprendiz', name:'Corte Duplo', icon:'⚡', req:8, fp:10, cd:7, type:'double', mult:1.2, desc:'Dois cortes rápidos com 120% do dano cada.'},
+  investida:    {cls:'guerreiro', name:'Investida', icon:'💥', req:15, fp:8, cd:5, type:'hit', mult:2.1, desc:'Golpe pesado com 210% do dano.'},
+  grito:        {cls:'guerreiro', name:'Grito de Guerra', icon:'📣', req:17, mp:10, cd:30, type:'buff', buff:{id:'grito', t:30, atk:0.2}, desc:'+20% de ataque por 30 segundos.'},
+  redemoinho:   {cls:'guerreiro', name:'Redemoinho', icon:'🌀', req:20, fp:15, cd:10, type:'aoe', around:'self', radius:4, mult:1.4, desc:'Acerta todos os monstros por perto com 140% do dano.'},
+  cura:         {cls:'druida', name:'Cura', icon:'💚', req:15, mp:12, cd:3, type:'heal', desc:'Recupera vida com base na Inteligência.'},
+  bencao:       {cls:'druida', name:'Bênção', icon:'✨', req:17, mp:15, cd:45, type:'buff', buff:{id:'bencao', t:60, def:0.25, regen:1}, desc:'+25% de defesa e recuperação de vida por 60 segundos.'},
+  punho:        {cls:'druida', name:'Punho Sagrado', icon:'👊', req:20, fp:10, cd:6, type:'hit', mult:1.9, stat:'int', desc:'Golpe de luz com 190% do dano, usando Inteligência.'},
+  bola_fogo:    {cls:'mago', name:'Bola de Fogo', icon:'🔥', req:15, mp:8, cd:2.5, type:'bolt', fx:'fire', mult:1.9, desc:'Magia à distância com 190% do dano.'},
+  lanca_gelo:   {cls:'mago', name:'Lança de Gelo', icon:'❄️', req:17, mp:12, cd:6, type:'bolt', fx:'ice', mult:1.5, slow:4, desc:'150% do dano e deixa o alvo 40% mais lento por 4 segundos.'},
+  tempestade:   {cls:'mago', name:'Tempestade', icon:'⛈️', req:20, mp:25, cd:12, type:'aoe', around:'target', fx:'storm', radius:4.5, mult:1.5, desc:'Raio que acerta o alvo e quem estiver perto com 150% do dano.'},
+  tiro_certeiro:{cls:'arqueiro', name:'Tiro Certeiro', icon:'🎯', req:15, fp:6, cd:3, type:'bolt', fx:'arrow', mult:1.9, critAdd:0.5, desc:'190% do dano e +50% de chance de crítico.'},
+  olho_aguia:   {cls:'arqueiro', name:'Olho de Águia', icon:'🦅', req:17, mp:10, cd:40, type:'buff', buff:{id:'aguia', t:30, crit:0.25}, desc:'+25% de chance de crítico por 30 segundos.'},
+  chuva_flechas:{cls:'arqueiro', name:'Chuva de Flechas', icon:'🌧️', req:20, fp:15, cd:10, type:'aoe', around:'target', fx:'arrow', radius:4.5, mult:1.4, desc:'Acerta o alvo e quem estiver perto com 140% do dano.'},
 };
 
-const HOTBAR = [
-  {kind:'attack', icon:'⚔️', name:'Atacar'},
-  {kind:'skill', id:'golpe_forte'},
-  {kind:'skill', id:'corte_duplo'},
-  {kind:'item', id:'pocao_vida'},
-  {kind:'item', id:'pocao_energia'},
-  null, null, null, null
-];
+const CLASSES = {
+  aprendiz:  {name:'Aprendiz', main:'str', hp:1},
+  guerreiro: {name:'Guerreiro', main:'str', hp:1.2, weapon:'espada_soldado', desc:'Luta corpo a corpo, com mais vida e defesa. Usa espadas e machados.',
+              quest:{item:'presa', n:6, label:'Presas de Javali', where:'Os Javalis de Pedra vivem no morro a nordeste.'}},
+  druida:    {name:'Druida', main:'str', hp:1.05, mpInt:4, weapon:'cajado_carvalho', desc:'Suporte: cura, fortalece e luta de perto com o cajado.',
+              quest:{item:'chapeu', n:8, label:'Chapéus de Cogumelo', where:'Os Cogumelos Bravos ficam a noroeste da vila.'}},
+  mago:      {name:'Mago', main:'int', hp:0.9, mpInt:4.5, ranged:true, weapon:'varinha_arcana', desc:'Magia à distância: muito dano, pouca vida.',
+              quest:{item:'gosma', n:12, label:'Gosmas de Bolota', where:'As Bolotas pulam a sudeste da vila.'}},
+  arqueiro:  {name:'Arqueiro', main:'dex', hp:0.95, ranged:true, weapon:'arco_curto', desc:'Ataques à distância com arco e muitos críticos.',
+              quest:{item:'pelo', n:10, label:'Pelos de Coelhorn', where:'Os Coelhorns ficam a sudoeste da vila.'}},
+};
+const maxLevel = () => ch.cls === 'aprendiz' ? 15 : 60;
 
 /* =========================================================
    ESTADO DO PERSONAGEM (salvo no navegador)
    ========================================================= */
 function freshChar(){
-  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0,
+  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null,
     inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],
-    eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null}, hp:null, fp:null, mp:null};
+    eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null, voo:null}, hp:null, fp:null, mp:null};
 }
 let ch = freshChar();
 let dirty = false;
@@ -387,16 +445,21 @@ function save(){
 
 const d = {}; // atributos derivados
 function derive(){
-  const w = ch.eq.arma ? ITEMS[ch.eq.arma].atk : [1,3];
-  let armor = 0; ['capacete','peitoral','botas'].forEach(s=>{ if (ch.eq[s]) armor += ITEMS[ch.eq[s]].def; });
-  d.atkMin = w[0] + ch.str*0.5 + ch.L*0.8;
-  d.atkMax = w[1] + ch.str*0.5 + ch.L*0.8;
+  if (!CLASSES[ch.cls]) ch.cls = 'aprendiz';
+  const C = CLASSES[ch.cls];
+  const w = ch.eq.arma && ITEMS[ch.eq.arma] ? ITEMS[ch.eq.arma].atk : [1,3];
+  let armor = 0; ['capacete','peitoral','botas'].forEach(s=>{ if (ch.eq[s] && ITEMS[ch.eq[s]]) armor += ITEMS[ch.eq[s]].def; });
+  const main = ch[C.main];
+  d.w = w;
+  d.atkMin = w[0] + main*0.5 + ch.L*0.8;
+  d.atkMax = w[1] + main*0.5 + ch.L*0.8;
   d.def = ch.sta*0.25 + armor;
-  d.maxHp = Math.round(60 + ch.L*12 + ch.sta*4);
-  d.maxMp = Math.round(20 + ch.L*4 + ch.int*3);
+  d.maxHp = Math.round((60 + ch.L*12 + ch.sta*4)*C.hp);
+  d.maxMp = Math.round(20 + ch.L*4 + ch.int*(C.mpInt||3));
   d.maxFp = Math.round(15 + ch.L*3 + ch.sta*2);
-  d.crit = 0.03 + ch.dex*0.0015;
+  d.crit = 0.03 + ch.dex*0.0015 + (ch.cls === 'arqueiro' ? 0.03 + ch.dex*0.0008 : 0);
   d.aspd = 1 + ch.dex*0.006;
+  d.ranged = !!C.ranged;
   if (ch.hp === null || ch.hp > d.maxHp) ch.hp = d.maxHp;
   if (ch.fp === null || ch.fp > d.maxFp) ch.fp = d.maxFp;
   if (ch.mp === null || ch.mp > d.maxMp) ch.mp = d.maxMp;
@@ -407,8 +470,8 @@ derive();
    AJUDA
    ========================================================= */
 const controls = isTouch
-  ? [['Andar','Joystick à esquerda'],['Correr','Joystick até a borda'],['Escolher alvo','Toque no monstro'],['Atacar','Toque de novo no alvo ou em ⚔️'],['Conversar','Botão 💬'],['Câmera','Arraste o dedo na tela']]
-  : [['Andar','W A S D ou setas'],['Correr','Segure Shift'],['Pular','Espaço'],['Escolher alvo','Clique no monstro ou Tab'],['Atacar','Clique de novo ou tecla 1'],['Atalhos','Teclas 1 a 5'],['Mochila e herói','Teclas I e C'],['Conversar','Enter'],['Câmera','Arraste com o mouse']];
+  ? [['Andar','Joystick à esquerda'],['Escolher alvo','Toque no monstro'],['Atacar','Toque de novo no alvo ou em ⚔️'],['Falar com NPC','Toque nele'],['Voar','🛹 na barra (nível 20)'],['Subir e descer','Botões Subir e Descer'],['Conversar','Botão 💬']]
+  : [['Andar','W A S D ou setas'],['Correr','Segure Shift'],['Pular','Espaço'],['Escolher alvo','Clique no monstro ou Tab'],['Atacar','Clique de novo ou tecla 1'],['Atalhos','Teclas 1 a 5'],['Mochila e herói','Teclas I e C'],['Falar com NPC','Clique nele'],['Voar','Tecla V (nível 20)'],['Subir e descer','Espaço e Q'],['Conversar','Enter']];
 $('controls').innerHTML = controls.map(c=>`<li><b>${c[0]}</b><span>${c[1]}</span></li>`).join('');
 let helpOpen = true, deadOpen = false;
 const blocked = () => helpOpen || deadOpen;
@@ -559,7 +622,7 @@ const isles = [];
   const top = new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.5,14), flat(0x6DBE45)); top.position.y = 0.25; g.add(top);
   const tr = new THREE.Mesh(trunkGeo, flat(0x7A5234)); tr.position.y = 0.4; g.add(tr);
   const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3,0), flat(0x4FA045)); cr.position.y = 2.7; g.add(cr);
-  g.position.set(x,y,z); scene.add(g); isles.push({g,y,ph:rand()*6});
+  g.position.set(x,y,z); scene.add(g); isles.push({g,y,ph:rand()*6,x,z,r});
 });
 
 const clouds = [], cloudGeo = new THREE.IcosahedronGeometry(1,1), cloudMat = flat(0xffffff,{transparent:true, opacity:0.93});
@@ -574,7 +637,7 @@ for (let i=0;i<16;i++){
    ========================================================= */
 function makeHero(opts){
   opts = opts || {};
-  const root = new THREE.Group();
+  const root = new THREE.Group(); root.rotation.order = 'YXZ';
   const skin = lam(0xF2C8A0), tunic = lam(opts.tunic || 0x2E9C8F), pants = lam(0x5B4636), boot = lam(0x3B2A1E), hairM = lam(opts.hair || 0xE07A2E);
   const leg = side => { const p = new THREE.Group(); p.position.set(side*0.2,0.92,0);
     const l = new THREE.Mesh(new THREE.BoxGeometry(0.28,0.72,0.3), pants); l.position.y = -0.36; p.add(l);
@@ -660,11 +723,26 @@ function buildJavali(){
   return {g, body};
 }
 
+function buildGolem(){
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const stone = flat(0x7D8480), dark = flat(0x5F6663), moss = flat(0x5E9C3A), glow = new THREE.MeshBasicMaterial({color:0x7FF3FF});
+  [-1,1].forEach(s=>{ const l = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.8,0.5), dark); l.position.set(s*0.35,0.4,0); body.add(l); });
+  const t = new THREE.Mesh(new THREE.BoxGeometry(1.3,1.1,0.8), stone); t.position.y = 1.3; body.add(t);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(1.36,0.22,0.86), moss); m.position.y = 1.9; body.add(m);
+  const h = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.5,0.55), stone); h.position.set(0,2.15,0.1); body.add(h);
+  [-1,1].forEach(s=>{
+    const a = new THREE.Mesh(new THREE.BoxGeometry(0.4,1.2,0.45), dark); a.position.set(s*0.88,1.15,0.05); body.add(a);
+    const e = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.08,0.04), glow); e.position.set(s*0.14,2.18,0.38); body.add(e);
+  });
+  [[0.3,2.02,-0.2],[-0.35,1.98,0.2]].forEach(p=>{ const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16,0), moss); tuft.position.set(...p); body.add(tuft); });
+  return {g, body};
+}
 const MTYPES = {
   bolota:   {name:'Bolota', agg:false, lv:[1,3], zone:{x:22,z:16,r:11}, count:8, build:buildBolota, h:1.1, r:0.8, speed:2.4, mat:'gosma', hop:true},
   coelhorn: {name:'Coelhorn', agg:false, lv:[4,7], zone:{x:-24,z:24,r:11}, count:7, build:buildCoelhorn, h:1.5, r:0.8, speed:3.2, mat:'pelo', hop:true},
   cogumelo: {name:'Cogumelo Bravo', agg:true, lv:[8,11], zone:{x:-27,z:-24,r:10}, count:7, build:buildCogumelo, h:1.7, r:0.85, speed:2.8, mat:'chapeu'},
   javali:   {name:'Javali de Pedra', agg:true, lv:[12,15], zone:{x:28,z:-22,r:11}, count:6, build:buildJavali, h:1.5, r:1.0, speed:3.6, mat:'presa'},
+  golem:    {name:'Golem de Musgo', agg:true, lv:[16,20], zone:{x:2,z:-44,r:9}, count:6, build:buildGolem, h:2.4, r:1.0, speed:2.6, mat:'musgo', expMult:2},
 };
 
 function makeLabel(text, color){
@@ -692,7 +770,7 @@ function setupStats(m){
   m.maxHp = Math.round((22 + m.lvl*16)*k); m.hp = m.maxHp;
   m.atk = (3 + m.lvl*2.4)*(m.giant ? 1.5 : 1);
   m.def = m.lvl*0.7;
-  m.exp = Math.round((10 + m.lvl*7)*k);
+  m.exp = Math.round((10 + m.lvl*7)*k*(T.expMult||1));
   m.scale = m.giant ? 2.4 : 0.9 + (m.lvl - T.lv[0])*0.07;
   m.mesh.scale.setScalar(m.scale);
   m.radius = T.r*m.scale;
@@ -779,11 +857,15 @@ function removeItem(id, n){
 }
 let potionCd = 0;
 function useItem(id){
+  if (id === 'combustivel'){ useTurbo(); return; }
   if (!countItem(id)){ log(`Sem ${ITEMS[id].name}.`, 'bad'); return; }
   if (potionCd > 0) return;
   if (id==='pocao_vida'){
     if (ch.hp >= d.maxHp){ log('A vida já está cheia.'); return; }
     const v = Math.min(80, d.maxHp - ch.hp); ch.hp += v; floatText(player.x, player.y+2.4, player.z, '+'+Math.round(v), 'heal');
+  } else if (id==='pocao_mana'){
+    if (ch.mp >= d.maxMp){ log('A mana já está cheia.'); return; }
+    ch.mp = Math.min(d.maxMp, ch.mp + 50); floatText(player.x, player.y+2.4, player.z, '+50 mana', 'heal');
   } else if (id==='pocao_energia'){
     if (ch.fp >= d.maxFp){ log('A energia já está cheia.'); return; }
     ch.fp = Math.min(d.maxFp, ch.fp + 40); floatText(player.x, player.y+2.4, player.z, '+40 energia', 'heal');
@@ -793,6 +875,8 @@ function useItem(id){
 function equip(invIndex){
   const s = ch.inv[invIndex], it = ITEMS[s.id];
   if (it.req > ch.L){ log(`Precisa do nível ${it.req}.`, 'bad'); return; }
+  if (it.cls && it.cls !== ch.cls){ log(`Só ${CLASSES[it.cls].name} pode usar.`, 'bad'); return; }
+  if (it.slot === 'voo' && player.flying){ log('Pouse antes de trocar.', 'bad'); return; }
   const old = ch.eq[it.slot];
   ch.inv.splice(invIndex,1);
   if (old) ch.inv.push({id:old, n:1});
@@ -801,40 +885,92 @@ function equip(invIndex){
 }
 function unequip(slot){
   const id = ch.eq[slot]; if (!id) return;
+  if (slot === 'voo' && player.flying){ log('Pouse antes de tirar.', 'bad'); return; }
   if (ch.inv.length >= INV_SIZE){ log('Mochila cheia.', 'bad'); return; }
   ch.eq[slot] = null; ch.inv.push({id, n:1}); derive(); dirty = true; selEq = null; refreshUI();
 }
 
 /* =========================================================
-   JOGADOR, COMBATE, EXPERIÊNCIA
+   JOGADOR, COMBATE, EXPERIÊNCIA, CLASSES E VOO
    ========================================================= */
 const SPAWN = {x:0, z:5};
-const player = {x:SPAWN.x, z:SPAWN.z, y:heightAt(SPAWN.x,SPAWN.z), vy:0, ground:true, face:Math.PI, phase:0, swing:0, lastHit:-99, combatT:0};
+const player = {x:SPAWN.x, z:SPAWN.z, y:heightAt(SPAWN.x,SPAWN.z), vy:0, ground:true, face:Math.PI, phase:0, swing:0, lastHit:-99, combatT:0,
+  flying:false, fspd:0, fdir:Math.PI, turboT:0, upHeld:false, downHeld:false, isle:-1, npcGoal:null};
 let target = null, autoAttack = false, queuedSkill = null, attackCd = 0;
-const cds = {golpe_forte:0, corte_duplo:0};
-let capWarned = false;
+const cds = {};
+let capWarned = false, buffs = [];
+const buffSum = k => buffs.reduce((a,b)=> a + (b[k]||0), 0);
+function addBuff(sk){
+  buffs = buffs.filter(b=> b.id !== sk.buff.id);
+  buffs.push(Object.assign({name:sk.name, icon:sk.icon}, sk.buff));
+  refreshBuffs();
+}
+function refreshBuffs(){ $('buffs').innerHTML = buffs.map(b=>`<span title="${b.name}">${b.icon} ${Math.ceil(b.t)}s</span>`).join(''); }
 
+/* ---------- Efeitos: projéteis, anéis, raios ---------- */
+const projectiles = [], effects = [];
+const FX = {
+  fire:  ()=> new THREE.Mesh(new THREE.IcosahedronGeometry(0.28,0), new THREE.MeshBasicMaterial({color:0xFF7A2E})),
+  magic: ()=> new THREE.Mesh(new THREE.IcosahedronGeometry(0.22,0), new THREE.MeshBasicMaterial({color:0xB38CFF})),
+  ice:   ()=> { const g = new THREE.ConeGeometry(0.12,0.8,6); g.rotateX(Math.PI/2); return new THREE.Mesh(g, new THREE.MeshBasicMaterial({color:0xA8E6FF})); },
+  arrow: ()=> { const g = new THREE.CylinderGeometry(0.03,0.03,0.9,5); g.rotateX(Math.PI/2); return new THREE.Mesh(g, new THREE.MeshBasicMaterial({color:0x8A5A2B})); },
+};
+const aimPoint = m => new THREE.Vector3(m.x, heightAt(m.x,m.z) + m.type.h*m.scale*0.5, m.z);
+function shoot(fx, m, onHit){
+  const mesh = (FX[fx] || FX.magic)(); mesh.position.set(player.x, player.y + 1.5, player.z); scene.add(mesh);
+  const dist = Math.hypot(m.x - player.x, m.z - player.z);
+  projectiles.push({mesh, m, t:0, dur:Math.min(0.5, 0.08 + dist/30), from:mesh.position.clone(), onHit});
+}
+function ringFx(x, z, radius, color){
+  const mesh = new THREE.Mesh(new THREE.RingGeometry(0.8,1,32), new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.85, depthWrite:false, side:THREE.DoubleSide}));
+  mesh.rotation.x = -Math.PI/2; mesh.position.set(x, surfaceY(x,z) + 0.12, z); scene.add(mesh);
+  effects.push({mesh, t:0, dur:0.45, r:radius, kind:'ring'});
+}
+function boltFx(x, z){
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.25,14,0.25), new THREE.MeshBasicMaterial({color:0xFFF27A, transparent:true, opacity:0.9}));
+  mesh.position.set(x, heightAt(x,z) + 7, z); scene.add(mesh); effects.push({mesh, t:0, dur:0.3, kind:'flash'});
+}
+function updateFx(dt){
+  for (let i = projectiles.length-1; i >= 0; i--){
+    const p = projectiles[i]; p.t += dt;
+    const to = aimPoint(p.m), k = Math.min(1, p.t/p.dur);
+    p.mesh.position.lerpVectors(p.from, to, k); p.mesh.lookAt(to);
+    if (k >= 1){ scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); projectiles.splice(i,1); if (!p.m.dead) p.onHit(); }
+  }
+  for (let i = effects.length-1; i >= 0; i--){
+    const e = effects[i]; e.t += dt; const k = e.t/e.dur;
+    if (e.kind === 'ring') e.mesh.scale.setScalar(0.3 + k*e.r);
+    e.mesh.material.opacity = Math.max(0, 0.85*(1-k));
+    if (k >= 1){ scene.remove(e.mesh); e.mesh.geometry.dispose(); e.mesh.material.dispose(); effects.splice(i,1); }
+  }
+}
+
+/* ---------- Dano ---------- */
 function hitChance(m){ return Math.min(0.98, Math.max(0.4, 0.88 + (ch.L - m.lvl)*0.02 + (ch.dex-15)*0.004)); }
-function playerHit(m, mult){
+function playerHit(m, mult, o){
+  o = o || {};
   if (m.dead) return;
   const y = m.type.h*m.scale + 0.3;
-  if (Math.random() > hitChance(m)){ floatText(m.x, y, m.z, 'Errou', 'miss'); return; }
-  let dmg = rnd(d.atkMin, d.atkMax)*mult - m.def, crit = Math.random() < d.crit;
+  if (!o.magic && Math.random() > hitChance(m)){ floatText(m.x, y, m.z, 'Errou', 'miss'); return; }
+  const stat = o.stat || CLASSES[ch.cls].main;
+  let dmg = (rnd(d.w[0], d.w[1]) + ch[stat]*0.5 + ch.L*0.8) * mult * (1 + buffSum('atk')) - m.def;
+  const crit = Math.random() < d.crit + buffSum('crit') + (o.critAdd||0);
   if (crit) dmg *= 1.8;
   dmg = Math.max(1, Math.round(dmg));
   m.hp -= dmg; m.hitT = 0.15; player.combatT = 0;
   floatText(m.x, y, m.z, String(dmg), crit ? 'crit' : '');
   if (m.state !== 'return') m.state = 'chase';
   if (m.hp <= 0) killMonster(m);
+  if (m === target) refreshTarget();
 }
 function killMonster(m){
   m.hp = 0; m.dead = true; m.dying = 0.6; m.deadT = m.giant ? 45 : 9;
   log(`Você derrotou ${m.name}.`);
   gainExp(m);
-  // drops
   spawnDrop(m.x, m.z, {gold: rndInt(m.lvl*2+2, m.lvl*4+5)*(m.giant?5:1)});
-  if (Math.random() < 0.28) spawnDrop(m.x, m.z, {id:'pocao_vida', n:1});
-  if (Math.random() < 0.14) spawnDrop(m.x, m.z, {id:'pocao_energia', n:1});
+  if (Math.random() < 0.26) spawnDrop(m.x, m.z, {id:'pocao_vida', n:1});
+  if (Math.random() < 0.14) spawnDrop(m.x, m.z, {id:'pocao_mana', n:1});
+  if (Math.random() < 0.12) spawnDrop(m.x, m.z, {id:'pocao_energia', n:1});
   if (Math.random() < 0.55) spawnDrop(m.x, m.z, {id:m.type.mat, n:m.giant?5:1});
   if (Math.random() < (m.giant ? 0.7 : 0.05)){
     const pool = EQUIP_IDS.filter(id => ITEMS[id].req <= m.lvl + 2 && ITEMS[id].req >= m.lvl - 6);
@@ -843,8 +979,9 @@ function killMonster(m){
   if (target === m){ target = null; autoAttack = false; queuedSkill = null; }
 }
 function gainExp(m){
-  if (ch.L >= MAX_LEVEL){
-    if (!capWarned){ log('Nível 15 é o limite do Aprendiz. A missão de classe chega na Fase 4.', 'gold'); capWarned = true; }
+  const cap = maxLevel();
+  if (ch.L >= cap){
+    if (!capWarned){ log(ch.cls === 'aprendiz' ? 'Nível 15 é o limite do Aprendiz. Fale com um instrutor na vila para escolher sua classe.' : 'Você chegou ao nível máximo desta versão.', 'gold'); capWarned = true; }
     return;
   }
   let mult = 1; const diff = ch.L - m.lvl;
@@ -852,20 +989,22 @@ function gainExp(m){
   const gain = Math.round(m.exp*mult); if (!gain) return;
   ch.exp += gain; floatText(player.x, player.y+2.6, player.z, `+${gain} EXP`, 'exp');
   let up = false;
-  while (ch.L < MAX_LEVEL && ch.exp >= expNeed(ch.L)){ ch.exp -= expNeed(ch.L); ch.L++; ch.pts += 2; up = true; }
-  if (ch.L >= MAX_LEVEL) ch.exp = 0;
+  while (ch.L < cap && ch.exp >= expNeed(ch.L)){ ch.exp -= expNeed(ch.L); ch.L++; ch.pts += 2; up = true; }
+  if (ch.L >= cap) ch.exp = 0;
   if (up){
     derive(); ch.hp = d.maxHp; ch.fp = d.maxFp; ch.mp = d.maxMp;
     banner(`Nível ${ch.L}!`, '+2 pontos de atributo na janela Herói');
     log(`Você subiu para o nível ${ch.L}.`, 'gold');
-    if (ch.L === SKILLS.corte_duplo.req) log('Nova habilidade liberada: Corte Duplo.', 'gold');
+    Object.values(SKILLS).forEach(s=>{ if (s.cls === ch.cls && s.req === ch.L) log(`Nova habilidade liberada: ${s.name}.`, 'gold'); });
+    if (ch.L === 15 && ch.cls === 'aprendiz') log('Nível 15: fale com um instrutor na vila para escolher sua classe.', 'gold');
+    if (ch.L === 20) log('Nível 20: agora você pode voar! Fale com o Piloto Tito na vila.', 'gold');
     save();
   }
   dirty = true; refreshUI();
 }
 function hurtPlayer(m){
   if (deadOpen) return;
-  const dmg = Math.max(1, Math.round(m.atk*rnd(0.85,1.15) - d.def));
+  const dmg = Math.max(1, Math.round(m.atk*rnd(0.85,1.15) - d.def*(1 + buffSum('def'))));
   if (Math.random() < Math.min(0.3, 0.04 + (ch.dex-15)*0.003 + (ch.L - m.lvl)*0.01)){ floatText(player.x, player.y+2.2, player.z, 'Esquivou', 'miss'); return; }
   ch.hp -= dmg; player.lastHit = clock.elapsedTime; player.combatT = 0;
   floatText(player.x, player.y+2.2, player.z, '-'+dmg, 'hurt'); hurtFlash();
@@ -873,13 +1012,14 @@ function hurtPlayer(m){
 }
 function die(){
   deadOpen = true; $('dead').hidden = false; $('revive').focus();
-  target = null; autoAttack = false; queuedSkill = null;
+  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null;
+  if (player.flying) setFlying(false);
   monsters.forEach(m=>{ if (m.state==='chase') m.state = 'return'; });
 }
 $('revive').addEventListener('click', ()=>{
   const loss = Math.round(expNeed(ch.L)*0.03); ch.exp = Math.max(0, ch.exp - loss);
   ch.hp = d.maxHp; ch.fp = d.maxFp;
-  player.x = SPAWN.x; player.z = SPAWN.z; player.y = heightAt(SPAWN.x,SPAWN.z); player.vy = 0;
+  player.x = SPAWN.x; player.z = SPAWN.z; player.y = heightAt(SPAWN.x,SPAWN.z); player.vy = 0; player.isle = -1;
   deadOpen = false; $('dead').hidden = true; if (loss) log(`Você perdeu ${loss} de experiência.`, 'bad');
   save(); refreshUI();
 });
@@ -891,62 +1031,291 @@ function nearestMonster(maxD){
 }
 function selectTarget(m){ target = m; if (!m){ autoAttack = false; queuedSkill = null; } refreshTarget(); }
 function startAttack(){
+  if (player.flying){ log('Pouse para atacar.'); return false; }
   if (!target || target.dead){ const n = nearestMonster(14); if (!n){ log('Nenhum monstro por perto.'); return false; } target = n; }
-  autoAttack = true; refreshTarget(); return true;
+  autoAttack = true; player.npcGoal = null; refreshTarget(); return true;
+}
+
+/* ---------- Habilidades ---------- */
+const hasRes = sk => !(sk.fp && ch.fp < sk.fp) && !(sk.mp && ch.mp < sk.mp);
+const resMsg = sk => log(sk.mp && ch.mp < sk.mp ? 'Mana insuficiente.' : 'Energia insuficiente.', 'bad');
+function pay(id){ const sk = SKILLS[id]; if (sk.fp) ch.fp -= sk.fp; if (sk.mp) ch.mp -= sk.mp; cds[id] = sk.cd; dirty = true; }
+function aoeAt(x, z, sk){
+  monsters.filter(m=> !m.dead && Math.hypot(m.x-x, m.z-z) < sk.radius + m.radius*0.5)
+    .forEach(m=> playerHit(m, sk.mult, {magic: ch.cls === 'mago'}));
+}
+function useSkill(id){
+  const sk = SKILLS[id];
+  if (!sk || sk.cls !== ch.cls) return;
+  if (sk.req > ch.L){ log(`${sk.name} libera no nível ${sk.req}.`); return; }
+  if ((cds[id]||0) > 0) return;
+  if (!hasRes(sk)){ resMsg(sk); return; }
+  if (sk.type === 'buff'){
+    pay(id); addBuff(sk); player.swing = 0.3;
+    floatText(player.x, player.y+2.6, player.z, sk.name, 'loot'); ringFx(player.x, player.z, 3, 0xF2C14E); refreshHotbar(); return;
+  }
+  if (sk.type === 'heal'){
+    if (ch.hp >= d.maxHp){ log('A vida já está cheia.'); return; }
+    pay(id); const got = Math.min(Math.round(20 + ch.int*2.2 + ch.L*3), d.maxHp - ch.hp); ch.hp += got;
+    floatText(player.x, player.y+2.4, player.z, '+'+Math.round(got), 'heal'); ringFx(player.x, player.z, 2.5, 0x7BE495); refreshHotbar(); return;
+  }
+  if (player.flying){ log('Pouse para atacar.'); return; }
+  if (sk.type === 'aoe' && sk.around === 'self'){
+    if (!monsters.some(m=> !m.dead && Math.hypot(m.x-player.x, m.z-player.z) < sk.radius + m.radius*0.5)){ log('Nenhum monstro por perto.'); return; }
+    pay(id); player.swing = 0.3; floatText(player.x, player.y+2.6, player.z, sk.name, 'loot');
+    ringFx(player.x, player.z, sk.radius, 0xFFFFFF); aoeAt(player.x, player.z, sk); refreshHotbar(); return;
+  }
+  if (startAttack()){ queuedSkill = id; refreshHotbar(); }
+}
+function skillOnTarget(id, m){
+  const sk = SKILLS[id];
+  pay(id); floatText(player.x, player.y+2.6, player.z, sk.name, 'loot');
+  if (sk.type === 'hit') playerHit(m, sk.mult, {stat:sk.stat});
+  else if (sk.type === 'double'){ playerHit(m, sk.mult); setTimeout(()=>{ if (!m.dead){ player.swing = 0.3; playerHit(m, sk.mult); } }, 220); }
+  else if (sk.type === 'bolt') shoot(sk.fx, m, ()=>{ playerHit(m, sk.mult, {magic: ch.cls === 'mago', critAdd: sk.critAdd}); if (sk.slow) m.slowT = sk.slow; });
+  else if (sk.type === 'aoe'){ if (sk.fx === 'storm') boltFx(m.x, m.z); ringFx(m.x, m.z, sk.radius, sk.fx === 'storm' ? 0xFFF27A : 0xC9A46A); aoeAt(m.x, m.z, sk); }
+}
+function normalAttack(m){
+  if (d.ranged){ const magic = ch.cls === 'mago'; shoot(magic ? 'magic' : 'arrow', m, ()=> playerHit(m, 1, {magic})); }
+  else playerHit(m, 1);
 }
 function useSlot(i){
   if (blocked()) return;
   const s = HOTBAR[i]; if (!s) return;
-  if (s.kind === 'attack'){ startAttack(); }
-  else if (s.kind === 'skill'){
-    const sk = SKILLS[s.id];
-    if (sk.req > ch.L){ log(`${sk.name} libera no nível ${sk.req}.`); return; }
-    if (cds[s.id] > 0) return;
-    if (ch.fp < sk.fp){ log('Energia insuficiente.', 'bad'); return; }
-    if (startAttack()) queuedSkill = s.id;
-  }
-  else if (s.kind === 'item'){ useItem(s.id); }
+  if (s.kind === 'attack') startAttack();
+  else if (s.kind === 'skill') useSkill(s.id);
+  else if (s.kind === 'item') useItem(s.id);
+  else if (s.kind === 'fly') toggleFly();
 }
+
+/* ---------- Armas e montarias no modelo ---------- */
+function weaponMesh(cls){
+  const g = new THREE.Group();
+  if (cls === 'druida' || cls === 'mago'){
+    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.05,1.5,6), lam(cls === 'mago' ? 0x3B2F5C : 0x7A5234)); staff.position.y = 0.2; g.add(staff);
+    const top = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({color: cls === 'mago' ? 0xB38CFF : 0x7BE495})); top.position.y = 1.02; g.add(top);
+  } else if (cls === 'arqueiro'){
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.55,0.035,5,16,Math.PI), lam(0x8A5A2B)); bow.rotation.z = Math.PI/2; bow.position.y = 0.3; g.add(bow);
+    const str = new THREE.Mesh(new THREE.BoxGeometry(0.01,1.1,0.01), lam(0xEEEEEE)); str.position.y = 0.3; g.add(str);
+  } else {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1,1.1,0.04), lam(0xD6DEE6)); blade.position.y = 0.3; g.add(blade);
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.36,0.08,0.08), lam(0x8A6A2A)); guard.position.y = -0.27; g.add(guard);
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.08,0.26,0.08), lam(0x5B3A22)); grip.position.y = -0.44; g.add(grip);
+  }
+  return g;
+}
+function setHeroWeapon(h, cls){
+  h.torso.remove(h.back); h.armR.remove(h.hand);
+  h.back = weaponMesh(cls); h.back.position.set(0,0.05,-0.28); h.back.rotation.z = 0.7; h.torso.add(h.back);
+  h.hand = weaponMesh(cls); h.hand.position.set(0,-0.7,0.25); h.hand.rotation.set(Math.PI/2,0,0); h.hand.visible = false; h.armR.add(h.hand);
+}
+function makeBoard(){
+  const g = new THREE.Group(), paint = lam(0xA8703A);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.75,0.09,1.9), paint); deck.position.y = 0.02; g.add(deck);
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.05,0.25), lam(0xF4EEDC)); trim.position.set(0,0.07,0.75); g.add(trim);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.06,0.3,0.4), paint); fin.position.set(0,-0.15,-0.7); g.add(fin);
+  g.userData.paint = paint; g.visible = false; return g;
+}
+function makeBroom(){
+  const g = new THREE.Group(), paint = lam(0xA8703A);
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,2.3,6), paint); handle.rotation.x = Math.PI/2; handle.position.set(0,0.78,0.15); g.add(handle);
+  const br = new THREE.Mesh(new THREE.ConeGeometry(0.28,0.8,8), lam(0xD9B45A)); br.rotation.x = Math.PI/2; br.position.set(0,0.78,-1.2); g.add(br);
+  g.userData.paint = paint; g.visible = false; return g;
+}
+function showFlyerType(h, type, color){
+  if (!h.flyer){ h.flyer = {board:makeBoard(), broom:makeBroom()}; h.root.add(h.flyer.board); h.root.add(h.flyer.broom); }
+  h.flyer.board.visible = type === 'board'; h.flyer.broom.visible = type === 'broom';
+  if (type) h.flyer[type].userData.paint.color.setHex(color || 0xA8703A);
+  h.flyType = type || null;
+  if (!type){ h.armL.rotation.z = 0; h.armR.rotation.z = 0; h.root.rotation.x = 0; }
+}
+
+/* ---------- Voo ---------- */
+function setFlying(on){
+  player.flying = on; document.body.classList.toggle('flying', on);
+  $('jump').textContent = on ? 'Subir' : 'Pular';
+  const it = on ? ITEMS[ch.eq.voo] : null;
+  showFlyerType(hero, it ? it.fly : null, it ? it.color : 0);
+  player.upHeld = player.downHeld = false;
+  refreshHotbar();
+}
+function toggleFly(){
+  if (blocked()) return;
+  if (player.flying){ setFlying(false); player.vy = 0; player.ground = false; player.isle = null; log('Você pousou.'); return; }
+  if (ch.L < 20){ log('Voar libera no nível 20.'); return; }
+  if (!ch.eq.voo){ log('Compre uma prancha ou vassoura com o Piloto Tito, na vila, e equipe pela mochila.'); return; }
+  if (Math.hypot(player.x, player.z) < 10){ log('Não é possível decolar dentro da vila.'); return; }
+  if (clock.elapsedTime - player.lastHit < 3){ log('Não dá para decolar em combate.', 'bad'); return; }
+  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; refreshTarget();
+  player.fspd = 0; player.fdir = player.face; player.y += 1.2; player.vy = 0;
+  setFlying(true);
+  log(isTouch ? 'Decolou! Use os botões Subir e Descer.' : 'Decolou! Espaço sobe e Q desce.', 'good');
+}
+function useTurbo(){
+  if (!player.flying){ log('Use o combustível durante o voo.'); return; }
+  if (!countItem('combustivel')){ log('Sem Combustível de Voo. O Piloto Tito vende.'); return; }
+  removeItem('combustivel', 1); player.turboT = 12; dirty = true;
+  floatText(player.x, player.y+2.4, player.z, 'Turbo!', 'exp'); refreshUI();
+}
+function fallRespawn(){
+  if (player.flying) setFlying(false);
+  player.x = SPAWN.x; player.z = SPAWN.z; player.y = heightAt(SPAWN.x,SPAWN.z); player.vy = 0; player.isle = -1;
+  log('Você caiu das nuvens e acordou na vila.', 'bad');
+}
+
+/* ---------- Classe: prova e troca ---------- */
+function finishQuest(cls){
+  const C = CLASSES[cls], q = C.quest;
+  if (countItem(q.item) < q.n) return;
+  removeItem(q.item, q.n);
+  ch.cls = cls; ch.quest = null; capWarned = false;
+  ch.str = ch.sta = ch.dex = ch.int = 15; ch.pts = 2*(ch.L - 1);
+  const old = ch.eq.arma; ch.eq.arma = C.weapon; if (old) ch.inv.push({id:old, n:1});
+  derive(); ch.hp = d.maxHp; ch.mp = d.maxMp; ch.fp = d.maxFp;
+  buffs = []; refreshBuffs(); buildHotbar(); setHeroWeapon(hero, cls);
+  banner(`Você agora é ${C.name}!`, 'Distribua seus pontos na janela Herói');
+  log(`Você se tornou ${C.name}. Seus atributos voltaram ao início: distribua ${ch.pts} pontos.`, 'gold');
+  save(); refreshUI();
+}
+
+/* ---------- NPCs da vila ---------- */
+const NPCS = [
+  {id:'guerreiro', name:'Capitão Borin', role:'Instrutor de Guerreiro', x:5.5, z:3.5, tunic:0x8C2F2F, hair:0x3B2A1E},
+  {id:'druida', name:'Irmã Aurélia', role:'Instrutora de Druida', x:-5.5, z:3.5, tunic:0xE8E1C8, hair:0xF2D16B},
+  {id:'mago', name:'Mestre Eldran', role:'Instrutor de Mago', x:-5, z:-4.5, tunic:0x4B3C8C, hair:0xDADADA},
+  {id:'arqueiro', name:'Caçadora Nyra', role:'Instrutora de Arqueiro', x:5, z:-4.5, tunic:0x3C6B3A, hair:0x6B3A1E},
+  {id:'voo', name:'Piloto Tito', role:'Mestre de Voo e mercador', x:0, z:-7.5, tunic:0x2F6FA8, hair:0xE07A2E},
+];
+const npcObjs = NPCS.map(n=>{
+  const h = makeHero({tunic:n.tunic, hair:n.hair}), y = heightAt(n.x, n.z);
+  if (n.id !== 'voo'){ setHeroWeapon(h, n.id); }
+  h.root.position.set(n.x, y, n.z); h.root.rotation.y = Math.atan2(-n.x, -n.z); h.shadow.position.set(n.x, y + 0.05, n.z);
+  const lab = makeLabel(n.name, '#F2C14E'); lab.position.y = 2.8; h.root.add(lab);
+  const mark = makeLabel('!', '#F2C14E'); mark.scale.set(3.6, 1.1, 1); mark.position.y = 3.35; mark.visible = false; h.root.add(mark);
+  colliders.push({x:n.x, z:n.z, r:0.6});
+  return Object.assign({h, mark}, n);
+});
+function updateNpcs(t){
+  npcObjs.forEach((n,i)=>{
+    n.h.torso.position.y = 1.35 + Math.sin(t*2 + i)*0.02;
+    let show;
+    if (n.id === 'voo') show = ch.L >= 20 && !ch.eq.voo && !ch.inv.some(s=> ITEMS[s.id] && ITEMS[s.id].slot === 'voo');
+    else show = ch.cls === 'aprendiz' && ch.L >= 15 && (!ch.quest || ch.quest.cls === n.id);
+    n.mark.visible = show; n.mark.position.y = 3.35 + Math.sin(t*3)*0.08;
+  });
+}
+function goToNpc(n){
+  if (player.flying){ log('Pouse para falar com alguém.'); return; }
+  autoAttack = false; queuedSkill = null;
+  if (Math.hypot(n.x - player.x, n.z - player.z) < 3) openNpc(n); else player.npcGoal = n;
+}
+let npcOpen = null;
+function openNpc(n){
+  npcOpen = n; const w = $('winNpc'); w.hidden = false; w.style.zIndex = ++zTop;
+  $('npcTitle').textContent = n.name; renderNpc();
+  w.style.left = Math.max(8, (innerWidth - w.offsetWidth)/2) + 'px'; w.style.top = (innerWidth < 760 ? 70 : 90) + 'px';
+}
+function renderNpc(){
+  const n = npcOpen; if (!n) return;
+  let html = `<p class="role">${n.role}</p>`;
+  if (n.id === 'voo'){
+    html += `<p>${ch.L >= 20 ? 'Com uma prancha ou vassoura você voa por cima da ilha e chega às ilhotas no céu. Equipe pela mochila.' : 'Voar libera no nível 20. Você pode comprar antes e guardar na mochila.'}</p>`;
+    SHOP.forEach(id=>{
+      const it = ITEMS[id], extra = it.spd ? `Velocidade ${it.spd}. Nível 20.` : it.desc;
+      html += `<div class="shoprow"><span class="si">${iconHTML(id)}</span><div><b>${it.name}</b><span>${extra}</span></div><button class="btn" type="button" data-buy="${id}" ${ch.gold < it.price ? 'disabled' : ''}>${it.price} ouro</button></div>`;
+    });
+    const qItem = ch.quest ? CLASSES[ch.quest.cls].quest.item : null;
+    const matValue = ch.inv.reduce((a,s)=> a + (ITEMS[s.id].sell && s.id !== qItem ? ITEMS[s.id].sell*s.n : 0), 0);
+    html += `<div class="gold" style="margin-top:10px">Seu ouro <b>${ch.gold.toLocaleString('pt-BR')}</b></div>
+      <div class="actions"><button class="btn ghost" type="button" data-npc="sell" ${matValue ? '' : 'disabled'}>Vender materiais por ${matValue} ouro</button></div>`;
+    if (qItem) html += `<p style="margin-top:8px;font-size:13px">Os materiais da sua prova de classe não entram na venda.</p>`;
+  } else {
+    const C = CLASSES[n.id], q = C.quest;
+    html += `<p>${C.desc}</p>`;
+    if (ch.cls === n.id) html += `<p>Bom te ver de novo. Continue treinando: novas habilidades chegam nos níveis 17 e 20.</p>`;
+    else if (ch.cls !== 'aprendiz') html += `<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
+    else if (ch.L < 15) html += `<p>Volte quando chegar ao nível 15. Agora você está no nível ${ch.L}.</p>`;
+    else if (!ch.quest) html += `<p>Para provar seu valor, traga-me ${q.n} ${q.label}. ${q.where}</p><p>Ao virar ${C.name}, seus pontos de atributo voltam ao início para você distribuir de novo.</p><div class="actions"><button class="btn" type="button" data-npc="accept">Aceitar a prova</button></div>`;
+    else if (ch.quest.cls !== n.id) html += `<p>Você já está fazendo a prova de ${CLASSES[ch.quest.cls].name}. Fale com o instrutor dessa classe se quiser desistir.</p>`;
+    else {
+      const have = countItem(q.item);
+      html += `<p>Sua prova: ${Math.min(have, q.n)} de ${q.n} ${q.label}. ${have >= q.n ? 'Você conseguiu!' : q.where}</p>
+        <div class="actions">${have >= q.n ? `<button class="btn" type="button" data-npc="finish">Virar ${C.name}</button>` : ''}<button class="btn ghost" type="button" data-npc="quit">Desistir da prova</button></div>`;
+    }
+  }
+  $('npcBody').innerHTML = html;
+}
+function buy(id){
+  const it = ITEMS[id];
+  if (ch.gold < it.price){ log('Ouro insuficiente.', 'bad'); return; }
+  if (!canAdd(id)){ log('Mochila cheia.', 'bad'); return; }
+  ch.gold -= it.price; addItem(id, 1); log(`Comprou ${it.name}.`, 'gold'); dirty = true; save(); refreshUI(); renderNpc();
+}
+function sellMats(){
+  const qItem = ch.quest ? CLASSES[ch.quest.cls].quest.item : null; let total = 0;
+  ch.inv = ch.inv.filter(s=>{ const it = ITEMS[s.id]; if (it.sell && s.id !== qItem){ total += it.sell*s.n; return false; } return true; });
+  ch.gold += total; log(`Vendeu materiais por ${total} ouro.`, 'gold'); dirty = true; save(); refreshUI();
+}
+$('winNpc').addEventListener('click', e=>{
+  const b = e.target.closest('[data-buy]'); if (b){ buy(b.dataset.buy); return; }
+  const a = e.target.closest('[data-npc]'); if (!a || !npcOpen) return;
+  const act = a.dataset.npc;
+  if (act === 'accept'){ ch.quest = {cls:npcOpen.id}; log(`Prova de ${CLASSES[npcOpen.id].name} aceita.`, 'gold'); dirty = true; save(); }
+  if (act === 'quit'){ ch.quest = null; log('Você desistiu da prova.'); dirty = true; save(); }
+  if (act === 'finish') finishQuest(npcOpen.id);
+  if (act === 'sell') sellMats();
+  renderNpc();
+});
 
 /* =========================================================
    INTERFACE: BARRA DE ATALHOS, STATUS, JANELAS
    ========================================================= */
 const hotbarEl = $('hotbar');
-HOTBAR.forEach((s,i)=>{
-  const el = document.createElement('div'); el.className = 'slot' + (s ? '' : ' empty'); el.dataset.i = i;
-  let icon = '', title = '';
-  if (s && s.kind==='attack'){ icon = s.icon; title = 'Atacar o alvo'; }
-  if (s && s.kind==='skill'){ icon = SKILLS[s.id].icon; title = `${SKILLS[s.id].name}: ${SKILLS[s.id].desc} Custa ${SKILLS[s.id].fp} de energia.`; }
-  if (s && s.kind==='item'){ const it = ITEMS[s.id]; icon = `<span class="ico ${it.tint}">${it.icon}</span>`; title = `${it.name}: ${it.desc}`; }
-  el.innerHTML = `<small>${i+1}</small>${icon}<span class="n"></span><div class="cd"></div>`;
-  el.title = title || 'Espaço livre';
-  el.addEventListener('pointerdown', e=>{ e.preventDefault(); e.stopPropagation(); useSlot(i); });
-  hotbarEl.appendChild(el);
-});
+let HOTBAR = [];
+function buildHotbar(){
+  const sk = Object.keys(SKILLS).filter(k=> SKILLS[k].cls === ch.cls);
+  HOTBAR = [{kind:'attack'}, sk[0] ? {kind:'skill', id:sk[0]} : null, sk[1] ? {kind:'skill', id:sk[1]} : null, sk[2] ? {kind:'skill', id:sk[2]} : null,
+    {kind:'item', id:'pocao_vida'}, {kind:'item', id:'pocao_mana'}, {kind:'item', id:'pocao_energia'}, {kind:'fly'}, {kind:'item', id:'combustivel'}];
+  hotbarEl.innerHTML = '';
+  HOTBAR.forEach((s,i)=>{
+    const el = document.createElement('div'); el.className = 'slot' + (s ? '' : ' empty');
+    let icon = '', title = 'Espaço livre';
+    if (s && s.kind === 'attack'){ icon = '⚔️'; title = 'Atacar o alvo'; }
+    if (s && s.kind === 'skill'){ const k = SKILLS[s.id]; icon = k.icon; title = `${k.name}: ${k.desc} Custa ${k.fp ? k.fp + ' de energia' : k.mp + ' de mana'}. Nível ${k.req}.`; }
+    if (s && s.kind === 'item'){ const it = ITEMS[s.id]; icon = iconHTML(s.id); title = `${it.name}: ${it.desc}`; }
+    if (s && s.kind === 'fly'){ icon = '🛹'; title = 'Voar ou pousar (nível 20, precisa de prancha ou vassoura)'; }
+    el.innerHTML = `<small>${i+1}</small>${icon}<span class="n"></span><div class="cd"></div>`;
+    el.title = title;
+    el.addEventListener('pointerdown', e=>{ e.preventDefault(); e.stopPropagation(); useSlot(i); });
+    hotbarEl.appendChild(el);
+  });
+  refreshHotbar();
+}
 function refreshHotbar(){
   [...hotbarEl.children].forEach((el,i)=>{
     const s = HOTBAR[i]; if (!s) return;
-    if (s.kind==='item') el.querySelector('.n').textContent = countItem(s.id);
-    if (s.kind==='skill') el.classList.toggle('locked', SKILLS[s.id].req > ch.L);
-    if (s.kind==='attack') el.classList.toggle('active', autoAttack);
-    if (s.kind==='skill') el.classList.toggle('active', queuedSkill===s.id);
+    if (s.kind === 'item') el.querySelector('.n').textContent = countItem(s.id);
+    if (s.kind === 'skill'){ el.classList.toggle('locked', SKILLS[s.id].req > ch.L); el.classList.toggle('active', queuedSkill === s.id); }
+    if (s.kind === 'attack') el.classList.toggle('active', autoAttack);
+    if (s.kind === 'fly'){ el.classList.toggle('locked', ch.L < 20 || !ch.eq.voo); el.classList.toggle('active', player.flying); }
   });
 }
 function refreshCooldowns(){
   [...hotbarEl.children].forEach((el,i)=>{
     const s = HOTBAR[i]; if (!s) return; let f = 0;
-    if (s.kind==='skill') f = cds[s.id] / SKILLS[s.id].cd;
-    if (s.kind==='item') f = potionCd;
+    if (s.kind === 'skill') f = (cds[s.id]||0) / SKILLS[s.id].cd;
+    if (s.kind === 'item' && s.id !== 'combustivel') f = potionCd;
     el.querySelector('.cd').style.height = Math.max(0,f)*100 + '%';
   });
 }
 function bar(fillId, textId, v, max){ $(fillId).style.width = Math.max(0, v/max*100) + '%'; $(textId).textContent = `${Math.ceil(v)} / ${max}`; }
 function refreshStatus(){
-  $('lvl').textContent = ch.L;
+  $('lvl').textContent = ch.L; $('myCls').textContent = CLASSES[ch.cls].name;
   bar('hpF','hpT',ch.hp,d.maxHp); bar('mpF','mpT',ch.mp,d.maxMp); bar('fpF','fpT',ch.fp,d.maxFp);
-  const need = expNeed(ch.L), pct = ch.L >= MAX_LEVEL ? 100 : ch.exp/need*100;
+  const cap = maxLevel(), need = expNeed(ch.L), pct = ch.L >= cap ? 100 : ch.exp/need*100;
   $('xpF').style.width = pct + '%';
-  $('xpT').textContent = ch.L >= MAX_LEVEL ? 'Nível máximo do Aprendiz' : `${pct.toFixed(1)}%`;
+  $('xpT').textContent = ch.L >= cap ? (ch.cls === 'aprendiz' ? 'Limite do Aprendiz: escolha sua classe na vila' : 'Nível máximo') : `${pct.toFixed(1)}%`;
+  refreshBuffs();
 }
 function refreshTarget(){
   const t = $('target');
@@ -963,8 +1332,10 @@ let selInv = -1, selEq = null;
 function iconHTML(id){ const it = ITEMS[id]; return it.tint ? `<span class="ico ${it.tint}">${it.icon}</span>` : it.icon; }
 function itemInfo(id){
   const it = ITEMS[id]; let s = `<b>${it.name}</b><br>`;
-  if (it.kind==='eq'){
-    s += `${SLOT_NAMES[it.slot]}. ` + (it.atk ? `Ataque ${it.atk[0]} a ${it.atk[1]}.` : `Defesa +${it.def}.`);
+  if (it.kind === 'eq'){
+    if (it.slot === 'voo') s += `${it.fly === 'board' ? 'Prancha' : 'Vassoura'} voadora. Velocidade ${it.spd}.`;
+    else s += `${SLOT_NAMES[it.slot]}. ` + (it.atk ? `Ataque ${it.atk[0]} a ${it.atk[1]}.` : `Defesa +${it.def}.`);
+    if (it.cls) s += ` <span class="req ${it.cls !== ch.cls ? 'no' : ''}">Só ${CLASSES[it.cls].name}.</span>`;
     s += ` <span class="req ${it.req > ch.L ? 'no' : ''}">Nível ${it.req}.</span>`;
   } else s += it.desc;
   return s;
@@ -983,7 +1354,7 @@ function renderInv(){
     const s = ch.inv[selInv], it = ITEMS[s.id];
     let act = '';
     if (it.kind==='use') act = `<button class="btn" data-act="use" type="button">Usar</button>`;
-    if (it.kind==='eq') act = `<button class="btn" data-act="equip" type="button" ${it.req > ch.L ? 'disabled' : ''}>Equipar</button>`;
+    if (it.kind==='eq') act = `<button class="btn" data-act="equip" type="button" ${it.req > ch.L || (it.cls && it.cls !== ch.cls) ? 'disabled' : ''}>Equipar</button>`;
     det.innerHTML = itemInfo(s.id) + `<div class="actions">${act}<button class="btn ghost" data-act="drop" type="button">Descartar</button></div>`;
   } else det.textContent = ch.inv.length ? 'Toque em um item para ver os detalhes.' : 'A mochila está vazia. Derrote monstros para encontrar itens.';
 }
@@ -1002,13 +1373,14 @@ $('winInv').addEventListener('click', e=>{
 const STAT_ROWS = [['str','Força'],['sta','Vigor'],['dex','Destreza'],['int','Inteligência']];
 function renderChar(){
   const need = expNeed(ch.L);
-  let html = `<div class="pts">Nível <b>${ch.L}</b> Aprendiz. ${ch.L>=MAX_LEVEL ? 'Experiência no máximo.' : `Experiência ${ch.exp} de ${need}.`}<br>Pontos para distribuir: <b>${ch.pts}</b></div><div class="stats">`;
+  let html = `<div class="pts">Nível <b>${ch.L}</b> ${CLASSES[ch.cls].name}. ${ch.L>=maxLevel() ? 'Experiência no máximo.' : `Experiência ${ch.exp} de ${need}.`}<br>Pontos para distribuir: <b>${ch.pts}</b></div><div class="stats">`;
   STAT_ROWS.forEach(([k,n])=>{ html += `<span>${n}</span><span class="v">${ch[k]}</span><button class="plus" data-stat="${k}" type="button" aria-label="Adicionar ponto em ${n}" ${ch.pts ? '' : 'disabled'}>+</button>`; });
   html += `</div><div class="derived">
     <span>Ataque</span><span>${Math.round(d.atkMin)} a ${Math.round(d.atkMax)}</span>
     <span>Defesa</span><span>${Math.round(d.def)}</span>
     <span>Chance de crítico</span><span>${(d.crit*100).toFixed(1)}%</span>
     <span>Velocidade de ataque</span><span>${d.aspd.toFixed(2)} por segundo</span>
+    <span>Alcance</span><span>${d.ranged ? 'Distância' : 'Corpo a corpo'}</span>
     <span>Vida máxima</span><span>${d.maxHp}</span>
     <span>Mana máxima</span><span>${d.maxMp}</span>
     <span>Energia máxima</span><span>${d.maxFp}</span></div>
@@ -1032,7 +1404,9 @@ $('winChar').addEventListener('click', e=>{
   if (e.target.id === 'resetBtn'){
     const b = e.target;
     if (b.dataset.confirm){
+      if (player.flying) setFlying(false);
       ch = freshChar(); capWarned = false; derive(); target = null; autoAttack = false; queuedSkill = null;
+      buffs = []; buildHotbar(); setHeroWeapon(hero, 'aprendiz');
       player.x = SPAWN.x; player.z = SPAWN.z; player.y = heightAt(SPAWN.x,SPAWN.z);
       save(); log('Personagem reiniciado.'); refreshUI();
     } else { b.dataset.confirm = '1'; b.textContent = 'Toque de novo para apagar tudo'; }
@@ -1063,8 +1437,10 @@ document.querySelectorAll('.win').forEach(w=>{
 $('bInv').addEventListener('click', ()=> openWin($('winInv'), 1));
 $('bChar').addEventListener('click', ()=> openWin($('winChar'), -1));
 
+buildHotbar();
 function refreshUI(){
   refreshStatus(); refreshHotbar(); refreshTarget();
+  if (!$('winNpc').hidden) renderNpc();
   if (!$('winInv').hidden) renderInv();
   if (!$('winChar').hidden) renderChar();
 }
@@ -1082,7 +1458,8 @@ addEventListener('keydown', e=>{
   if (e.key === 'Enter'){ e.preventDefault(); openChat(); return; }
   const k = e.key.toLowerCase(); keys.add(k);
   if (k===' ' && !e.repeat){ jumpQueued = true; e.preventDefault(); }
-  if (k==='f') toggleFps();
+  if (k==='p') toggleFps();
+  if (k==='v' && !e.repeat) toggleFly();
   if (k==='i' && !e.repeat) openWin($('winInv'), 1);
   if (k==='c' && !e.repeat) openWin($('winChar'), -1);
   if (k==='tab'){ e.preventDefault(); const n = nearestCycle(); if (n) selectTarget(n); }
@@ -1129,13 +1506,19 @@ function tap(cx, cy){
   if (blocked()) return;
   ndc.set(cx/innerWidth*2 - 1, -(cy/innerHeight)*2 + 1);
   raycaster.setFromCamera(ndc, camera);
-  const ray = raycaster.ray; let best = null, bestT = Infinity;
+  const ray = raycaster.ray; let best = null, bestT = Infinity, isNpc = false;
   monsters.forEach(m=>{
     if (m.dead) return;
     tmpV.set(m.x, heightAt(m.x,m.z) + m.type.h*m.scale*0.5, m.z);
     const r = m.radius + (isTouch ? 0.6 : 0.3);
-    if (ray.distanceSqToPoint(tmpV) < r*r){ const t = tmpV.distanceTo(ray.origin); if (t < bestT){ bestT = t; best = m; } }
+    if (ray.distanceSqToPoint(tmpV) < r*r){ const t = tmpV.distanceTo(ray.origin); if (t < bestT){ bestT = t; best = m; isNpc = false; } }
   });
+  npcObjs.forEach(n=>{
+    tmpV.set(n.x, heightAt(n.x,n.z) + 1.1, n.z);
+    const r = isTouch ? 1.3 : 1.0;
+    if (ray.distanceSqToPoint(tmpV) < r*r){ const t = tmpV.distanceTo(ray.origin); if (t < bestT){ bestT = t; best = n; isNpc = true; } }
+  });
+  if (best && isNpc){ goToNpc(best); return; }
   if (best){ if (best === target) startAttack(); else { selectTarget(best); autoAttack = false; queuedSkill = null; } }
   else if (target && !autoAttack) selectTarget(null);
 }
@@ -1152,7 +1535,13 @@ function moveJoy(e){
   knob.style.transform = `translate(${dx}px,${dy}px)`;
   joy.x = dx/max; joy.y = -dy/max;
 }
-$('jump').addEventListener('pointerdown', e=>{ e.preventDefault(); if (!blocked()) jumpQueued = true; });
+{
+  const jb = $('jump'), db = $('down');
+  jb.addEventListener('pointerdown', e=>{ e.preventDefault(); if (blocked()) return; if (player.flying) player.upHeld = true; else jumpQueued = true; });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=> jb.addEventListener(ev, ()=>{ player.upHeld = false; }));
+  db.addEventListener('pointerdown', e=>{ e.preventDefault(); player.downHeld = true; });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=> db.addEventListener(ev, ()=>{ player.downHeld = false; }));
+}
 
 /* =========================================================
    MINIMAPA E FPS
@@ -1168,15 +1557,30 @@ const mapBase = document.createElement('canvas'); mapBase.width = mapBase.height
   g.fillStyle = '#8B6B4A'; colliders.slice(0,3).forEach(h=>{ g.fillRect(MC+h.x*MK-5, MC+h.z*MK-5, 10, 10); });
 }
 function drawMini(){
-  mctx.drawImage(mapBase,0,0);
-  monsters.forEach(m=>{
-    if (m.dead) return;
-    mctx.fillStyle = m === target ? '#FFFFFF' : (m.type.agg ? '#FF6B6B' : '#F7E27A');
-    mctx.beginPath(); mctx.arc(MC+m.x*MK, MC+m.z*MK, m.giant ? 5 : 3, 0, Math.PI*2); mctx.fill();
-  });
+  const surf = surfaceAt(player.x, player.z), world = player.flying || !surf || surf.isle >= 0;
+  let K = MK;
+  if (!world){
+    mctx.drawImage(mapBase,0,0);
+    monsters.forEach(m=>{
+      if (m.dead) return;
+      mctx.fillStyle = m === target ? '#FFFFFF' : (m.type.agg ? '#FF6B6B' : '#F7E27A');
+      mctx.beginPath(); mctx.arc(MC+m.x*MK, MC+m.z*MK, m.giant ? 5 : 3, 0, Math.PI*2); mctx.fill();
+    });
+    mctx.fillStyle = '#F2C14E';
+    npcObjs.forEach(n=>{ mctx.fillRect(MC+n.x*MK-3, MC+n.z*MK-3, 6, 6); });
+  } else {
+    K = (MS/2 - 10)/160;
+    mctx.fillStyle = '#16354F'; mctx.fillRect(0,0,MS,MS);
+    mctx.fillStyle = '#5DAE3E';
+    mctx.beginPath(); mctx.arc(MC, MC, R*K, 0, Math.PI*2); mctx.fill();
+    isles.forEach(s=>{ mctx.beginPath(); mctx.arc(MC+s.x*K, MC+s.z*K, Math.max(3, s.r*K), 0, Math.PI*2); mctx.fill(); });
+  }
+  const lim = MS/2 - 8;
+  const place = (x, z) => { let px = x*K, pz = z*K; const dd = Math.hypot(px,pz); if (dd > lim){ px *= lim/dd; pz *= lim/dd; } return [MC+px, MC+pz]; };
   mctx.fillStyle = '#6EC1FF';
-  others.forEach(o=>{ mctx.beginPath(); mctx.arc(MC+o.x*MK, MC+o.z*MK, 4, 0, Math.PI*2); mctx.fill(); });
-  mctx.save(); mctx.translate(MC+player.x*MK, MC+player.z*MK); mctx.rotate(Math.PI - player.face);
+  others.forEach(o=>{ const [x,y] = place(o.x, o.z); mctx.beginPath(); mctx.arc(x, y, 4, 0, Math.PI*2); mctx.fill(); });
+  const [px, py] = place(player.x, player.z);
+  mctx.save(); mctx.translate(px, py); mctx.rotate(Math.PI - player.face);
   mctx.beginPath(); mctx.moveTo(0,-9); mctx.lineTo(6,7); mctx.lineTo(0,3); mctx.lineTo(-6,7); mctx.closePath();
   mctx.fillStyle = '#F2C14E'; mctx.strokeStyle = '#3A2A05'; mctx.lineWidth = 2; mctx.fill(); mctx.stroke();
   mctx.restore();
@@ -1194,13 +1598,24 @@ addEventListener('resize', resize); resize();
 const clock = new THREE.Clock(), camTarget = new THREE.Vector3(player.x, player.y+1.6, player.z), tmpT = new THREE.Vector3();
 const lerpAngle = (a,b,t) => { const dd = ((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; return a + dd*t; };
 
-function pushOut(nx, nz, rad){
-  for (const c of colliders){
-    const dx = nx - c.x, dz = nz - c.z, dd = Math.hypot(dx,dz), min = c.r + rad;
-    if (dd < min && dd > 0.0001){ nx = c.x + dx/dd*min; nz = c.z + dz/dd*min; }
+function surfaceAt(x, z){
+  if (Math.hypot(x,z) < R) return {h:heightAt(x,z), isle:-1};
+  for (let i = 0; i < isles.length; i++){ const s = isles[i]; if (Math.hypot(x - s.x, z - s.z) < s.r) return {h:s.g.position.y + 0.5, isle:i}; }
+  return null;
+}
+function surfaceY(x, z){ const s = surfaceAt(x,z); return s ? s.h : 0; }
+function pushOut(nx, nz, rad, isle){
+  if (isle === undefined || isle === -1){
+    for (const c of colliders){
+      const dx = nx - c.x, dz = nz - c.z, dd = Math.hypot(dx,dz), min = c.r + rad;
+      if (dd < min && dd > 0.0001){ nx = c.x + dx/dd*min; nz = c.z + dz/dd*min; }
+    }
+    const dd = Math.hypot(nx,nz), lim = R - 1.5;
+    if (dd > lim){ nx *= lim/dd; nz *= lim/dd; }
+  } else if (isle !== null && isle >= 0){
+    const s = isles[isle], dx = nx - s.x, dz = nz - s.z, dd = Math.hypot(dx,dz), lim = s.r - 0.6;
+    if (dd > lim){ nx = s.x + dx/dd*lim; nz = s.z + dz/dd*lim; }
   }
-  const dd = Math.hypot(nx,nz), lim = R - 1.5;
-  if (dd > lim){ nx *= lim/dd; nz *= lim/dd; }
   return [nx, nz];
 }
 
@@ -1213,10 +1628,10 @@ function updateMonsters(dt, t){
     }
     const T = m.type, dp = Math.hypot(player.x - m.x, player.z - m.z);
     const nearLabel = dp < 32; m.label.visible = nearLabel;
-    if (T.agg && m.state !== 'chase' && m.state !== 'return' && !deadOpen && dp < 7) m.state = 'chase';
+    if (T.agg && m.state !== 'chase' && m.state !== 'return' && !deadOpen && !player.flying && dp < 7) m.state = 'chase';
     let mvx = 0, mvz = 0, sp = 0;
     if (m.state === 'chase'){
-      if (deadOpen || Math.hypot(m.x - m.home.x, m.z - m.home.z) > 22) m.state = 'return';
+      if (deadOpen || player.flying || Math.hypot(m.x - m.home.x, m.z - m.home.z) > 22) m.state = 'return';
       else {
         const range = m.radius + 0.9;
         if (dp > range){ mvx = (player.x - m.x)/dp; mvz = (player.z - m.z)/dp; sp = T.speed*1.35; }
@@ -1234,6 +1649,8 @@ function updateMonsters(dt, t){
       }
       if (m.state === 'wander'){ const dw = Math.hypot(m.wx-m.x, m.wz-m.z); if (dw > 0.5){ mvx = (m.wx-m.x)/dw; mvz = (m.wz-m.z)/dw; sp = T.speed*0.5; } else m.state = 'idle'; }
     }
+    m.slowT = Math.max(0, (m.slowT||0) - dt);
+    if (sp > 0 && m.slowT > 0) sp *= 0.6;
     if (sp > 0){
       const r = pushOut(m.x + mvx*sp*dt, m.z + mvz*sp*dt, m.radius*0.6); m.x = r[0]; m.z = r[1];
       m.face = lerpAngle(m.face, Math.atan2(mvx, mvz), Math.min(1,dt*8)); m.phase += dt*(T.hop ? 7 : 10)*(sp/T.speed);
@@ -1260,73 +1677,101 @@ function updatePlayer(dt, t){
     ix += joy.x; iy += joy.y;
   }
   let mag = Math.hypot(ix,iy); if (mag > 1){ ix /= mag; iy /= mag; mag = 1; }
-  if (mag > 0.15 && autoAttack){ autoAttack = false; queuedSkill = null; refreshHotbar(); }
+  if (mag > 0.15 && (autoAttack || player.npcGoal)){ autoAttack = false; queuedSkill = null; player.npcGoal = null; refreshHotbar(); }
   const run = keys.has('shift') || (joy.id !== null && mag > 0.9);
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
   let mx = rx*ix + fx*iy, mz = rz*ix + fz*iy, speed = (run ? 9 : 5)*mag, moving = mag > 0.05;
-
-  // Ataque automático: vai até o alvo e ataca
   attackCd = Math.max(0, attackCd - dt);
-  if (autoAttack && target && !target.dead && !deadOpen){
-    const dx = target.x - player.x, dz = target.z - player.z, dd = Math.hypot(dx,dz), range = target.radius + 1.1;
-    if (dd > range){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
-    else {
-      moving = false; player.face = lerpAngle(player.face, Math.atan2(dx,dz), Math.min(1,dt*14));
-      if (attackCd <= 0){
-        attackCd = 1/d.aspd; player.swing = 0.3;
-        if (queuedSkill && cds[queuedSkill] <= 0 && ch.fp >= SKILLS[queuedSkill].fp){
-          const sk = SKILLS[queuedSkill]; ch.fp -= sk.fp; cds[queuedSkill] = sk.cd;
-          floatText(player.x, player.y+2.6, player.z, sk.name, 'loot');
-          if (queuedSkill === 'golpe_forte') playerHit(target, 1.8);
-          else { const tg2 = target; playerHit(tg2, 1.2); setTimeout(()=>{ if (!tg2.dead){ player.swing = 0.3; playerHit(tg2, 1.2); refreshTarget(); } }, 220); }
-          queuedSkill = null; refreshHotbar();
-        } else { queuedSkill = null; playerHit(target, 1); }
-        refreshTarget();
+  let surf, g;
+
+  if (player.flying){
+    const fly = ITEMS[ch.eq.voo] || {spd:14};
+    player.turboT = Math.max(0, player.turboT - dt);
+    const maxS = fly.spd * (player.turboT > 0 ? 1.6 : 1), want = mag*maxS;
+    player.fspd += (want - player.fspd)*Math.min(1, dt*(want > player.fspd ? 1.6 : 2.4));
+    if (moving) player.fdir = lerpAngle(player.fdir, Math.atan2(mx,mz), Math.min(1, dt*3.2));
+    player.x += Math.sin(player.fdir)*player.fspd*dt; player.z += Math.cos(player.fdir)*player.fspd*dt;
+    const dw = Math.hypot(player.x, player.z); if (dw > 185){ player.x *= 185/dw; player.z *= 185/dw; }
+    const up = (keys.has(' ') || player.upHeld) ? 1 : 0, down = (keys.has('q') || keys.has('control') || player.downHeld) ? 1 : 0;
+    player.y += (up - down)*9*dt;
+    surf = surfaceAt(player.x, player.z); g = surf ? surf.h : -1000;
+    player.y = Math.min(75, Math.max(surf ? g + 0.7 : -25, player.y));
+    player.face = player.fdir; player.vy = 0; player.ground = false;
+    moving = player.fspd > 0.5;
+  } else {
+    if (player.npcGoal && !deadOpen){
+      const n = player.npcGoal, dx = n.x - player.x, dz = n.z - player.z, dd = Math.hypot(dx,dz);
+      if (dd > 2.6){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
+      else { moving = false; player.npcGoal = null; player.face = Math.atan2(dx,dz); openNpc(n); }
+    }
+    if (autoAttack && target && !target.dead && !deadOpen){
+      const dx = target.x - player.x, dz = target.z - player.z, dd = Math.hypot(dx,dz);
+      const range = d.ranged ? 11 : target.radius + 1.1;
+      if (dd > range){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
+      else {
+        moving = false; player.face = lerpAngle(player.face, Math.atan2(dx,dz), Math.min(1,dt*14));
+        if (attackCd <= 0){
+          attackCd = 1/d.aspd; player.swing = 0.3;
+          if (queuedSkill && (cds[queuedSkill]||0) <= 0 && hasRes(SKILLS[queuedSkill])) skillOnTarget(queuedSkill, target);
+          else normalAttack(target);
+          queuedSkill = null; refreshHotbar(); refreshTarget();
+        }
       }
     }
+    if (moving){
+      const ml = Math.hypot(mx,mz) || 1;
+      const r = pushOut(player.x + (mx/ml)*speed*dt, player.z + (mz/ml)*speed*dt, 0.45, player.isle);
+      player.x = r[0]; player.z = r[1];
+      player.face = lerpAngle(player.face, Math.atan2(mx,mz), Math.min(1, dt*12));
+    }
+    surf = surfaceAt(player.x, player.z); g = surf ? surf.h : -1000;
+    if (jumpQueued && player.ground && !deadOpen){ player.vy = 9; player.ground = false; }
+    player.vy -= 25*dt; player.y += player.vy*dt;
+    if (surf && (player.y <= g || (player.ground && player.vy <= 0 && player.y - g < 0.5))){ player.y = g; player.vy = 0; player.ground = true; player.isle = surf.isle; }
+    else player.ground = false;
+    if (player.y < -35) fallRespawn();
   }
-
-  if (moving){
-    const ml = Math.hypot(mx,mz) || 1;
-    const r = pushOut(player.x + (mx/ml)*speed*dt, player.z + (mz/ml)*speed*dt, 0.45); player.x = r[0]; player.z = r[1];
-    player.face = lerpAngle(player.face, Math.atan2(mx,mz), Math.min(1, dt*12));
-  }
-  const g = heightAt(player.x, player.z);
-  if (jumpQueued && player.ground && !deadOpen){ player.vy = 9; player.ground = false; }
   jumpQueued = false;
-  player.vy -= 25*dt; player.y += player.vy*dt;
-  if (player.y <= g || (player.ground && player.vy <= 0 && player.y - g < 0.5)){ player.y = g; player.vy = 0; player.ground = true; }
-  else player.ground = false;
 
-  // Regeneração fora de combate
+  // Regeneração e buffs
   player.combatT += dt;
   if (!deadOpen && t - player.lastHit > 5){
-    const before = [ch.hp, ch.fp, ch.mp];
     ch.hp = Math.min(d.maxHp, ch.hp + d.maxHp*0.025*dt);
     ch.fp = Math.min(d.maxFp, ch.fp + d.maxFp*0.05*dt);
     ch.mp = Math.min(d.maxMp, ch.mp + d.maxMp*0.05*dt);
-    if (before[0] !== ch.hp || before[1] !== ch.fp) dirty = true;
+  }
+  if (!deadOpen && buffSum('regen')) ch.hp = Math.min(d.maxHp, ch.hp + d.maxHp*0.02*dt);
+  if (buffs.length){
+    buffs.forEach(b=> b.t -= dt);
+    const gone = buffs.filter(b=> b.t <= 0);
+    if (gone.length){ gone.forEach(b=> log(`${b.name} acabou.`)); buffs = buffs.filter(b=> b.t > 0); refreshBuffs(); }
   }
 
   // Animação do herói
-  const h = hero, fighting = autoAttack || player.combatT < 4;
+  const h = hero, fighting = !player.flying && (autoAttack || player.combatT < 4);
   h.back.visible = !fighting; h.hand.visible = fighting;
-  h.root.position.set(player.x, player.y, player.z); h.root.rotation.y = player.face;
-  h.shadow.position.set(player.x, g + 0.05, player.z);
-  const air = Math.min(1, (player.y - g)/2); h.shadow.scale.setScalar(1 - air*0.5); h.shadow.material.opacity = 0.25*(1-air*0.6);
-  let legA = 0, legB = 0, armA = 0, armB = fighting ? -0.5 : 0;
-  const walking = moving && player.ground;
-  if (!player.ground){ legA = -0.6; legB = 0.4; armA = -2.4; armB = -2.4; }
+  h.root.position.set(player.x, player.y + (player.flying ? Math.sin(t*2)*0.08 : 0), player.z); h.root.rotation.y = player.face;
+  h.shadow.visible = !!surf;
+  if (surf){ h.shadow.position.set(player.x, g + 0.05, player.z); const air = Math.min(1, Math.max(0, player.y - g)/(player.flying ? 10 : 2)); h.shadow.scale.setScalar(1 - air*0.5); h.shadow.material.opacity = 0.25*(1-air*0.6); }
+  let legA = 0, legB = 0, armA = 0, armB = fighting ? -0.5 : 0, armZ = 0;
+  const walking = moving && player.ground && !player.flying;
+  if (player.flying){
+    if (h.flyType === 'broom'){ legA = legB = -1.3; armA = armB = -1.1; }
+    else { legA = 0.15; legB = -0.15; armA = armB = -0.2; armZ = 0.7; }
+    h.root.rotation.x = Math.min(0.25, player.fspd/22*0.2);
+  } else if (!player.ground){ legA = -0.6; legB = 0.4; armA = -2.4; armB = -2.4; }
   else if (walking){
     player.phase += dt * (speed > 6 ? 13 : 9);
     const amp = (speed > 6 ? 0.95 : 0.6), s = Math.sin(player.phase);
     legA = s*amp; legB = -s*amp; armA = -s*amp*0.8; armB = fighting ? -0.5 : s*amp*0.8;
   }
+  if (!player.flying) h.root.rotation.x = 0;
   player.swing = Math.max(0, player.swing - dt);
   if (player.swing > 0) armB = -2.6 + (0.3 - player.swing)/0.3*2.9;
   const k = Math.min(1, dt*14), kArm = player.swing > 0 ? 1 : k;
   h.legL.rotation.x += (legA - h.legL.rotation.x)*k; h.legR.rotation.x += (legB - h.legR.rotation.x)*k;
   h.armL.rotation.x += (armA - h.armL.rotation.x)*k; h.armR.rotation.x += (armB - h.armR.rotation.x)*kArm;
+  h.armL.rotation.z += (armZ - h.armL.rotation.z)*k; h.armR.rotation.z += (-armZ - h.armR.rotation.z)*k;
   h.torso.position.y = 1.35 + (player.ground && !walking ? Math.sin(t*2.2)*0.02 : Math.abs(Math.sin(player.phase))*0.05);
   h.torso.rotation.x = walking && speed > 6 ? 0.15 : 0;
 }
@@ -1336,7 +1781,7 @@ function updateDrops(dt, t){
     const dr = drops[i]; dr.age += dt;
     dr.mesh.rotation.y += dt*2; dr.mesh.position.y = heightAt(dr.x,dr.z) + 0.35 + Math.sin(t*3 + i)*0.08;
     const dd = Math.hypot(dr.x - player.x, dr.z - player.z);
-    if ((dr.age > 0.5 && dd < 1.7 && !deadOpen) || dr.age > 90){
+    if ((dr.age > 0.5 && dd < 1.7 && !deadOpen && !player.flying) || dr.age > 90){
       if (dr.age <= 90){
         if (dr.what.gold){ ch.gold += dr.what.gold; floatText(dr.x, dr.mesh.position.y+0.6, dr.z, `+${dr.what.gold} ouro`, 'loot'); }
         else if (!canAdd(dr.what.id)){ if (!dr.warned){ log('Mochila cheia. Descarte algo para pegar o item.', 'bad'); dr.warned = true; } continue; }
@@ -1371,6 +1816,8 @@ function frame(){
   updateMonsters(dt, t);
   updateDrops(dt, t);
   updateOnline(dt, t);
+  updateFx(dt);
+  updateNpcs(t);
 
   // alvo
   if (target && target.dead) selectTarget(null);
@@ -1460,7 +1907,8 @@ async function showChars(){
   data.forEach(row=>{
     const el = document.createElement('div'); el.className = 'charrow';
     const L = (row.dados && row.dados.L) || 1;
-    el.innerHTML = `<div><b></b><span>Nível ${L} Aprendiz</span></div><button class="btn ghost" type="button" data-del>Excluir</button><button class="btn" type="button" data-play>Jogar</button>`;
+    const cn = (CLASSES[(row.dados && row.dados.cls) || 'aprendiz'] || CLASSES.aprendiz).name;
+    el.innerHTML = `<div><b></b><span>Nível ${L} ${cn}</span></div><button class="btn ghost" type="button" data-del>Excluir</button><button class="btn" type="button" data-play>Jogar</button>`;
     el.querySelector('b').textContent = row.nome;
     el.querySelector('[data-play]').addEventListener('click', ()=> enterGame(row));
     el.querySelector('[data-del]').addEventListener('click', async ev=>{
@@ -1495,6 +1943,8 @@ function enterGame(row){
   currentChar = row; online.first = true; online.kicked = false;
   ch = Object.assign(freshChar(), row.dados || {}); capWarned = false;
   derive(); if (ch.hp <= 0) ch.hp = d.maxHp;
+  if (player.flying) setFlying(false);
+  buffs = []; buildHotbar(); setHeroWeapon(hero, ch.cls); player.isle = -1;
   $('myName').textContent = row.nome;
   target = null; autoAttack = false; queuedSkill = null;
   $('chars').hidden = true;
@@ -1627,7 +2077,7 @@ function updateOnline(dt, t){
   online.posT += dt;
   if (online.posT >= 0.1 && online.ws && online.ws.readyState === 1 && online.myId){
     online.posT = 0;
-    const a = player.swing > 0 ? 3 : ((autoAttack || player.combatT < 4) ? 2 : 0);
+    const a = player.flying ? ((ITEMS[ch.eq.voo] || {}).fly === 'broom' ? 5 : 4) : (player.swing > 0 ? 3 : ((autoAttack || player.combatT < 4) ? 2 : 0));
     const msg = {t:'pos', x:+player.x.toFixed(2), y:+player.y.toFixed(2), z:+player.z.toFixed(2), f:+player.face.toFixed(2), a};
     const key = `${msg.x},${msg.y},${msg.z},${msg.f},${a}`;
     if (key !== online.last){ online.last = key; online.ws.send(JSON.stringify(msg)); }
@@ -1638,7 +2088,9 @@ function updateOnline(dt, t){
     o.x += (o.tx - o.x)*k; o.y += (o.ty - o.y)*k; o.z += (o.tz - o.z)*k; o.f = lerpAngle(o.f, o.tf, k);
     const sp = Math.hypot(o.x - ox, o.z - oz)/Math.max(dt, 0.001), h = o.h, g = heightAt(o.x, o.z);
     h.root.position.set(o.x, o.y, o.z); h.root.rotation.y = o.f;
-    h.shadow.position.set(o.x, g + 0.05, o.z);
+    h.shadow.position.set(o.x, g + 0.05, o.z); h.shadow.visible = Math.hypot(o.x, o.z) < R;
+    const flyT = o.a === 5 ? 'broom' : (o.a === 4 ? 'board' : null);
+    if ((h.flyType || null) !== flyT) showFlyerType(h, flyT);
     o.label.visible = Math.hypot(o.x - player.x, o.z - player.z) < 40;
     const walk = sp > 0.6, inAir = o.y - g > 0.3;
     if (walk) o.phase += dt*(sp > 6.5 ? 13 : 9);
@@ -1646,9 +2098,12 @@ function updateOnline(dt, t){
     let la = s*amp, lb = -s*amp, aa = -s*amp*0.8, ab = o.a >= 2 ? -0.5 : s*amp*0.8;
     if (inAir){ la = -0.6; lb = 0.4; aa = -2.4; ab = -2.4; }
     if (o.a === 3) ab = -2.2 + Math.sin(t*20)*0.6;
+    if (flyT === 'broom'){ la = lb = -1.3; aa = ab = -1.1; }
+    else if (flyT === 'board'){ la = 0.15; lb = -0.15; aa = ab = -0.2; }
+    if (flyT){ h.armL.rotation.z = flyT === 'board' ? 0.7 : 0; h.armR.rotation.z = flyT === 'board' ? -0.7 : 0; }
     h.legL.rotation.x += (la - h.legL.rotation.x)*kk; h.legR.rotation.x += (lb - h.legR.rotation.x)*kk;
     h.armL.rotation.x += (aa - h.armL.rotation.x)*kk; h.armR.rotation.x += (ab - h.armR.rotation.x)*kk;
-    h.back.visible = o.a < 2; h.hand.visible = o.a >= 2;
+    h.back.visible = o.a < 2 || o.a >= 4; h.hand.visible = o.a >= 2 && o.a < 4;
   });
   for (let i = bubbles.length-1; i >= 0; i--){ const b = bubbles[i]; b.t -= dt; if (b.t <= 0) dropBubble(b); }
 }

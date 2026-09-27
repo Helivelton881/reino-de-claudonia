@@ -1,4 +1,4 @@
-// Reino De Claudonia - servidor da Fase 3
+// Reino De Claudonia - servidor (Fases 3 e 4)
 // Serve os arquivos do jogo, confere o login no Supabase e mantém os jogadores
 // conectados por WebSocket (posições, chat e salvamento do personagem).
 
@@ -108,10 +108,10 @@ wss.on('connection', ws => {
 
     switch (m.t) {
       case 'pos': {
-        const x = num(m.x, -70, 70), y = num(m.y, -60, 90), z = num(m.z, -70, 70), f = num(m.f, -1000, 1000);
+        const x = num(m.x, -200, 200), y = num(m.y, -80, 120), z = num(m.z, -200, 200), f = num(m.f, -1000, 1000);
         if (x === null || y === null || z === null || f === null) return;
         p.x = x; p.y = y; p.z = z; p.f = f;
-        p.a = [0, 1, 2, 3].includes(m.a) ? m.a : 0;
+        p.a = [0, 1, 2, 3, 4, 5].includes(m.a) ? m.a : 0; // 4 = prancha, 5 = vassoura
         p.moved = true; p.posDirty = true;
         break;
       }

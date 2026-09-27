@@ -1,7 +1,9 @@
-# Reino De Claudonia (Fase 3)
+# Reino De Claudonia (Fases 3 e 4)
 
-MMORPG 3D de navegador. Nesta fase: login, até 3 personagens por conta,
-outros jogadores visíveis na ilha, chat e progresso salvo no banco.
+MMORPG 3D de navegador. Já tem: login, até 3 personagens por conta,
+outros jogadores visíveis na ilha, chat, progresso salvo no banco,
+4 classes (Guerreiro, Druida, Mago, Arqueiro) com prova no nível 15,
+habilidades por classe e voo de prancha ou vassoura a partir do nível 20.
 
 ## Peças
 - `public/index.html`: o jogo (Three.js) com login e escolha de personagem.
