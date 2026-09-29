@@ -1,7 +1,7 @@
 'use strict';
 
 const { GridPathfinder } = require('../../public/js/pathfinding');
-const { solidNaturalColliders } = require('../../public/js/world-collision-map');
+const { solidNaturalColliders, STATIC_NPCS } = require('../../public/js/world-collision-map');
 
 const WORLD_RADIUS = 185;
 const CELL = 8;
@@ -78,7 +78,7 @@ class WorldNavigation {
   constructor({step=1.4,maxNodes=30000}={}){
     this.step=step;
     this.maxNodes=maxNodes;
-    this.colliders=structuralColliders().concat(solidNaturalColliders());
+    this.colliders=structuralColliders().concat(solidNaturalColliders(), STATIC_NPCS);
     this.grid=new Map();
     this.cache=new Map();
     for(const c of this.colliders)this._add(c);

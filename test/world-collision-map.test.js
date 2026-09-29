@@ -19,13 +19,16 @@ test('mapa físico compartilhado é determinístico e tem densidade fixa',()=>{
   assert.ok(Math.abs(solids[0].z-(-49.57773710330561))<1e-9);
 });
 
-test('navegação do servidor inclui obstáculos naturais compartilhados',()=>{
+test('navegação do servidor inclui natureza e NPCs compartilhados',()=>{
   const nav=new WorldNavigation();
   const c=world.solidNaturalColliders()[0];
   assert.equal(nav.blockedAt(c.x,c.z,0),true);
+  assert.equal(world.STATIC_NPCS.length,6);
+  assert.equal(nav.colliders.length,732);
   assert.ok(nav.colliders.some(x=>x.kind==='tree'));
   assert.ok(nav.colliders.some(x=>x.kind==='bush'));
   assert.ok(nav.colliders.some(x=>x.kind==='rock'));
+  for(const npc of world.STATIC_NPCS) assert.equal(nav.blockedAt(npc.x,npc.z,0),true);
 });
 
 test('cliente usa o mesmo mapa físico e não varia sólidos por HQ',()=>{

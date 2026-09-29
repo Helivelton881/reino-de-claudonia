@@ -2252,13 +2252,17 @@ function finishQuest(cls){
 }
 
 /* ---------- NPCs da vila ---------- */
+const npcPhysical = id => {
+  const p = window.ClaudoniaWorldCollision.STATIC_NPCS.find(n=>n.id===id);
+  return p ? {x:p.x,z:p.z} : {x:0,z:0};
+};
 const NPCS = [
-  {id:'guerreiro', name:'Capitão Borin', tag:'[Mestre Guerreiro] Borin', role:'Instrutor de Guerreiro', x:7.5, z:4.7, tunic:0x8C2F2F, hair:0x3B2A1E},
-  {id:'druida', long:true, eye:0x3A9A6A, name:'Irmã Aurélia', tag:'[Mestra Druida] Aurélia', role:'Instrutora de Druida', x:-7.5, z:4.7, tunic:0xE8E1C8, hair:0xF2D16B},
-  {id:'mago', eye:0x7A5AC8, name:'Mestre Eldran', tag:'[Mestre Mago] Eldran', role:'Instrutor de Mago', x:-6.8, z:-6.1, tunic:0x4B3C8C, hair:0xDADADA},
-  {id:'arqueiro', long:true, eye:0x7A5A2A, name:'Caçadora Nyra', tag:'[Mestra Arqueira] Nyra', role:'Instrutora de Arqueiro', x:6.8, z:-6.1, tunic:0x3C6B3A, hair:0x6B3A1E},
-  {id:'voo', name:'Piloto Tito', tag:'[Mestre de Voo] Tito', role:'Mestre de Voo e mercador', x:0, z:-10, tunic:0x2F6FA8, hair:0xE07A2E},
-  {id:'ferreiro', long:true, eye:0x8A3A2A, name:'Ferreira Brunna', tag:'[Ferreira] Brunna', role:'Ferreira: aprimora, compra e vende equipamentos', x:6, z:9.5, tunic:0x6B4A2E, hair:0x2B2B2B},
+  {id:'guerreiro', ...npcPhysical('guerreiro'), name:'Capitão Borin', tag:'[Mestre Guerreiro] Borin', role:'Instrutor de Guerreiro', tunic:0x8C2F2F, hair:0x3B2A1E},
+  {id:'druida', ...npcPhysical('druida'), long:true, eye:0x3A9A6A, name:'Irmã Aurélia', tag:'[Mestra Druida] Aurélia', role:'Instrutora de Druida', tunic:0xE8E1C8, hair:0xF2D16B},
+  {id:'mago', ...npcPhysical('mago'), eye:0x7A5AC8, name:'Mestre Eldran', tag:'[Mestre Mago] Eldran', role:'Instrutor de Mago', tunic:0x4B3C8C, hair:0xDADADA},
+  {id:'arqueiro', ...npcPhysical('arqueiro'), long:true, eye:0x7A5A2A, name:'Caçadora Nyra', tag:'[Mestra Arqueira] Nyra', role:'Instrutora de Arqueiro', tunic:0x3C6B3A, hair:0x6B3A1E},
+  {id:'voo', ...npcPhysical('voo'), name:'Piloto Tito', tag:'[Mestre de Voo] Tito', role:'Mestre de Voo e mercador', tunic:0x2F6FA8, hair:0xE07A2E},
+  {id:'ferreiro', ...npcPhysical('ferreiro'), long:true, eye:0x8A3A2A, name:'Ferreira Brunna', tag:'[Ferreira] Brunna', role:'Ferreira: aprimora, compra e vende equipamentos', tunic:0x6B4A2E, hair:0x2B2B2B},
 ];
 const npcObjs = NPCS.map(n=>{
   const h = makeLegacyHero({tunic:n.tunic, hair:n.hair, long:!!n.long, eye:n.eye}), y = heightAt(n.x, n.z);
