@@ -489,6 +489,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <script src="/js/equipment-manager.js"></script>
 <script src="/js/character-manager.js"></script>
 <script src="/js/world-asset-manager.js"></script>
+<script src="/js/world-collision-map.js"></script>
 <script src="/js/pathfinding.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="/config.js"></script>
@@ -1081,36 +1082,21 @@ function autumnLeaf(x, z){
   const k = rand(), h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
   return new THREE.Color().setHSL(h + (hash(x,z)-0.5)*0.02, h > 0.2 ? 0.45 : 0.75, (h > 0.2 ? 0.4 : 0.55) + hash(z,x)*0.08);
 }
-const trees = [];
-{
-  const occ = new Map(), MAXT = HQ ? 850 : 420;
-  for (let i=0;i<9000 && trees.length<MAXT;i++){
-    const a = rand()*Math.PI*2, rr = Math.sqrt(rand())*(R-6), x = Math.cos(a)*rr, z = Math.sin(a)*rr;
-    if (!freeSpot(x, z, 36) || (inZoneCore(x,z) && rand() < 0.8) || nearHouse(x, z, 3)) continue;
-    const k = cellKey(Math.floor(x/3.6), Math.floor(z/3.6)); if (occ.has(k)) continue; occ.set(k,1);
-    const zk = zoneKeyAt(x,z), y = heightAt(x,z), r = rand();
-    let kind = 'common';
-    if (zk === 'aranha' || zk === 'cogumelo') kind = r < 0.55 ? 'twisted' : 'common';
-    else if (zk === 'golem' || zk === 'ciclope') kind = r < 0.45 ? 'dead' : 'pine';
-    else if (zk === 'javali') kind = r < 0.3 ? 'dead' : r < 0.5 ? 'pine' : 'common';
-    else if (zk === 'lobo' || y > 9) kind = r < 0.75 ? 'pine' : 'common';
-    else kind = r < 0.12 ? 'pine' : r < 0.15 ? 'dead' : 'common';
-    const t = {x, z, kind, rot:rand()*6.28, pine:kind === 'pine'};
-    if (kind === 'common'){
-      t.model = rand() < 0.5 ? 'CommonTree_3' : 'CommonTree_5'; t.h = 6 + rand()*3.5;
-      const green = zk === 'espirito' || (zk === 'coelhorn' && rand() < 0.5);
-      t.color = green ? new THREE.Color().setHSL(0.22 + rand()*0.08, 0.5, 0.45) : autumnLeaf(x,z);
-    } else if (kind === 'pine'){
-      t.model = 'Pine_2'; t.h = 7 + rand()*3.5;
-      t.color = new THREE.Color().setHSL(0.3 + hash(x,z)*0.06, 0.42, 0.34 + hash(z,x)*0.08);
-    } else if (kind === 'twisted'){
-      t.model = 'TwistedTree_1'; t.h = 7 + rand()*2.5;
-      t.color = new THREE.Color().setHSL(rand() < 0.5 ? 0.78 + rand()*0.06 : 0.36, 0.35, 0.36 + rand()*0.08);
-    } else { t.model = 'DeadTree_1'; t.h = 7 + rand()*3; }
-    trees.push(t); vegAdd(t.model, t);
-    addCollider({x, z, r: kind === 'twisted' ? 0.9 : 0.55});
+const sharedCollisionWorld = window.ClaudoniaWorldCollision.generate();
+const trees = sharedCollisionWorld.trees.map(src=>{
+  const t = Object.assign({pine:src.kind === 'pine'}, src), zk = zoneKeyAt(t.x,t.z);
+  if (t.kind === 'common'){
+    const green = zk === 'espirito' || (zk === 'coelhorn' && hash(t.x+17,t.z-9) < 0.5);
+    const k = hash(t.x*1.7,t.z*1.3), h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
+    t.color = green ? new THREE.Color().setHSL(0.22 + hash(t.z,t.x)*0.08, 0.5, 0.45)
+      : new THREE.Color().setHSL(h + (hash(t.x,t.z)-0.5)*0.02, h > 0.2 ? 0.45 : 0.75, (h > 0.2 ? 0.4 : 0.55) + hash(t.z,t.x)*0.08);
+  } else if (t.kind === 'pine'){
+    t.color = new THREE.Color().setHSL(0.3 + hash(t.x,t.z)*0.06, 0.42, 0.34 + hash(t.z,t.x)*0.08);
+  } else if (t.kind === 'twisted'){
+    t.color = new THREE.Color().setHSL(hash(t.x+3,t.z-5) < 0.5 ? 0.78 + hash(t.z,t.x)*0.06 : 0.36, 0.35, 0.36 + hash(t.x,t.z)*0.08);
   }
-}
+  vegAdd(t.model, t); addCollider({x:t.x, z:t.z, r:t.r}); return t;
+});
 // Espalha plantas pequenas: place(x, z) devolve {model, h (altura) ou s (escala), color} ou null
 function scatterVeg(count, place){
   let n = 0;
@@ -1143,12 +1129,11 @@ scatterVeg(HQ ? 800 : 350, (x,z)=>{
   const autumn = rand() < 0.3 && zk !== 'aranha' && zk !== 'cogumelo';
   return {model:m, h, color:autumn ? new THREE.Color().setHSL(0.09+rand()*0.04, 0.7, 0.68) : new THREE.Color().setHSL(0.24+rand()*0.08, 0.5, 0.52+rand()*0.1)};
 });
-// arbustos
-scatterVeg(HQ ? 320 : 120, (x,z)=>{
-  if (!freeSpot(x,z,TOWN+6) || heightAt(x,z) > 10 || nearHouse(x, z, 1)) return null;
-  const m = rand() < 0.45 ? 'Bush_Common_Flowers' : 'Bush_Common', h = 1.2+rand()*0.9;
-  if (h > 1.8) addCollider({x, z, r:0.7});
-  return {model:m, h, color: rand() < 0.4 ? autumnLeaf(x,z) : new THREE.Color().setHSL(0.25+rand()*0.07, 0.45, 0.38)};
+// arbustos compartilhados: mesmos sólidos no cliente e no servidor
+sharedCollisionWorld.bushes.forEach(src=>{
+  const b = Object.assign({},src);
+  b.color = new THREE.Color().setHSL(0.25+hash(b.x,b.z)*0.07,0.45,0.38);
+  vegAdd(b.model,b); if (b.solid) addCollider({x:b.x,z:b.z,r:b.r});
 });
 // cogumelos (muitos no Bosque dos Cogumelos e na Mata das Teias)
 scatterVeg(HQ ? 360 : 200, (x,z)=>{
@@ -1157,12 +1142,10 @@ scatterVeg(HQ ? 360 : 200, (x,z)=>{
   if (!forest && rand() < 0.6) return null;
   return {model: rand() < 0.7 ? 'Mushroom_Common' : 'Mushroom_Laetiporus', h: (forest ? 0.6 : 0.4) + rand()*0.5};
 });
-// pedras (mais no Planalto do Musgo, nas Ruínas e na Colina)
-scatterVeg(HQ ? 340 : 240, (x,z)=>{
-  if (Math.hypot(x,z) < TOWN+8 || distPath(x,z) < 3 || Math.hypot(x-LAKE.x,z-LAKE.z) < LAKE.r+6 || nearHouse(x, z, 1)) return null;
-  const zk = zoneKeyAt(x,z); if (!(zk === 'golem' || zk === 'ciclope' || zk === 'javali') && rand() < 0.45) return null;
-  const h = 0.5 + rand()*1.9; if (h > 1.2) addCollider({x, z, r:0.35*h + 0.2});
-  return {model: rand() < 0.5 ? 'Rock_Medium_1' : 'Rock_Medium_3', h};
+// pedras compartilhadas: mesmas posições e raios de colisão no servidor
+sharedCollisionWorld.rocks.forEach(src=>{
+  const r = Object.assign({},src); vegAdd(r.model,r);
+  if (r.solid) addCollider({x:r.x,z:r.z,r:r.r});
 });
 // pedrinhas perto dos caminhos
 scatterVeg(HQ ? 500 : 220, (x,z)=>{
