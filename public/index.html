@@ -632,7 +632,7 @@ const maxLevel = () => ch.cls === 'aprendiz' ? 15 : 60;
    ESTADO DO PERSONAGEM (salvo no navegador)
    ========================================================= */
 function freshChar(){
-  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null,
+  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[]},
     inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],
     eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null, voo:null}, equp:{}, hp:null, fp:null, mp:null};
 }
@@ -641,6 +641,15 @@ let dirty = false;
 const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
 // Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
 let party = {leader:null, members:[], skills:{}}, trade = null, myGuild = null, guildList = null, guildAsked = false, myShop = null;
+let questCatalog = {}, questState = {active:[], completed:[]}, npcCatalog = [];
+const questForNpc = npcId => Object.values(questCatalog).find(q=>q.npcId===npcId) || null;
+const activeQuestState = questId => (questState.active||[]).find(q=>q.id===questId) || null;
+const activeClassQuest = () => (questState.active||[]).find(q=>questCatalog[q.id]&&questCatalog[q.id].category==='class-trial') || null;
+function applyQuestSync(catalog,state,legacy){
+  if(Array.isArray(catalog)) questCatalog=Object.fromEntries(catalog.map(q=>[q.id,q]));
+  if(state&&Array.isArray(state.active)&&Array.isArray(state.completed)) questState=state;
+  if(legacy!==undefined) ch.quest=legacy;
+}
 // Habilidades de grupo ativas (o servidor manda quantos segundos faltam)
 const partySkill = id => party.members.length > 1 && party.skills && party.skills[id] > Date.now();
 function partyChainBonus(){
@@ -2238,18 +2247,9 @@ function fallRespawn(){
 
 /* ---------- Classe: prova e troca ---------- */
 function finishQuest(cls){
-  const C = CLASSES[cls], q = C.quest;
-  if (countItem(q.item) < q.n) return;
-  if(authoritativeCombat){sendWs({t:'classChange',cls});return;}
-  removeItem(q.item, q.n);
-  ch.cls = cls; ch.quest = null; capWarned = false;
-  ch.str = ch.sta = ch.dex = ch.int = 15; ch.pts = 2*(ch.L - 1);
-  const old = ch.eq.arma, oldUp = ch.equp.arma || 0; ch.eq.arma = C.weapon; ch.equp.arma = 0; if (old) ch.inv.push(eqEntry(old, oldUp));
-  derive(); ch.hp = d.maxHp; ch.mp = d.maxMp; ch.fp = d.maxFp;
-  buffs = []; refreshBuffs(); buildHotbar(); setHeroWeapon(hero, cls);
-  banner(`Você agora é ${C.name}!`, 'Distribua seus pontos na janela Herói');
-  log(`Você se tornou ${C.name}. Seus atributos voltaram ao início: distribua ${ch.pts} pontos.`, 'gold');
-  save(); refreshUI();
+  const q = questForNpc(cls);
+  if (!q){ log('Missão de classe indisponível.', 'bad'); return; }
+  if (!sendWs({t:'quest',action:'turnIn',questId:q.id})) log('Sem conexão com o servidor.', 'bad');
 }
 
 /* ---------- NPCs da vila ---------- */
@@ -2341,25 +2341,33 @@ function renderNpc(){
       const it = ITEMS[id], extra = it.spd ? `Velocidade ${it.spd}. Nível 20.` : it.desc;
       html += `<div class="shoprow"><span class="si">${iconHTML(id)}</span><div><b>${it.name}</b><span>${extra}</span></div><button class="btn" type="button" data-buy="${id}" ${ch.gold < it.price ? 'disabled' : ''}>${it.price} ouro</button></div>`;
     });
-    const qItem = ch.quest ? CLASSES[ch.quest.cls].quest.item : null;
+    const active = activeClassQuest(), qDef = active && questCatalog[active.id], qItem = qDef && qDef.objectives[0] ? qDef.objectives[0].itemId : null;
     const matValue = ch.inv.reduce((a,s)=> a + (ITEMS[s.id].sell && s.id !== qItem ? ITEMS[s.id].sell*s.n : 0), 0);
     html += `<div class="gold" style="margin-top:10px">Seu ouro <b>${ch.gold.toLocaleString('pt-BR')}</b></div>
       <div class="actions"><button class="btn ghost" type="button" data-npc="sell" ${matValue ? '' : 'disabled'}>Vender materiais por ${matValue} ouro</button></div>`;
-    if (qItem) html += `<p style="margin-top:8px;font-size:13px">Os materiais da sua prova de classe não entram na venda.</p>`;
+    if (qItem) html += `<p style="margin-top:8px;font-size:13px">Os materiais da sua missão de classe não entram na venda.</p>`;
   } else if (n.id === 'ferreiro'){
     html += forgeHTML();
   } else {
-    const C = CLASSES[n.id], q = C.quest;
-    html += `<p>${C.desc}</p>`;
-    if (ch.cls === n.id) html += `<p>Bom te ver de novo. Continue treinando: novas habilidades chegam nos níveis 17 e 20.</p>`;
-    else if (ch.cls !== 'aprendiz') html += `<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
-    else if (ch.L < 15) html += `<p>Volte quando chegar ao nível 15. Agora você está no nível ${ch.L}.</p>`;
-    else if (!ch.quest) html += `<p>Para provar seu valor, traga-me ${q.n} ${q.label}. ${q.where}</p><p>Ao virar ${C.name}, seus pontos de atributo voltam ao início para você distribuir de novo.</p><div class="actions"><button class="btn" type="button" data-npc="accept">Aceitar a prova</button></div>`;
-    else if (ch.quest.cls !== n.id) html += `<p>Você já está fazendo a prova de ${CLASSES[ch.quest.cls].name}. Fale com o instrutor dessa classe se quiser desistir.</p>`;
-    else {
-      const have = countItem(q.item);
-      html += `<p>Sua prova: ${Math.min(have, q.n)} de ${q.n} ${q.label}. ${have >= q.n ? 'Você conseguiu!' : q.where}</p>
-        <div class="actions">${have >= q.n ? `<button class="btn" type="button" data-npc="finish">Virar ${C.name}</button>` : ''}<button class="btn ghost" type="button" data-npc="quit">Desistir da prova</button></div>`;
+    const C = CLASSES[n.id], qDef = questForNpc(n.id);
+    if (!C || !qDef){
+      html += '<p>Este NPC ainda não possui uma missão configurada.</p>';
+    } else {
+      const active = activeQuestState(qDef.id), other = activeClassQuest(), objective = qDef.objectives[0];
+      const progress = active && active.objectives[0] ? active.objectives[0] : null;
+      html += `<p>${C.desc}</p>`;
+      if (ch.cls === n.id) html += `<p>Bom te ver de novo. Continue treinando: novas habilidades chegam nos níveis 17 e 20.</p>`;
+      else if (ch.cls !== 'aprendiz') html += `<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
+      else if (ch.L < (qDef.requirements.level||1)) html += `<p>Volte quando chegar ao nível ${qDef.requirements.level}. Agora você está no nível ${ch.L}.</p>`;
+      else if (!active && !other) html += `<p><b>${qDef.title}</b></p><p>Para provar seu valor, traga-me ${objective.count} ${objective.label}. ${objective.hint||''}</p><p>Ao virar ${C.name}, seus pontos de atributo voltam ao início para você distribuir de novo.</p><div class="actions"><button class="btn" type="button" data-npc="accept">Aceitar a prova</button></div>`;
+      else if (!active && other){
+        const otherDef=questCatalog[other.id];
+        html += `<p>Você já está fazendo <b>${otherDef ? otherDef.title : 'outra prova de classe'}</b>. Fale com o instrutor correspondente se quiser desistir.</p>`;
+      } else {
+        const have = progress ? progress.current : countItem(objective.itemId), need = progress ? progress.required : objective.count;
+        html += `<p><b>${qDef.title}</b></p><p>Progresso: ${Math.min(have,need)} de ${need} ${objective.label}. ${have >= need ? 'Você conseguiu!' : (objective.hint||'')}</p>
+          <div class="actions">${have >= need ? `<button class="btn" type="button" data-npc="finish">Concluir e virar ${C.name}</button>` : ''}<button class="btn ghost" type="button" data-npc="quit">Desistir da prova</button></div>`;
+      }
     }
   }
   $('npcBody').innerHTML = html;
@@ -2471,8 +2479,9 @@ $('winNpc').addEventListener('click', e=>{
   const sl = e.target.closest('[data-sell]'); if (sl){ sellEq(+sl.dataset.sell); return; }
   const a = e.target.closest('[data-npc]'); if (!a || !npcOpen) return;
   const act = a.dataset.npc;
-  if (act === 'accept'){ ch.quest = {cls:npcOpen.id}; log(`Prova de ${CLASSES[npcOpen.id].name} aceita.`, 'gold'); dirty = true; save(); }
-  if (act === 'quit'){ ch.quest = null; log('Você desistiu da prova.'); dirty = true; save(); }
+  const qDef = questForNpc(npcOpen.id);
+  if (act === 'accept' && qDef) sendWs({t:'quest',action:'accept',questId:qDef.id});
+  if (act === 'quit' && qDef) sendWs({t:'quest',action:'abandon',questId:qDef.id});
   if (act === 'finish') finishQuest(npcOpen.id);
   if (act === 'sell') sellMats();
   renderNpc();
@@ -3313,6 +3322,7 @@ function handle(m){
     }
     m.others.forEach(addOther); countOnline();
     myGuild = m.guild || null; guildList = null; guildAsked = false;
+    applyQuestSync(m.questCatalog,m.questState,m.questLegacy); npcCatalog = Array.isArray(m.npcCatalog) ? m.npcCatalog : [];
     authoritativeCombat=!!m.authoritativeCombat;
     if(authoritativeCombat){
       clearMonsters();(m.monsters||[]).forEach(netMonster);
@@ -3355,7 +3365,15 @@ function handle(m){
   else if(m.t==='equipmentState'){ch.inv=m.inv;ch.eq=m.eq;ch.equp=m.equp;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
   else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();setHeroWeapon(hero,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
-  else if(m.t==='resetState'){ch=m.dados;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
+  else if(m.t==='questState'){
+    applyQuestSync(null,m.state,m.legacy);
+    if(m.ok===false&&m.msg) log(m.msg,'bad');
+    else if(m.event==='accepted'){const q=questCatalog[m.questId];log(q?`${q.title} aceita.`:'Missão aceita.','gold');}
+    else if(m.event==='abandoned'){const q=questCatalog[m.questId];log(q?`${q.title} abandonada.`:'Missão abandonada.');}
+    else if(m.event==='completed'){const q=questCatalog[m.questId];if(q)log(`${q.title} concluída!`,'gold');}
+    refreshUI(); if(npcOpen)renderNpc();
+  }
+  else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[]};derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
   else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}

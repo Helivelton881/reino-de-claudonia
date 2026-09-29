@@ -16,6 +16,8 @@ const { validateMovement, sanitizeSavedPosition } = require('./server/world/play
 const CombatManager = require('./server/combat/combat-manager');
 const LootManager = require('./server/loot/loot-manager');
 const EconomyManager = require('./server/economy/economy-manager');
+const QuestManager = require('./server/quests/quest-manager');
+const NPCS = require('./server/data/npcs');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -69,6 +71,7 @@ const erro = (p, msg) => send(p.ws, { t: 'erro', msg });
 
 const spawnManager = new SpawnManager(ZONES);
 const worldNavigation = new WorldNavigation();
+const questManager = new QuestManager({send});
 const emitirPerto = (point, msg) => { for (const p of players.values()) if (perto(point, p, 110)) send(p.ws, msg); };
 let lootManager;
 const combatManager = new CombatManager({
@@ -79,6 +82,8 @@ const combatManager = new CombatManager({
     const luck = killer.party && killer.party.skills.sorte > Date.now() ? 2 : 1;
     const copies = killer.party && killer.party.skills.presente > Date.now() ? 2 : 1;
     lootManager.spawn(monster, killer, { allowedIds, luck, copies });
+    const recipients = allowedIds.map(id=>players.get(id)).filter(q=>q&&Math.hypot(q.x-monster.x,q.z-monster.z)<=40);
+    recipients.forEach(q=>questManager.recordEvent(q,'kill',{monsterKey:monster.key,giant:monster.giant,count:1}));
   }
 });
 const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, spawnManager, players, send, navigation:worldNavigation });
@@ -171,6 +176,7 @@ wss.on('connection', ws => {
           lastPosAt: Date.now(), fallingFromFlight: false
         };
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
+        questManager.initializePlayer(novo);
         await carregarGuilda(novo);
         if (ws.readyState !== 1) return;
         p = novo;
@@ -183,7 +189,11 @@ wss.on('connection', ws => {
           authoritativeCombat: COMBATE_AUTORITATIVO,
           monsters: COMBATE_AUTORITATIVO ? monsterManager.snapshotFor(p) : [],
           loot: COMBATE_AUTORITATIVO ? lootManager.snapshotFor(p) : [],
-          combat: COMBATE_AUTORITATIVO ? { hp:p.hp,maxHp:p.stats.maxHp,mp:p.mp,maxMp:p.stats.maxMp,fp:p.fp,maxFp:p.stats.maxFp } : null
+          combat: COMBATE_AUTORITATIVO ? { hp:p.hp,maxHp:p.stats.maxHp,mp:p.mp,maxMp:p.stats.maxMp,fp:p.fp,maxFp:p.stats.maxFp } : null,
+          questCatalog: questManager.publicCatalog(),
+          questState: questManager.snapshot(p),
+          questLegacy: p.dados.quest || null,
+          npcCatalog: NPCS
         });
         broadcast({ t: 'join', ...resumo(p) }, p);
         console.log(`Entrou: ${p.name} (${players.size} online)`);
@@ -230,10 +240,13 @@ wss.on('connection', ws => {
         if (!m.dados || typeof m.dados !== 'object' || Array.isArray(m.dados)) return;
         if (JSON.stringify(m.dados).length > 20000) return;
         if (COMBATE_AUTORITATIVO) {
-          const protectedKeys=new Set(['L','exp','gold','inv','hp','mp','fp','eq','equp','str','sta','dex','int','pts','cls','upPity']);
+          const protectedKeys=new Set(['L','exp','gold','inv','hp','mp','fp','eq','equp','str','sta','dex','int','pts','cls','upPity','quest','quests']);
           for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
           Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
-        } else p.dados = m.dados;
+        } else {
+          const quest=p.dados.quest, quests=p.dados.quests;
+          p.dados=m.dados; p.dados.quest=quest; p.dados.quests=quests;
+        }
         p.dirty = true;
         if (!COMBATE_AUTORITATIVO) {
           const L = num(m.dados.L, 1, 200);
@@ -252,11 +265,11 @@ wss.on('connection', ws => {
       case 'pkill': if (!COMBATE_AUTORITATIVO) monstroDoGrupo(p, m); break;
       case 'attack': if (COMBATE_AUTORITATIVO) combatManager.attack(p,m); break;
       case 'skill': if (COMBATE_AUTORITATIVO) combatManager.skill(p,m); break;
-      case 'pickup': if (COMBATE_AUTORITATIVO) lootManager.pickup(p,m.id); break;
+      case 'pickup': if (COMBATE_AUTORITATIVO && lootManager.pickup(p,m.id)) questManager.sync(p,{event:'inventory'}); break;
       case 'itemUse': if (COMBATE_AUTORITATIVO) combatManager.useItem(p,m); break;
       case 'equipment': if (COMBATE_AUTORITATIVO) combatManager.equipment(p,m); break;
       case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
-      case 'classChange': if (COMBATE_AUTORITATIVO) combatManager.changeClass(p,m); break;
+      case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>combatManager.changeClassFromQuest(player,cls)}); break;
       case 'resetCharacter': if (COMBATE_AUTORITATIVO) combatManager.resetPlayer(p); break;
       case 'economy': if (COMBATE_AUTORITATIVO) economyManager.act(p,m); break;
       case 'combatRespawn': if (COMBATE_AUTORITATIVO) combatManager.respawn(p,0,5); break;
