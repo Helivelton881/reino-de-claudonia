@@ -31,6 +31,7 @@ test('catalogo inicial possui quatro provas e seis NPCs funcionais',()=>{
   assert.equal(catalog.length,4);
   assert.equal(NPCS.length,6);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
+  assert.ok(catalog.every(q=>q.exclusiveGroup==='class-trial'));
   assert.ok(NPCS.some(n=>n.service==='forge'));
   assert.ok(NPCS.some(n=>n.service==='flight-shop'));
 });

@@ -50,7 +50,7 @@ class QuestManager {
 
   publicCatalog() {
     return Object.values(QUESTS).map(q=>({
-      id:q.id,title:q.title,npcId:q.npcId,category:q.category,
+      id:q.id,title:q.title,npcId:q.npcId,category:q.category,exclusiveGroup:q.exclusiveGroup||null,
       abandonable:q.abandonable!==false,
       requirements:{...(q.requirements||{})},
       objectives:(q.objectives||[]).map(o=>({...o})),

@@ -117,6 +117,19 @@ button{font-family:inherit;color:inherit}
   text-shadow:0 1px 2px #000,0 0 3px #000}
 .menu button:focus-visible{outline:3px solid #fff;outline-offset:4px}
 .menu button.on{box-shadow:0 0 0 3px #FFF1B8,0 0 0 5px #B8862E,0 0 12px rgba(255,210,110,.9)}
+.menu button .badge{position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;
+  display:none;place-items:center;background:#3D8C55;border:2px solid #FFE7A3;color:#fff;font-size:10px;font-weight:800;
+  box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.menu button .badge.on{display:grid}
+.quest-card{padding:9px 10px;margin:7px 0;border:1px solid var(--edge-soft);border-radius:9px;background:rgba(20,12,6,.35)}
+.quest-card.ready{border-color:#7EDC91;box-shadow:inset 0 0 0 1px rgba(126,220,145,.18)}
+.quest-card h3{margin:0 0 4px;font-size:15px;color:#FFE7A3}
+.quest-card p{margin:3px 0;font-size:13px;line-height:1.25}
+.quest-card .qstate{font-size:12px;color:var(--ink-soft);font-weight:700}
+.quest-card .qstate.ready{color:#8FE39D}
+.quest-progress{height:8px;border-radius:4px;background:#1B0F06;border:1px solid #6B4520;overflow:hidden;margin:5px 0}
+.quest-progress i{display:block;height:100%;background:linear-gradient(90deg,#C99B3D,#F2D26A)}
+.quest-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
 
 /* HUD inferior */
 .bottom{position:fixed;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;z-index:5;
@@ -379,6 +392,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   <button id="bInv" type="button" title="Mochila (I)">🎒<small>Mochila</small></button>
   <button id="bChar" type="button" title="Personagem (C)">🛡️<small>Herói</small></button>
   <button id="bSocial" type="button" title="Grupo e guilda (G)">🤝<small>Grupo</small></button>
+  <button id="bQuest" type="button" title="Diário de missões (J)">📜<small>Missões</small><span class="badge" id="questBadge"></span></button>
   <button id="bShop" type="button" title="Loja pessoal (L)">🏪<small>Loja</small></button>
   <button id="bChat" type="button" title="Conversar (Enter)">💬<small>Chat</small></button>
 </div>
@@ -419,6 +433,11 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <section class="win" id="winSocial" hidden aria-label="Grupo e guilda">
   <header><b>Grupo e guilda</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
   <div class="wbody" id="socialBody"></div>
+</section>
+
+<section class="win" id="winQuest" hidden aria-label="Diário de missões">
+  <header><b>Diário de Missões</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+  <div class="wbody" id="questBody"></div>
 </section>
 
 <section class="win" id="winPlayer" hidden aria-label="Jogador">
@@ -649,6 +668,35 @@ function applyQuestSync(catalog,state,legacy){
   if(Array.isArray(catalog)) questCatalog=Object.fromEntries(catalog.map(q=>[q.id,q]));
   if(state&&Array.isArray(state.active)&&Array.isArray(state.completed)) questState=state;
   if(legacy!==undefined) ch.quest=legacy;
+}
+const questReadyState = q => !!q && Array.isArray(q.objectives) && q.objectives.length>0 && q.objectives.every(o=>o.current>=o.required);
+function questRequirementsMet(q){
+  const req=q&&q.requirements||{};
+  if(req.level&&ch.L<req.level) return false;
+  if(req.cls&&ch.cls!==req.cls) return false;
+  if(req.completedQuest){
+    const need=Array.isArray(req.completedQuest)?req.completedQuest:[req.completedQuest];
+    if(need.some(id=>!(questState.completed||[]).includes(id))) return false;
+  }
+  return true;
+}
+function questMarkerState(npcId){
+  const q=questForNpc(npcId); if(!q) return null;
+  if((questState.completed||[]).includes(q.id)) return null;
+  const active=activeQuestState(q.id);
+  if(active) return questReadyState(active)?'ready':'active';
+  if(!questRequirementsMet(q)) return null;
+  if(q.exclusiveGroup){
+    const conflict=(questState.active||[]).some(a=>a.id!==q.id&&questCatalog[a.id]&&questCatalog[a.id].exclusiveGroup===q.exclusiveGroup);
+    if(conflict) return null;
+  }
+  return 'available';
+}
+function npcMarkerState(n){
+  if(!n) return null;
+  if(n.id==='voo') return ch.L>=20&&!ch.eq.voo&&!ch.inv.some(s=>ITEMS[s.id]&&ITEMS[s.id].slot==='voo')?'available':null;
+  if(n.id==='ferreiro') return null;
+  return questMarkerState(n.id);
 }
 // Habilidades de grupo ativas (o servidor manda quantos segundos faltam)
 const partySkill = id => party.members.length > 1 && party.skills && party.skills[id] > Date.now();
@@ -2270,9 +2318,10 @@ const npcObjs = NPCS.map(n=>{
   if (n.id !== 'voo'){ setHeroWeapon(h, n.id); }
   h.root.position.set(n.x, y, n.z); h.root.rotation.y = Math.atan2(-n.x, -n.z); h.shadow.position.set(n.x, y + 0.05, n.z);
   const lab = makeLabel(n.tag, '#D9C8FF'); lab.position.y = 2.8; h.root.add(lab);
-  const mark = makeLabel('!', '#F6C85A'); mark.scale.set(5.76, 1.1, 1); mark.position.y = 3.35; mark.visible = false; h.root.add(mark);
+  const markAvailable = makeLabel('!', '#F6C85A'), markActive = makeLabel('?', '#AFC5D8'), markReady = makeLabel('?', '#8FE39D');
+  [markAvailable,markActive,markReady].forEach(mark=>{ mark.scale.set(5.76,1.1,1); mark.position.y=3.35; mark.visible=false; h.root.add(mark); });
   addCollider({x:n.x, z:n.z, r:0.6});
-  return Object.assign({h, mark}, n);
+  return Object.assign({h, markAvailable, markActive, markReady}, n);
 });
 
 /* ---------- Moradores que passeiam pela vila ---------- */
@@ -2312,11 +2361,9 @@ function updateVillagers(dt, t){
 function updateNpcs(t){
   npcObjs.forEach((n,i)=>{
     n.h.torso.position.y = 1.35 + Math.sin(t*2 + i)*0.02;
-    let show;
-    if (n.id === 'voo') show = ch.L >= 20 && !ch.eq.voo && !ch.inv.some(s=> ITEMS[s.id] && ITEMS[s.id].slot === 'voo');
-    else if (n.id === 'ferreiro') show = false;
-    else show = ch.cls === 'aprendiz' && ch.L >= 15 && (!ch.quest || ch.quest.cls === n.id);
-    n.mark.visible = show; n.mark.position.y = 3.35 + Math.sin(t*3)*0.08;
+    const state=npcMarkerState(n), y=3.35 + Math.sin(t*3)*0.08;
+    n.markAvailable.visible=state==='available'; n.markActive.visible=state==='active'; n.markReady.visible=state==='ready';
+    n.markAvailable.position.y=n.markActive.position.y=n.markReady.position.y=y;
   });
 }
 function goToNpc(n){
@@ -2485,6 +2532,59 @@ $('winNpc').addEventListener('click', e=>{
   if (act === 'finish') finishQuest(npcOpen.id);
   if (act === 'sell') sellMats();
   renderNpc();
+});
+
+/* ---------- Fase 7.2: Diário de Missões ---------- */
+let questTab = 'active';
+const questNpcName = id => {
+  const n = npcCatalog.find(x=>x.id===id) || NPCS.find(x=>x.id===id);
+  return n ? n.name : 'NPC desconhecido';
+};
+function refreshQuestBadge(){
+  const ready=(questState.active||[]).filter(questReadyState).length, b=$('questBadge');
+  if(!b) return;
+  b.textContent=ready?String(ready):'';
+  b.classList.toggle('on',ready>0);
+}
+function renderQuestJournal(){
+  const body=$('questBody'); if(!body) return;
+  const active=questState.active||[], completed=questState.completed||[];
+  let html=`<div class="tabs"><button type="button" data-qtab="active" class="${questTab==='active'?'on':''}">Ativas (${active.length})</button><button type="button" data-qtab="done" class="${questTab==='done'?'on':''}">Concluídas (${completed.length})</button></div>`;
+  if(questTab==='active'){
+    if(!active.length) html+='<p class="note">Nenhuma missão ativa. Procure NPCs com <b>!</b> sobre a cabeça.</p>';
+    active.forEach(state=>{
+      const q=questCatalog[state.id]; if(!q) return;
+      const ready=questReadyState(state), npcName=questNpcName(q.npcId);
+      html+=`<div class="quest-card ${ready?'ready':''}"><h3>${q.title}</h3><div class="qstate ${ready?'ready':''}">${ready?'✓ Pronta para entregar':'Em andamento'} · ${npcName}</div>`;
+      (state.objectives||[]).forEach((o,i)=>{
+        const def=q.objectives&&q.objectives[i]||{}, pct=Math.max(0,Math.min(100,o.current/Math.max(1,o.required)*100));
+        html+=`<p>${o.label}: <b>${o.current}/${o.required}</b></p><div class="quest-progress"><i style="width:${pct}%"></i></div>`;
+        if(def.hint&&!ready) html+=`<p class="note">${def.hint}</p>`;
+      });
+      html+=`<div class="quest-actions"><button class="btn" type="button" data-qnpc="${q.npcId}">${ready?'Ir entregar':'Localizar NPC'}</button>`;
+      if(q.abandonable!==false) html+=`<button class="btn ghost" type="button" data-qabandon="${q.id}">Abandonar</button>`;
+      html+='</div></div>';
+    });
+  } else {
+    if(!completed.length) html+='<p class="note">Você ainda não concluiu nenhuma missão.</p>';
+    completed.forEach(id=>{
+      const q=questCatalog[id]; if(!q) return;
+      html+=`<div class="quest-card ready"><h3>${q.title}</h3><div class="qstate ready">✓ Concluída</div><p>${questNpcName(q.npcId)}</p></div>`;
+    });
+  }
+  body.innerHTML=html;
+  refreshQuestBadge();
+}
+$('bQuest').addEventListener('click',()=>{ openWin($('winQuest'),1); if(!$('winQuest').hidden) renderQuestJournal(); });
+$('winQuest').addEventListener('click',e=>{
+  const tab=e.target.closest('[data-qtab]'); if(tab){ questTab=tab.dataset.qtab; renderQuestJournal(); return; }
+  const loc=e.target.closest('[data-qnpc]'); if(loc){
+    const n=npcObjs.find(x=>x.id===loc.dataset.qnpc); if(n) goToNpc(n); else log('NPC não encontrado no mundo.','bad'); return;
+  }
+  const abandon=e.target.closest('[data-qabandon]'); if(abandon){
+    if(abandon.dataset.confirm==='1'){ sendWs({t:'quest',action:'abandon',questId:abandon.dataset.qabandon}); }
+    else { abandon.dataset.confirm='1'; abandon.textContent='Confirmar abandono'; }
+  }
 });
 
 /* =========================================================
@@ -2665,10 +2765,11 @@ $('bChar').addEventListener('click', ()=> openWin($('winChar'), -1));
 
 buildHotbar();
 function refreshUI(){
-  refreshStatus(); refreshHotbar(); refreshTarget();
+  refreshStatus(); refreshHotbar(); refreshTarget(); refreshQuestBadge();
   if (!$('winNpc').hidden) renderNpc();
   if (!$('winInv').hidden) renderInv();
   if (!$('winChar').hidden) renderChar();
+  if (!$('winQuest').hidden) renderQuestJournal();
   if (!$('winSocial').hidden) renderSocial();
   if (!$('winPlayer').hidden) renderPlayer();
   if (!$('winTrade').hidden) renderTrade();
@@ -2693,6 +2794,7 @@ addEventListener('keydown', e=>{
   if (k==='i' && !e.repeat) openWin($('winInv'), 1);
   if (k==='c' && !e.repeat) openWin($('winChar'), -1);
   if (k==='g' && !e.repeat) openSocial();
+  if (k==='j' && !e.repeat) $('bQuest').click();
   if (k==='l' && !e.repeat) $('bShop').click();
   if (k==='tab'){ e.preventDefault(); const n = nearestCycle(); if (n) selectTarget(n); }
   if (k==='escape'){ if (target) selectTarget(null); else { if (trade) sendWs({t:'tcancel'}); document.querySelectorAll('.win').forEach(w=> w.hidden = true); } }
@@ -2839,7 +2941,15 @@ function drawMini(){
       mctx.fillStyle = m === target ? '#FFFFFF' : (m.type.agg ? '#FF5A4A' : '#FFD84A');
       mctx.beginPath(); mctx.arc(x, y, m.giant ? 6 : 3.5, 0, Math.PI*2); mctx.fill();
     });
-    npcObjs.forEach(n=>{ const [x,y] = P(n.x, n.z); mctx.fillStyle = '#F6C85A'; mctx.strokeStyle = '#3A2206'; mctx.lineWidth = 1.5; mctx.fillRect(x-4, y-4, 8, 8); mctx.strokeRect(x-4, y-4, 8, 8); });
+    npcObjs.forEach(n=>{
+      const [x,y]=P(n.x,n.z), state=npcMarkerState(n);
+      mctx.fillStyle='#F6C85A';mctx.strokeStyle='#3A2206';mctx.lineWidth=1.5;mctx.fillRect(x-4,y-4,8,8);mctx.strokeRect(x-4,y-4,8,8);
+      if(state){
+        mctx.font='bold 18px "Baloo 2",sans-serif';mctx.textAlign='center';mctx.textBaseline='bottom';
+        mctx.lineWidth=3;mctx.strokeStyle='#3A2206';mctx.fillStyle=state==='ready'?'#8FE39D':state==='active'?'#AFC5D8':'#F6C85A';
+        const mark=state==='available'?'!':'?';mctx.strokeText(mark,x,y-6);mctx.fillText(mark,x,y-6);
+      }
+    });
   }
   const lim = MC - 8, edge = (x,y) => { const dx = x-MC, dy = y-MC, d = Math.hypot(dx,dy); return d > lim ? [MC+dx/d*lim, MC+dy/d*lim] : [x,y]; };
   others.forEach(o=>{ const [x,y] = edge(...P(o.x, o.z)); mctx.fillStyle = o.party ? '#8FE35A' : '#6EC1FF'; mctx.beginPath(); mctx.arc(x, y, 5, 0, Math.PI*2); mctx.fill(); });
