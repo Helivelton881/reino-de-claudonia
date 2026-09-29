@@ -866,7 +866,8 @@ const groundTex = canvasTex(256, 256, (g, W, H)=>{
     const x = Math.random()*W, y = Math.random()*H; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random()-0.5)*4, y - 3 - Math.random()*6); g.stroke(); }
   for (let i=0;i<500;i++){ const v = 140 + Math.random()*40|0; g.fillStyle = `rgba(${v},${v},${v},.6)`; g.beginPath(); g.arc(Math.random()*W, Math.random()*H, 1 + Math.random()*2.5, 0, Math.PI*2); g.fill(); }
 }, 95);
-{ const t = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({vertexColors:true, map:groundTex})); t.receiveShadow = HQ; scene.add(t); }
+const groundMesh = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({vertexColors:true, map:groundTex}));
+groundMesh.receiveShadow = HQ; scene.add(groundMesh);
 
 function underside(radius, depth, segs){
   const g = new THREE.ConeGeometry(radius, depth, segs, 5, true);
@@ -1866,7 +1867,7 @@ function eqEntry(id, up){ return up ? {id, n:1, up} : {id, n:1}; }
    ========================================================= */
 const SPAWN = {x:0, z:5};
 const player = {x:SPAWN.x, z:SPAWN.z, y:heightAt(SPAWN.x,SPAWN.z), vy:0, ground:true, face:Math.PI, phase:0, swing:0, lastHit:-99, combatT:0,
-  flying:false, fspd:0, fdir:Math.PI, turboT:0, upHeld:false, downHeld:false, isle:-1, npcGoal:null};
+  flying:false, fspd:0, fdir:Math.PI, turboT:0, upHeld:false, downHeld:false, isle:-1, npcGoal:null, moveGoal:null};
 let target = null, autoAttack = false, queuedSkill = null, attackCd = 0;
 const cds = {};
 let capWarned = false, buffs = [];
@@ -1995,7 +1996,7 @@ function hurtPlayer(m){
 }
 function die(){
   deadOpen = true; $('dead').hidden = false; $('revive').focus();
-  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null;
+  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; player.moveGoal = null;
   if (player.flying) setFlying(false);
   monsters.forEach(m=>{ if (m.state==='chase') m.state = 'return'; });
 }
@@ -2018,7 +2019,7 @@ function startAttack(){
   if (player.flying){ log('Pouse para atacar.'); return false; }
   if (myShop){ log('Feche a loja pessoal para lutar.'); return false; }
   if (!target || target.dead){ const n = nearestMonster(14); if (!n){ log('Nenhum monstro por perto.'); return false; } target = n; }
-  autoAttack = true; player.npcGoal = null; refreshTarget(); return true;
+  autoAttack = true; player.npcGoal = null; player.moveGoal = null; refreshTarget(); return true;
 }
 
 /* ---------- Habilidades ---------- */
@@ -2165,7 +2166,7 @@ function toggleFly(){
   if (!ch.eq.voo){ log('Compre uma prancha ou vassoura com o Piloto Tito, na vila, e equipe pela mochila.'); return; }
   if (Math.hypot(player.x, player.z) < 10){ log('Não é possível decolar dentro da vila.'); return; }
   if (clock.elapsedTime - player.lastHit < 3){ log('Não dá para decolar em combate.', 'bad'); return; }
-  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; refreshTarget();
+  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; player.moveGoal = null; refreshTarget();
   player.fspd = 0; player.fdir = player.face; player.y += 1.2; player.vy = 0;
   setFlying(true);
   log(isTouch ? 'Decolou! Use os botões Subir e Descer.' : 'Decolou! Espaço sobe e Q desce.', 'good');
@@ -2264,7 +2265,7 @@ function updateNpcs(t){
 }
 function goToNpc(n){
   if (player.flying){ log('Pouse para falar com alguém.'); return; }
-  autoAttack = false; queuedSkill = null;
+  autoAttack = false; queuedSkill = null; player.moveGoal = null;
   if (Math.hypot(n.x - player.x, n.z - player.z) < 3) openNpc(n); else player.npcGoal = n;
 }
 let npcOpen = null;
@@ -2691,10 +2692,22 @@ function tap(cx, cy){
       if (ray.distanceSqToPoint(tmpV) < r*r){ const t = tmpV.distanceTo(ray.origin); if (t < bestT){ bestT = t; best = o; isNpc = false; isPlayer = true; } }
     });
   });
-  if (best && isPlayer){ openPlayer(best); return; }
-  if (best && isNpc){ goToNpc(best); return; }
-  if (best){ if (best === target) startAttack(); else { selectTarget(best); autoAttack = false; queuedSkill = null; } }
-  else if (target && !autoAttack) selectTarget(null);
+  if (best && isPlayer){ player.moveGoal = null; openPlayer(best); return; }
+  if (best && isNpc){ player.moveGoal = null; goToNpc(best); return; }
+  if (best){
+    player.moveGoal = null;
+    if (best === target) startAttack(); else { selectTarget(best); autoAttack = false; queuedSkill = null; }
+    return;
+  }
+  if (target && !autoAttack) selectTarget(null);
+  if (player.flying || myShop || deadOpen) return;
+  const hits = raycaster.intersectObject(groundMesh, false);
+  if (!hits.length) return;
+  const p = hits[0].point, surf = surfaceAt(p.x, p.z);
+  if (!surf) return;
+  autoAttack = false; queuedSkill = null; player.npcGoal = null;
+  player.moveGoal = {x:p.x, z:p.z};
+  refreshHotbar();
 }
 
 const joyEl = $('joy'), knob = $('knob');
@@ -2878,7 +2891,9 @@ function updatePlayer(dt, t){
   }
   if (myShop){ ix = iy = 0; }
   let mag = Math.hypot(ix,iy); if (mag > 1){ ix /= mag; iy /= mag; mag = 1; }
-  if (mag > 0.15 && (autoAttack || player.npcGoal)){ autoAttack = false; queuedSkill = null; player.npcGoal = null; refreshHotbar(); }
+  if (mag > 0.15 && (autoAttack || player.npcGoal || player.moveGoal)){
+    autoAttack = false; queuedSkill = null; player.npcGoal = null; player.moveGoal = null; refreshHotbar();
+  }
   const run = keys.has('shift') || (joy.id !== null && mag > 0.9);
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
   let mx = rx*ix + fx*iy, mz = rz*ix + fz*iy, speed = (run ? 9 : 5)*mag, moving = mag > 0.05;
@@ -2904,6 +2919,11 @@ function updatePlayer(dt, t){
       const n = player.npcGoal, dx = n.x - player.x, dz = n.z - player.z, dd = Math.hypot(dx,dz);
       if (dd > 2.6){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
       else { moving = false; player.npcGoal = null; player.face = Math.atan2(dx,dz); openNpc(n); }
+    }
+    if (player.moveGoal && !deadOpen && !player.npcGoal && !autoAttack){
+      const g0 = player.moveGoal, dx = g0.x - player.x, dz = g0.z - player.z, dd = Math.hypot(dx,dz);
+      if (dd > 0.35){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
+      else { player.x = g0.x; player.z = g0.z; player.moveGoal = null; moving = false; }
     }
     if (autoAttack && target && !target.dead && !deadOpen){
       const dx = target.x - player.x, dz = target.z - player.z, dd = Math.hypot(dx,dz);
