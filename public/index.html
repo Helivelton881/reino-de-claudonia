@@ -1507,7 +1507,7 @@ if (charSys && charSys.enabled){
   charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
 // Diagnóstico: só com ?debug=1 no endereço (para testar os personagens sem mexer no código)
-if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
+if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, get npcs(){ return npcObjs; }, get camera(){ return camera; }, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
 // Estado de animação do seu personagem (chamado todo quadro)
 function animateLocalGLB(h, moving, speed){
   const a = h.anim;
@@ -1886,16 +1886,47 @@ function eqEntry(id, up){ return up ? {id, n:1, up} : {id, n:1}; }
 const SPAWN = {x:0, z:5};
 const player = {x:SPAWN.x, z:SPAWN.z, y:heightAt(SPAWN.x,SPAWN.z), vy:0, ground:true, face:Math.PI, phase:0, swing:0, lastHit:-99, combatT:0,
   flying:false, fspd:0, fdir:Math.PI, turboT:0, upHeld:false, downHeld:false, isle:-1, npcGoal:null,
-  moveGoal:null, movePath:[], movePathIndex:0, moveStuckT:0};
+  moveGoal:null, movePath:[], movePathIndex:0, moveStuckT:0, navTargetX:null, navTargetZ:null, navReplanT:0};
 function clearMoveRoute(){
   player.moveGoal = null; player.movePath = []; player.movePathIndex = 0; player.moveStuckT = 0;
+  player.navTargetX = player.navTargetZ = null; player.navReplanT = 0;
 }
-function setMoveRoute(x,z,silent){
+function setMoveRoute(x,z,silent,trackX,trackZ){
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
   let path = pathfinder ? pathfinder.findPath({x:player.x,z:player.z},{x,z}) : [{x,z}];
   if (!path || !path.length){ clearMoveRoute(); if (!silent) log('Não há caminho até esse ponto.', 'bad'); return false; }
   player.moveGoal = {x,z}; player.movePath = path; player.movePathIndex = 0; player.moveStuckT = 0;
+  player.navTargetX = Number.isFinite(trackX) ? trackX : x; player.navTargetZ = Number.isFinite(trackZ) ? trackZ : z;
   return true;
+}
+function routeLength(path){
+  let x = player.x, z = player.z, total = 0;
+  for (const p of path){ total += Math.hypot(p.x-x,p.z-z); x = p.x; z = p.z; }
+  return total;
+}
+function setApproachRoute(tx,tz,range,silent){
+  if (!pathfinder || !Number.isFinite(tx) || !Number.isFinite(tz)) return setMoveRoute(tx,tz,silent,tx,tz);
+  const base = Math.atan2(player.z-tz, player.x-tx), radius = Math.max(1.25, range*0.82);
+  let best = null;
+  for (let i=0;i<8;i++){
+    const a = base + i*Math.PI/4, x = tx + Math.cos(a)*radius, z = tz + Math.sin(a)*radius;
+    if (!navWalkable(x,z)) continue;
+    const path = pathfinder.findPath({x:player.x,z:player.z},{x,z});
+    if (!path.length) continue;
+    const cost = routeLength(path);
+    if (!best || cost < best.cost) best = {x,z,path,cost};
+  }
+  if (!best){ if (!silent) log('Não há caminho até o alvo.', 'bad'); return false; }
+  player.moveGoal = {x:best.x,z:best.z}; player.movePath = best.path; player.movePathIndex = 0; player.moveStuckT = 0;
+  player.navTargetX = tx; player.navTargetZ = tz;
+  return true;
+}
+function routeVector(){
+  let g0 = player.movePath[player.movePathIndex];
+  while (g0 && Math.hypot(g0.x-player.x,g0.z-player.z) <= 0.45){ player.movePathIndex++; g0 = player.movePath[player.movePathIndex]; }
+  if (!g0){ clearMoveRoute(); return null; }
+  const dx = g0.x-player.x, dz = g0.z-player.z, dd = Math.hypot(dx,dz) || 1;
+  return {x:dx/dd,z:dz/dd};
 }
 let target = null, autoAttack = false, queuedSkill = null, attackCd = 0;
 const cds = {};
@@ -2043,12 +2074,19 @@ function nearestMonster(maxD){
   monsters.forEach(m=>{ if (m.dead) return; const dd = Math.hypot(m.x-player.x, m.z-player.z); if (dd < bd){ bd = dd; best = m; } });
   return best;
 }
-function selectTarget(m){ target = m; if (!m){ autoAttack = false; queuedSkill = null; } refreshTarget(); }
+function selectTarget(m){ target = m; if (!m){ autoAttack = false; queuedSkill = null; clearMoveRoute(); } refreshTarget(); }
+const attackRangeFor = m => d.ranged ? 11 : (m ? m.radius + 1.1 : 1.8);
 function startAttack(){
   if (player.flying){ log('Pouse para atacar.'); return false; }
   if (myShop){ log('Feche a loja pessoal para lutar.'); return false; }
   if (!target || target.dead){ const n = nearestMonster(14); if (!n){ log('Nenhum monstro por perto.'); return false; } target = n; }
-  autoAttack = true; player.npcGoal = null; clearMoveRoute(); refreshTarget(); return true;
+  autoAttack = true; player.npcGoal = null; clearMoveRoute();
+  const range = attackRangeFor(target), dd = Math.hypot(target.x-player.x,target.z-player.z);
+  if (dd > range){
+    if (!setApproachRoute(target.x,target.z,range,false)){ autoAttack = false; refreshTarget(); return false; }
+    player.navReplanT = 0.4;
+  }
+  refreshTarget(); return true;
 }
 
 /* ---------- Habilidades ---------- */
@@ -2296,7 +2334,9 @@ function updateNpcs(t){
 function goToNpc(n){
   if (player.flying){ log('Pouse para falar com alguém.'); return; }
   autoAttack = false; queuedSkill = null; clearMoveRoute();
-  if (Math.hypot(n.x - player.x, n.z - player.z) < 3) openNpc(n); else player.npcGoal = n;
+  if (Math.hypot(n.x - player.x, n.z - player.z) < 3){ openNpc(n); return; }
+  player.npcGoal = n;
+  if (!setApproachRoute(n.x,n.z,2.3,false)) player.npcGoal = null;
 }
 let npcOpen = null;
 function openNpc(n){
@@ -2946,27 +2986,33 @@ function updatePlayer(dt, t){
     moving = player.fspd > 0.5;
   } else {
     if (player.npcGoal && !deadOpen){
-      const n = player.npcGoal, dx = n.x - player.x, dz = n.z - player.z, dd = Math.hypot(dx,dz);
-      if (dd > 2.6){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
-      else { moving = false; player.npcGoal = null; player.face = Math.atan2(dx,dz); openNpc(n); }
+      const n = player.npcGoal, dx = n.x-player.x, dz = n.z-player.z, dd = Math.hypot(dx,dz);
+      if (dd <= 2.6){
+        moving = false; player.npcGoal = null; clearMoveRoute(); player.face = Math.atan2(dx,dz); openNpc(n);
+      } else {
+        if (!player.moveGoal) setApproachRoute(n.x,n.z,2.3,true);
+        const v = routeVector();
+        if (v){ mx = v.x; mz = v.z; mag = 1; speed = 6; moving = true; }
+      }
     }
     if (player.moveGoal && !deadOpen && !player.npcGoal && !autoAttack){
-      let g0 = player.movePath[player.movePathIndex];
-      while (g0 && Math.hypot(g0.x-player.x,g0.z-player.z) <= 0.45){
-        player.movePathIndex++; g0 = player.movePath[player.movePathIndex];
-      }
-      if (!g0){ clearMoveRoute(); moving = false; }
-      else {
-        const dx = g0.x-player.x, dz = g0.z-player.z, dd = Math.hypot(dx,dz);
-        mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true;
-      }
+      const v = routeVector();
+      if (v){ mx = v.x; mz = v.z; mag = 1; speed = 6; moving = true; }
+      else moving = false;
     }
     if (autoAttack && target && !target.dead && !deadOpen){
-      const dx = target.x - player.x, dz = target.z - player.z, dd = Math.hypot(dx,dz);
-      const range = d.ranged ? 11 : target.radius + 1.1;
-      if (dd > range){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
-      else {
-        moving = false; player.face = lerpAngle(player.face, Math.atan2(dx,dz), Math.min(1,dt*14));
+      const dx = target.x-player.x, dz = target.z-player.z, dd = Math.hypot(dx,dz), range = attackRangeFor(target);
+      if (dd > range){
+        player.navReplanT = Math.max(0, player.navReplanT-dt);
+        const movedTarget = player.navTargetX === null || Math.hypot(target.x-player.navTargetX,target.z-player.navTargetZ) > 1.25;
+        if ((!player.moveGoal || movedTarget) && player.navReplanT <= 0){
+          setApproachRoute(target.x,target.z,range,true); player.navReplanT = 0.4;
+        }
+        const v = routeVector();
+        if (v){ mx = v.x; mz = v.z; mag = 1; speed = 6; moving = true; }
+        else moving = false;
+      } else {
+        clearMoveRoute(); moving = false; player.face = lerpAngle(player.face, Math.atan2(dx,dz), Math.min(1,dt*14));
         if (attackCd <= 0){
           attackCd = 1/d.aspd; player.swing = 0.3;
           if (queuedSkill && (cds[queuedSkill]||0) <= 0 && hasRes(SKILLS[queuedSkill])) skillOnTarget(queuedSkill, target);
@@ -2976,7 +3022,7 @@ function updatePlayer(dt, t){
       }
     }
     if (moving){
-      const routeMoving = !!(player.moveGoal && !player.npcGoal && !autoAttack);
+      const routeMoving = !!player.moveGoal;
       const ox = player.x, oz = player.z, ml = Math.hypot(mx,mz) || 1;
       const r = pushOut(player.x + (mx/ml)*speed*dt, player.z + (mz/ml)*speed*dt, 0.45, player.isle);
       player.x = r[0]; player.z = r[1];
@@ -2985,7 +3031,10 @@ function updatePlayer(dt, t){
         const moved = Math.hypot(player.x-ox,player.z-oz), expected = speed*dt;
         player.moveStuckT = moved < Math.min(0.03, expected*0.2) ? player.moveStuckT + dt : 0;
         if (player.moveStuckT > 0.7){
-          const goal = player.moveGoal; setMoveRoute(goal.x,goal.z,true); player.moveStuckT = 0;
+          if (player.npcGoal) setApproachRoute(player.npcGoal.x,player.npcGoal.z,2.3,true);
+          else if (autoAttack && target && !target.dead){ setApproachRoute(target.x,target.z,attackRangeFor(target),true); player.navReplanT = 0.4; }
+          else { const goal = player.moveGoal; setMoveRoute(goal.x,goal.z,true); }
+          player.moveStuckT = 0;
         }
       }
     }
