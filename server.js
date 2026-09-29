@@ -11,6 +11,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { ZONES, MONSTER_TYPES } = require('./server/data/monsters');
 const SpawnManager = require('./server/world/spawn-manager');
 const MonsterManager = require('./server/world/monster-manager');
+const { WorldNavigation } = require('./server/world/navigation-world');
 const CombatManager = require('./server/combat/combat-manager');
 const LootManager = require('./server/loot/loot-manager');
 const EconomyManager = require('./server/economy/economy-manager');
@@ -66,6 +67,7 @@ const aviso = (p, msg) => send(p.ws, { t: 'aviso', msg });
 const erro = (p, msg) => send(p.ws, { t: 'erro', msg });
 
 const spawnManager = new SpawnManager(ZONES);
+const worldNavigation = new WorldNavigation();
 const emitirPerto = (point, msg) => { for (const p of players.values()) if (perto(point, p, 110)) send(p.ws, msg); };
 let lootManager;
 const combatManager = new CombatManager({
@@ -78,7 +80,7 @@ const combatManager = new CombatManager({
     lootManager.spawn(monster, killer, { allowedIds, luck, copies });
   }
 });
-const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, spawnManager, players, send });
+const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, spawnManager, players, send, navigation:worldNavigation });
 lootManager = new LootManager({ players, send, emitNearby:emitirPerto });
 const economyManager = new EconomyManager({send});
 combatManager.setMonsterManager(monsterManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
