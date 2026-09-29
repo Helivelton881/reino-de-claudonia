@@ -98,3 +98,23 @@ test('jogador morto não pode deslocar posição',()=>{
   assert.equal(r.ok,false);
   assert.equal(r.reason,'dead');
 });
+
+test('todos os colliders autoritativos bloqueiam o centro para o jogador',()=>{
+  assert.equal(nav.colliders.length,762);
+  for(const c of nav.colliders){
+    assert.equal(nav.isPlayerWalkable(c.x,c.z,.45),false,`${c.kind||'estrutura'} em ${c.x},${c.z}`);
+  }
+});
+
+test('movimento em pequenos passos não atravessa collider natural',()=>{
+  const c=nav.colliders.find(x=>x.kind==='tree');
+  const p=playerAt(c.x-c.r-.45-.9,c.z);
+  let rejected=false;
+  for(let i=0;i<20;i++){
+    const nx=p.x+.15,s=nav.playerSurfaceAt(nx,p.z);
+    const r=validateMovement({navigation:nav,player:p,to:{x:nx,y:s.h,z:p.z},requestedAction:0,elapsed:.1,now:10000+i*100});
+    if(!r.ok){rejected=true;assert.ok(['blocked-destination','blocked-path'].includes(r.reason));break;}
+    p.x=nx;p.y=s.h;
+  }
+  assert.equal(rejected,true);
+});

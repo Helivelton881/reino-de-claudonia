@@ -3363,7 +3363,7 @@ function handle(m){
   else if(m.t==='combatReject'){if(m.msg)log(m.msg,'bad');}
   else if(m.t==='positionReject'){
     player.x=m.x;player.y=m.y;player.z=m.z;player.vy=0;online.last='';
-    if(m.reason==='blocked-path'||m.reason==='blocked-destination'||m.reason==='ground-height'){player.npcGoal=null;clearMoveRoute();}
+    if(['blocked-path','blocked-destination','ground-height','speed','vertical-speed','dead'].includes(m.reason)){player.npcGoal=null;clearMoveRoute();}
     if(player.flying&&['flight-state','takeoff-zone','combat-takeoff','flight-bounds'].includes(m.reason))setFlying(false);
   }
   // grupo
