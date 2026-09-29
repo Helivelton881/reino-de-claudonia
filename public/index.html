@@ -2632,7 +2632,7 @@ addEventListener('keydown', e=>{
   if (/^[1-9]$/.test(k) && !e.repeat) useSlot(+k - 1);
   if (k.startsWith('arrow')) e.preventDefault();
 });
-addEventListener('keyup', e=> keys.delete(e.key.toLowerCase()));
+addEventListener('keyup', e=>{ if (typeof e.key === 'string') keys.delete(e.key.toLowerCase()); });
 addEventListener('blur', ()=> keys.clear());
 function nearestCycle(){
   const list = monsters.filter(m=>!m.dead && Math.hypot(m.x-player.x,m.z-player.z) < 25)
