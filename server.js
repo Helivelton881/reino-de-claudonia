@@ -12,6 +12,7 @@ const { ZONES, MONSTER_TYPES } = require('./server/data/monsters');
 const SpawnManager = require('./server/world/spawn-manager');
 const MonsterManager = require('./server/world/monster-manager');
 const { WorldNavigation } = require('./server/world/navigation-world');
+const { validateMovement, sanitizeSavedPosition } = require('./server/world/player-movement');
 const CombatManager = require('./server/combat/combat-manager');
 const LootManager = require('./server/loot/loot-manager');
 const EconomyManager = require('./server/economy/economy-manager');
@@ -158,12 +159,16 @@ wss.on('connection', ws => {
         for (const o of players.values()) {
           if (o.charId === row.id) { send(o.ws, { t: 'erro', msg: 'Este personagem entrou em outro aparelho.' }); o.ws.close(4005); }
         }
+        const savedPos = sanitizeSavedPosition(worldNavigation,
+          Number.isFinite(row.pos_x) ? row.pos_x : 0,
+          Number.isFinite(row.pos_z) ? row.pos_z : 5);
+        const startSurface = worldNavigation.playerSurfaceAt(savedPos.x, savedPos.z);
         const novo = {
           id: nextId++, ws, userId: data.user.id, charId: row.id, name: row.nome, token: m.token,
-          L: (row.dados && row.dados.L) || 1, x: row.pos_x, y: 0, z: row.pos_z, f: 0, a: 0,
-          dados: row.dados || {}, dirty: false, posDirty: false, moved: true, lastChat: 0,
+          L: (row.dados && row.dados.L) || 1, x: savedPos.x, y: startSurface ? startSurface.h : 0, z: savedPos.z, f: 0, a: 0,
+          dados: row.dados || {}, dirty: false, posDirty: savedPos.corrected, moved: true, lastChat: 0,
           hp: 0, maxHp: 1, party: null, trade: null, shop: null, guild: null, invites: new Map(), lastInv: 0, expBucket: 20,
-          lastPosAt: Date.now()
+          lastPosAt: Date.now(), fallingFromFlight: false
         };
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         await carregarGuilda(novo);
@@ -173,7 +178,7 @@ wss.on('connection', ws => {
         clearTimeout(semLogin);
         send(ws, {
           t: 'welcome', id: p.id,
-          char: { nome: row.nome, x: row.pos_x, z: row.pos_z }, guild: p.guild,
+          char: { nome: row.nome, x: p.x, z: p.z }, guild: p.guild,
           others: [...players.values()].filter(o => o !== p).map(resumo),
           authoritativeCombat: COMBATE_AUTORITATIVO,
           monsters: COMBATE_AUTORITATIVO ? monsterManager.snapshotFor(p) : [],
@@ -195,13 +200,13 @@ wss.on('connection', ws => {
         const x = num(m.x, -MUNDO, MUNDO), y = num(m.y, -80, 160), z = num(m.z, -MUNDO, MUNDO), f = num(m.f, -1000, 1000);
         if (x === null || y === null || z === null || f === null) return;
         const agora=Date.now(), elapsed=Math.max(0.05,(agora-p.lastPosAt)/1000), distance=Math.hypot(x-p.x,z-p.z);
-        const speedLimit=[4,5].includes(m.a)?38:22;
-        if (COMBATE_AUTORITATIVO && distance > speedLimit*elapsed+3) return send(p.ws,{t:'positionReject',x:p.x,y:p.y,z:p.z});
         p.lastPosAt=agora;
+        const move=validateMovement({navigation:worldNavigation,player:p,to:{x,y,z},requestedAction:m.a,elapsed,now:agora});
+        if (!move.ok) return send(p.ws,{t:'positionReject',x:p.x,y:p.y,z:p.z,reason:move.reason});
         if (p.shop && distance > 0.5) fecharLoja(p);
         p.x = x; p.y = y; p.z = z; p.f = f;
-        p.a = [0, 1, 2, 3, 4, 5, 6].includes(m.a) ? m.a : 0; // 4 = prancha, 5 = vassoura, 6 = sentado na loja
-        if (COMBATE_AUTORITATIVO && [4,5].includes(p.a) && !(p.dados.eq && p.dados.eq.voo)) p.a=0;
+        p.a = move.action===6&&!p.shop ? 0 : move.action;
+        p.fallingFromFlight = !!move.fallingFromFlight;
         p.moved = true; p.posDirty = true;
         break;
       }

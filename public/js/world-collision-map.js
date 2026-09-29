@@ -14,6 +14,12 @@
   ];
   const PATHS=ZONES.map(z=>[[0,0],[z.x*.5+(z.z>0?8:-8),z.z*.5+(z.x>0?-6:6)],[z.x,z.z]]);
   const OPEN_HALLS=[[0,27],[27,0],[-27,0],[-19,-19]];
+  const ISLANDS=[
+    {x:250,y:14,z:-60,r:13},{x:-260,y:24,z:-40,r:15},
+    {x:60,y:8,z:265,r:11},{x:-170,y:34,z:210,r:14},
+    {x:210,y:28,z:160,r:10},{x:-40,y:44,z:-270,r:16},
+    {x:160,y:20,z:-220,r:12},{x:-280,y:16,z:120,r:11}
+  ];
   const STATIC_NPCS=[
     {id:'guerreiro',x:7.5,z:4.7,r:.6,kind:'npc'},
     {id:'druida',x:-7.5,z:4.7,r:.6,kind:'npc'},
@@ -142,5 +148,5 @@
     for(const r of w.rocks)if(r.solid)out.push({x:r.x,z:r.z,r:r.r,kind:'rock'});
     return out;
   }
-  return {R,TOWN,LAKE,ZONES,COTTAGES,OPEN_HALLS,STATIC_NPCS,STATIC_PROP_COLLIDERS,heightAt,distPath,zoneKeyAt,generate,solidNaturalColliders};
+  return {R,TOWN,LAKE,ZONES,COTTAGES,OPEN_HALLS,ISLANDS,STATIC_NPCS,STATIC_PROP_COLLIDERS,heightAt,distPath,zoneKeyAt,generate,solidNaturalColliders};
 });

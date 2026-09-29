@@ -1,7 +1,7 @@
 'use strict';
 
 const { GridPathfinder } = require('../../public/js/pathfinding');
-const { solidNaturalColliders, STATIC_NPCS, STATIC_PROP_COLLIDERS } = require('../../public/js/world-collision-map');
+const { solidNaturalColliders, STATIC_NPCS, STATIC_PROP_COLLIDERS, ISLANDS, heightAt } = require('../../public/js/world-collision-map');
 
 const WORLD_RADIUS = 185;
 const CELL = 8;
@@ -116,6 +116,47 @@ class WorldNavigation {
       if(!this.isWalkable(x,z,pad))return false;
     }
     return true;
+  }
+
+  playerSurfaceAt(x,z){
+    if(Math.hypot(x,z)<=WORLD_RADIUS-1.5)return {kind:'continent',id:-1,h:heightAt(x,z)};
+    for(let i=0;i<ISLANDS.length;i++){
+      const s=ISLANDS[i];
+      if(Math.hypot(x-s.x,z-s.z)<=s.r-0.6)return {kind:'island',id:i,h:s.y+0.5};
+    }
+    return null;
+  }
+
+  isPlayerWalkable(x,z,pad=0.45){
+    const s=this.playerSurfaceAt(x,z);
+    return !!s && (s.kind==='island' || !this.blockedAt(x,z,pad));
+  }
+
+  playerLineClear(ax,az,bx,bz,pad=0.45){
+    const d=Math.hypot(bx-ax,bz-az), n=Math.max(1,Math.ceil(d/0.35));
+    let surfaceKey=null;
+    for(let i=0;i<=n;i++){
+      const k=i/n,x=ax+(bx-ax)*k,z=az+(bz-az)*k,s=this.playerSurfaceAt(x,z);
+      if(!s)return false;
+      const key=s.kind+':'+s.id;
+      if(surfaceKey===null)surfaceKey=key;
+      else if(key!==surfaceKey)return false;
+      if(s.kind==='continent'&&this.blockedAt(x,z,pad))return false;
+    }
+    return true;
+  }
+
+  nearestPlayerWalkable(x,z,pad=0.45,maxRadius=12){
+    if(this.isPlayerWalkable(x,z,pad))return {x,z};
+    const step=0.5;
+    for(let r=step;r<=maxRadius;r+=step){
+      const samples=Math.max(16,Math.ceil(2*Math.PI*r/step));
+      for(let i=0;i<samples;i++){
+        const a=i/samples*Math.PI*2,nx=x+Math.cos(a)*r,nz=z+Math.sin(a)*r;
+        if(this.isPlayerWalkable(nx,nz,pad))return {x:nx,z:nz};
+      }
+    }
+    return null;
   }
 
   _pathfinder(pad){
