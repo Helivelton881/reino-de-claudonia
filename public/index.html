@@ -489,6 +489,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <script src="/js/equipment-manager.js"></script>
 <script src="/js/character-manager.js"></script>
 <script src="/js/world-asset-manager.js"></script>
+<script src="/js/pathfinding.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="/config.js"></script>
 <script>
@@ -900,6 +901,23 @@ function addCollider(c){
 }
 const colAt = (x,z) => colGrid.get(cellKey(Math.floor(x/CELL), Math.floor(z/CELL))) || [];
 const blockedAt = (x,z,pad) => colAt(x,z).some(c => Math.hypot(c.x-x, c.z-z) < c.r + pad);
+
+// Navegação no continente: usa exatamente os mesmos colisores do movimento normal.
+const NAV_STEP = 1.4, NAV_PAD = 0.58;
+function navWalkable(x,z){
+  return Math.hypot(x,z) < R - 1.7 && !blockedAt(x,z,NAV_PAD);
+}
+function navLineClear(ax,az,bx,bz){
+  const d = Math.hypot(bx-ax,bz-az), n = Math.max(1, Math.ceil(d/0.42));
+  for (let i=0;i<=n;i++){
+    const k = i/n, x = ax + (bx-ax)*k, z = az + (bz-az)*k;
+    if (!navWalkable(x,z)) return false;
+  }
+  return true;
+}
+const pathfinder = window.ClaudoniaPathfinding
+  ? new window.ClaudoniaPathfinding.GridPathfinder({step:NAV_STEP,maxNodes:40000,nearestRadius:8,isWalkable:navWalkable,lineClear:navLineClear})
+  : null;
 
 /* ---------- Juntar objetos parados em poucos desenhos (bom para o celular) ---------- */
 const bakeSolid = {pos:[], nor:[], col:[]}, bakeGlow = {pos:[], nor:[], col:[]};
@@ -1489,7 +1507,7 @@ if (charSys && charSys.enabled){
   charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
 // Diagnóstico: só com ?debug=1 no endereço (para testar os personagens sem mexer no código)
-if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
+if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
 // Estado de animação do seu personagem (chamado todo quadro)
 function animateLocalGLB(h, moving, speed){
   const a = h.anim;
@@ -1867,7 +1885,18 @@ function eqEntry(id, up){ return up ? {id, n:1, up} : {id, n:1}; }
    ========================================================= */
 const SPAWN = {x:0, z:5};
 const player = {x:SPAWN.x, z:SPAWN.z, y:heightAt(SPAWN.x,SPAWN.z), vy:0, ground:true, face:Math.PI, phase:0, swing:0, lastHit:-99, combatT:0,
-  flying:false, fspd:0, fdir:Math.PI, turboT:0, upHeld:false, downHeld:false, isle:-1, npcGoal:null, moveGoal:null};
+  flying:false, fspd:0, fdir:Math.PI, turboT:0, upHeld:false, downHeld:false, isle:-1, npcGoal:null,
+  moveGoal:null, movePath:[], movePathIndex:0, moveStuckT:0};
+function clearMoveRoute(){
+  player.moveGoal = null; player.movePath = []; player.movePathIndex = 0; player.moveStuckT = 0;
+}
+function setMoveRoute(x,z,silent){
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+  let path = pathfinder ? pathfinder.findPath({x:player.x,z:player.z},{x,z}) : [{x,z}];
+  if (!path || !path.length){ clearMoveRoute(); if (!silent) log('Não há caminho até esse ponto.', 'bad'); return false; }
+  player.moveGoal = {x,z}; player.movePath = path; player.movePathIndex = 0; player.moveStuckT = 0;
+  return true;
+}
 let target = null, autoAttack = false, queuedSkill = null, attackCd = 0;
 const cds = {};
 let capWarned = false, buffs = [];
@@ -1996,7 +2025,7 @@ function hurtPlayer(m){
 }
 function die(){
   deadOpen = true; $('dead').hidden = false; $('revive').focus();
-  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; player.moveGoal = null;
+  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; clearMoveRoute();
   if (player.flying) setFlying(false);
   monsters.forEach(m=>{ if (m.state==='chase') m.state = 'return'; });
 }
@@ -2019,7 +2048,7 @@ function startAttack(){
   if (player.flying){ log('Pouse para atacar.'); return false; }
   if (myShop){ log('Feche a loja pessoal para lutar.'); return false; }
   if (!target || target.dead){ const n = nearestMonster(14); if (!n){ log('Nenhum monstro por perto.'); return false; } target = n; }
-  autoAttack = true; player.npcGoal = null; player.moveGoal = null; refreshTarget(); return true;
+  autoAttack = true; player.npcGoal = null; clearMoveRoute(); refreshTarget(); return true;
 }
 
 /* ---------- Habilidades ---------- */
@@ -2166,7 +2195,7 @@ function toggleFly(){
   if (!ch.eq.voo){ log('Compre uma prancha ou vassoura com o Piloto Tito, na vila, e equipe pela mochila.'); return; }
   if (Math.hypot(player.x, player.z) < 10){ log('Não é possível decolar dentro da vila.'); return; }
   if (clock.elapsedTime - player.lastHit < 3){ log('Não dá para decolar em combate.', 'bad'); return; }
-  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; player.moveGoal = null; refreshTarget();
+  target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; clearMoveRoute(); refreshTarget();
   player.fspd = 0; player.fdir = player.face; player.y += 1.2; player.vy = 0;
   setFlying(true);
   log(isTouch ? 'Decolou! Use os botões Subir e Descer.' : 'Decolou! Espaço sobe e Q desce.', 'good');
@@ -2180,6 +2209,7 @@ function useTurbo(){
 }
 function fallRespawn(){
   if (player.flying) setFlying(false);
+  player.npcGoal = null; clearMoveRoute();
   player.x = SPAWN.x; player.z = SPAWN.z; player.y = heightAt(SPAWN.x,SPAWN.z); player.vy = 0; player.isle = -1;
   log('Você caiu das nuvens e acordou na vila.', 'bad');
 }
@@ -2265,7 +2295,7 @@ function updateNpcs(t){
 }
 function goToNpc(n){
   if (player.flying){ log('Pouse para falar com alguém.'); return; }
-  autoAttack = false; queuedSkill = null; player.moveGoal = null;
+  autoAttack = false; queuedSkill = null; clearMoveRoute();
   if (Math.hypot(n.x - player.x, n.z - player.z) < 3) openNpc(n); else player.npcGoal = n;
 }
 let npcOpen = null;
@@ -2564,7 +2594,7 @@ $('winChar').addEventListener('click', e=>{
     if (b.dataset.confirm){
       if (player.flying) setFlying(false);
       if(authoritativeCombat){sendWs({t:'resetCharacter'});return;}
-      ch = freshChar(); capWarned = false; derive(); target = null; autoAttack = false; queuedSkill = null;
+      ch = freshChar(); capWarned = false; derive(); target = null; autoAttack = false; queuedSkill = null; player.npcGoal = null; clearMoveRoute();
       buffs = []; buildHotbar(); setHeroWeapon(hero, 'aprendiz');
       player.x = SPAWN.x; player.z = SPAWN.z; player.y = heightAt(SPAWN.x,SPAWN.z);
       save(); log('Personagem reiniciado.'); refreshUI();
@@ -2692,10 +2722,10 @@ function tap(cx, cy){
       if (ray.distanceSqToPoint(tmpV) < r*r){ const t = tmpV.distanceTo(ray.origin); if (t < bestT){ bestT = t; best = o; isNpc = false; isPlayer = true; } }
     });
   });
-  if (best && isPlayer){ player.moveGoal = null; openPlayer(best); return; }
-  if (best && isNpc){ player.moveGoal = null; goToNpc(best); return; }
+  if (best && isPlayer){ clearMoveRoute(); openPlayer(best); return; }
+  if (best && isNpc){ clearMoveRoute(); goToNpc(best); return; }
   if (best){
-    player.moveGoal = null;
+    clearMoveRoute();
     if (best === target) startAttack(); else { selectTarget(best); autoAttack = false; queuedSkill = null; }
     return;
   }
@@ -2706,7 +2736,7 @@ function tap(cx, cy){
   const p = hits[0].point, surf = surfaceAt(p.x, p.z);
   if (!surf) return;
   autoAttack = false; queuedSkill = null; player.npcGoal = null;
-  player.moveGoal = {x:p.x, z:p.z};
+  setMoveRoute(p.x, p.z);
   refreshHotbar();
 }
 
@@ -2892,7 +2922,7 @@ function updatePlayer(dt, t){
   if (myShop){ ix = iy = 0; }
   let mag = Math.hypot(ix,iy); if (mag > 1){ ix /= mag; iy /= mag; mag = 1; }
   if (mag > 0.15 && (autoAttack || player.npcGoal || player.moveGoal)){
-    autoAttack = false; queuedSkill = null; player.npcGoal = null; player.moveGoal = null; refreshHotbar();
+    autoAttack = false; queuedSkill = null; player.npcGoal = null; clearMoveRoute(); refreshHotbar();
   }
   const run = keys.has('shift') || (joy.id !== null && mag > 0.9);
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
@@ -2921,9 +2951,15 @@ function updatePlayer(dt, t){
       else { moving = false; player.npcGoal = null; player.face = Math.atan2(dx,dz); openNpc(n); }
     }
     if (player.moveGoal && !deadOpen && !player.npcGoal && !autoAttack){
-      const g0 = player.moveGoal, dx = g0.x - player.x, dz = g0.z - player.z, dd = Math.hypot(dx,dz);
-      if (dd > 0.35){ mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true; }
-      else { player.x = g0.x; player.z = g0.z; player.moveGoal = null; moving = false; }
+      let g0 = player.movePath[player.movePathIndex];
+      while (g0 && Math.hypot(g0.x-player.x,g0.z-player.z) <= 0.45){
+        player.movePathIndex++; g0 = player.movePath[player.movePathIndex];
+      }
+      if (!g0){ clearMoveRoute(); moving = false; }
+      else {
+        const dx = g0.x-player.x, dz = g0.z-player.z, dd = Math.hypot(dx,dz);
+        mx = dx/dd; mz = dz/dd; mag = 1; speed = 6; moving = true;
+      }
     }
     if (autoAttack && target && !target.dead && !deadOpen){
       const dx = target.x - player.x, dz = target.z - player.z, dd = Math.hypot(dx,dz);
@@ -2940,10 +2976,18 @@ function updatePlayer(dt, t){
       }
     }
     if (moving){
-      const ml = Math.hypot(mx,mz) || 1;
+      const routeMoving = !!(player.moveGoal && !player.npcGoal && !autoAttack);
+      const ox = player.x, oz = player.z, ml = Math.hypot(mx,mz) || 1;
       const r = pushOut(player.x + (mx/ml)*speed*dt, player.z + (mz/ml)*speed*dt, 0.45, player.isle);
       player.x = r[0]; player.z = r[1];
       player.face = lerpAngle(player.face, Math.atan2(mx,mz), Math.min(1, dt*12));
+      if (routeMoving && player.moveGoal){
+        const moved = Math.hypot(player.x-ox,player.z-oz), expected = speed*dt;
+        player.moveStuckT = moved < Math.min(0.03, expected*0.2) ? player.moveStuckT + dt : 0;
+        if (player.moveStuckT > 0.7){
+          const goal = player.moveGoal; setMoveRoute(goal.x,goal.z,true); player.moveStuckT = 0;
+        }
+      }
     }
     surf = surfaceAt(player.x, player.z); g = surf ? surf.h : -1000;
     if (jumpQueued && player.ground && !deadOpen){ player.vy = 9; player.ground = false; }
@@ -3274,7 +3318,7 @@ function handle(m){
   else if(m.t==='equipmentState'){ch.inv=m.inv;ch.eq=m.eq;ch.equp=m.equp;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
   else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();setHeroWeapon(hero,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
-  else if(m.t==='resetState'){ch=m.dados;derive();target=null;autoAttack=false;queuedSkill=null;buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
+  else if(m.t==='resetState'){ch=m.dados;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
   else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}
