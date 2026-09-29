@@ -102,6 +102,38 @@
       return {model:rand()<.5?'Rock_Medium_1':'Rock_Medium_3',h,solid:h>1.2,r:.35*h+.2};
     });
   }
+  const STATIC_PROP_COLLIDERS = [
+    {id:'prop-1',x:-0.6,z:27.3,r:1.5381861448287966,kind:'prop'},
+    {id:'prop-2',x:-27,z:2.3,r:1.5381861448287966,kind:'prop'},
+    {id:'prop-3',x:2.7,z:28.7,r:0.7318768429756166,kind:'prop'},
+    {id:'prop-4',x:-3,z:28.9,r:0.37692876219749455,kind:'prop'},
+    {id:'prop-5',x:-14.363497034479494,z:33.37384684061008,r:0.37692876219749455,kind:'prop'},
+    {id:'prop-6',x:23.18417368315511,z:-27.97530680134354,r:0.37692876219749455,kind:'prop'},
+    {id:'prop-7',x:-3,z:27.8,r:0.37692876219749455,kind:'prop'},
+    {id:'prop-8',x:-22.082929943746766,z:12.10926112938244,r:0.37692876219749455,kind:'prop'},
+    {id:'prop-9',x:27.2,z:1.2,r:0.5840424245595933,kind:'prop'},
+    {id:'prop-10',x:29,z:-1.6,r:1.0903122997283938,kind:'prop'},
+    {id:'prop-11',x:29.1,z:2.6,r:0.7471257162094117,kind:'prop'},
+    {id:'prop-12',x:27.4,z:-3,r:0.49048910379409794,kind:'prop'},
+    {id:'prop-13',x:23.62809724431395,z:-9.015155052091092,r:0.49048910379409794,kind:'prop'},
+    {id:'prop-14',x:-6.861538461538462,z:-25.307692307692307,r:0.49048910379409794,kind:'prop'},
+    {id:'prop-15',x:-49.87848565086309,z:6.598512648820571,r:0.49048910379409794,kind:'prop'},
+    {id:'prop-16',x:26.1,z:-3,r:0.46757173061370855,kind:'prop'},
+    {id:'prop-17',x:-29.2,z:-2.3,r:0.7890434288978577,kind:'prop'},
+    {id:'prop-18',x:-29.2,z:2.3,r:0.7353872966766358,kind:'prop'},
+    {id:'prop-19',x:-27.5,z:3.061616997868383e-17,r:0.5341145682334901,kind:'prop'},
+    {id:'prop-20',x:-29.4,z:1.4695761589768238e-16,r:0.672415680885315,kind:'prop'},
+    {id:'prop-21',x:-26.8,z:-2.6,r:0.35,kind:'prop'},
+    {id:'prop-22',x:-18.010050506338832,z:-21.68700576850888,r:1.3024249935150147,kind:'prop'},
+    {id:'prop-23',x:-21.68700576850888,z:-18.010050506338832,r:1.3024249935150147,kind:'prop'},
+    {id:'prop-24',x:-16.17157287525381,z:-19.848528137423855,r:1.08,kind:'prop'},
+    {id:'prop-25',x:-19.848528137423855,z:-16.17157287525381,r:1.08,kind:'prop'},
+    {id:'prop-26',x:-23.917070056253234,z:7.890738870617559,r:0.38191689848899846,kind:'prop'},
+    {id:'prop-27',x:-7.876923076923077,z:-24.884615384615383,r:0.38191689848899846,kind:'prop'},
+    {id:'prop-28',x:-19.25782032839834,z:-38.80592810640054,r:0.38191689848899846,kind:'prop'},
+    {id:'prop-29',x:-24.35566877880913,z:6.8819618087390015,r:0.38191689848899846,kind:'prop'},
+    {id:'prop-30',x:15,z:20,r:1.6310940778255465,kind:'prop'}
+  ];
   let cache=null;
   function generate(){if(!cache)cache={trees:generateTrees(),bushes:generateBushes(),rocks:generateRocks()};return cache;}
   function solidNaturalColliders(){
@@ -110,5 +142,5 @@
     for(const r of w.rocks)if(r.solid)out.push({x:r.x,z:r.z,r:r.r,kind:'rock'});
     return out;
   }
-  return {R,TOWN,LAKE,ZONES,COTTAGES,OPEN_HALLS,STATIC_NPCS,heightAt,distPath,zoneKeyAt,generate,solidNaturalColliders};
+  return {R,TOWN,LAKE,ZONES,COTTAGES,OPEN_HALLS,STATIC_NPCS,STATIC_PROP_COLLIDERS,heightAt,distPath,zoneKeyAt,generate,solidNaturalColliders};
 });

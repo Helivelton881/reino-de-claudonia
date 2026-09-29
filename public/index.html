@@ -1251,11 +1251,12 @@ function buildTownProps(){
   });
 }
 buildTownProps();
+// colisões dos props são parte do mundo lógico e não dependem do GLB carregar
+window.ClaudoniaWorldCollision.STATIC_PROP_COLLIDERS.forEach(c=>addCollider({x:c.x,z:c.z,r:c.r}));
 const propsReady = worldAssets.loadKit(WA.props).then(K=>{
   let total = 0;
   PROPS_AT.forEach((items, name)=>{
     const model = K.get(name); if (!model){ console.warn('[Mundo] objeto não achado:', name); return; }
-    items.forEach(it=>{ if (it.solid) addCollider({x:it.x, z:it.z, r:Math.max(0.35, model.radius*it.s*0.8)}); });
     worldAssets.instance(model, items, {far:HQ ? 120 : 80, shadow:true}); total += items.length;
   });
   console.info(`[Mundo] Vila pronta: ${total} objetos.`);
@@ -1490,7 +1491,7 @@ if (charSys && charSys.enabled){
   charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
 // Diagnóstico: só com ?debug=1 no endereço (para testar os personagens sem mexer no código)
-if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, get npcs(){ return npcObjs; }, get camera(){ return camera; }, qaGoToNpc(id){ const n=npcObjs.find(n=>n.id===id); if(n) goToNpc(n); return !!n; }, qaAttackMonster(id){ const m=monsters.find(m=>m.id===id); if(!m) return false; selectTarget(m); return startAttack(); }, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
+if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, get props(){ return [...PROPS_AT.entries()].flatMap(([name,items])=>items.map(it=>Object.assign({name},it))); }, get npcs(){ return npcObjs; }, get camera(){ return camera; }, qaGoToNpc(id){ const n=npcObjs.find(n=>n.id===id); if(n) goToNpc(n); return !!n; }, qaAttackMonster(id){ const m=monsters.find(m=>m.id===id); if(!m) return false; selectTarget(m); return startAttack(); }, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
 // Estado de animação do seu personagem (chamado todo quadro)
 function animateLocalGLB(h, moving, speed){
   const a = h.anim;
