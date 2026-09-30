@@ -18,8 +18,10 @@ const LootManager = require('./server/loot/loot-manager');
 const EconomyManager = require('./server/economy/economy-manager');
 const QuestManager = require('./server/quests/quest-manager');
 const SkillManager = require('./server/skills/skill-manager');
+const {ItemManager} = require('./server/items/item-manager');
 const NpcServiceManager = require('./server/npcs/npc-service-manager');
 const NPCS = require('./server/data/npcs');
+const EQUIPMENT = require('./server/data/equipment');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -66,8 +68,8 @@ function broadcast(msg, except) {
 const num = (v, min, max) => (typeof v === 'number' && Number.isFinite(v)) ? Math.min(max, Math.max(min, v)) : null;
 const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 const perto = (a, b, d) => Math.hypot(a.x - b.x, a.z - b.z) < d;
-const resumo = p => ({ id: p.id, name: p.name, L: p.L, x: p.x, y: p.y, z: p.z, f: p.f,
-  g: p.guild ? p.guild.nome : null, s: p.shop ? p.shop.title : null });
+const resumo = p => ({ id:p.id,name:p.name,L:p.L,x:p.x,y:p.y,z:p.z,f:p.f,cls:p.dados?.cls||'aprendiz',gear:{...(p.dados?.eq||{})},
+  g:p.guild?p.guild.nome:null,s:p.shop?p.shop.title:null });
 const aviso = (p, msg) => send(p.ws, { t: 'aviso', msg });
 const erro = (p, msg) => send(p.ws, { t: 'erro', msg });
 
@@ -75,6 +77,7 @@ const spawnManager = new SpawnManager(ZONES);
 const worldNavigation = new WorldNavigation();
 const questManager = new QuestManager({send});
 const skillManager = new SkillManager({send});
+const itemManager = new ItemManager({send});
 const emitirPerto = (point, msg) => { for (const p of players.values()) if (perto(point, p, 110)) send(p.ws, msg); };
 let lootManager;
 const combatManager = new CombatManager({
@@ -93,10 +96,10 @@ const combatManager = new CombatManager({
   }
 });
 const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, spawnManager, players, send, navigation:worldNavigation });
-lootManager = new LootManager({ players, send, emitNearby:emitirPerto });
-const economyManager = new EconomyManager({send});
+lootManager = new LootManager({ players, send, emitNearby:emitirPerto, itemManager });
+const economyManager = new EconomyManager({send,itemManager});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
-combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
+combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); combatManager.setItemManager(itemManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
 
 async function salvar(p) {
   if (!p.dirty && !p.posDirty) return;
@@ -109,43 +112,53 @@ async function salvar(p) {
 
 /* ---------- Itens na mochila (usado por troca, loja e doação) ---------- */
 // Linha de item: {id, n} (empilha) ou equipamento {id, n:1, up} (up = aprimoramento).
-function lerItens(lista, max){
-  if (!Array.isArray(lista) || lista.length > max) return null;
-  const items = [];
-  for (const it of lista){
-    if (!it || typeof it.id !== 'string' || !/^[a-z_]{1,40}$/.test(it.id) || !inteiro(it.n, 1, 9999)) return null;
-    if (it.up !== undefined && !inteiro(it.up, 0, 10)) return null;
-    const x = it.up !== undefined ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: it.n };
-    if (it.price !== undefined){ if (!inteiro(it.price, 1, 1e9)) return null; x.price = it.price; }
+function lerItens(lista,max,player=null){
+  if(!Array.isArray(lista)||lista.length>max)return null;
+  const items=[],inv=player&&Array.isArray(player.dados?.inv)?player.dados.inv:[];
+  for(const it of lista){
+    if(!it||typeof it.id!=='string'||!/^[a-z0-9_]{1,64}$/.test(it.id)||!inteiro(it.n,1,9999))return null;
+    const def=EQUIPMENT[it.id];
+    let x;
+    if(def){
+      let row=null;
+      if(typeof it.uid==='string')row=inv.find(s=>s&&s.uid===it.uid&&s.id===it.id);
+      if(!row)row=inv.find(s=>s&&s.id===it.id&&(s.up||0)===(it.up||0)&&!s.locked);
+      if(!row||row.locked)return null;
+      x={...row,n:1};
+    }else x={id:it.id,n:it.n};
+    if(it.price!==undefined){if(!inteiro(it.price,1,1e9))return null;x.price=it.price;}
     items.push(x);
   }
   return items;
 }
-// Tira itens e ouro de uma cópia da mochila. Devolve a mochila nova, ou null se faltar algo.
-function tirarItens(dados, items, gold){
-  if ((dados.gold || 0) < gold) return null;
-  const inv = (Array.isArray(dados.inv) ? dados.inv : []).filter(Boolean).map(s => ({ ...s }));
-  for (const it of items){
-    if (it.up !== undefined){
-      const i = inv.findIndex(s => s.id === it.id && (s.up || 0) === it.up && s.n === 1);
-      if (i < 0) return null;
-      inv.splice(i, 1);
-    } else {
-      let falta = it.n;
-      for (const s of inv) if (s.id === it.id && s.up === undefined && falta > 0){ const k = Math.min(falta, s.n); s.n -= k; falta -= k; }
-      if (falta > 0) return null;
+// Tira itens e ouro de uma cópia da mochila. Equipamentos são identificados por uid.
+function tirarItens(dados,items,gold){
+  if((dados.gold||0)<gold)return null;
+  const inv=(Array.isArray(dados.inv)?dados.inv:[]).filter(Boolean).map(s=>({...s,affixes:Array.isArray(s.affixes)?s.affixes.map(a=>({...a})):s.affixes,socketed:Array.isArray(s.socketed)?[...s.socketed]:s.socketed}));
+  for(const it of items){
+    if(EQUIPMENT[it.id]){
+      const i=inv.findIndex(s=>s.id===it.id&&(it.uid?s.uid===it.uid:(s.up||0)===(it.up||0))&&!s.locked);
+      if(i<0)return null;
+      inv.splice(i,1);
+    }else{
+      let falta=it.n;
+      for(const s of inv)if(!EQUIPMENT[s.id]&&s.id===it.id&&falta>0){const k=Math.min(falta,s.n);s.n-=k;falta-=k;}
+      if(falta>0)return null;
     }
   }
-  return inv.filter(s => s.n > 0);
+  return inv.filter(s=>s.n>0);
 }
-function porItens(inv, items){
-  for (const it of items){
-    if (it.up !== undefined) inv.push(it.up ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: 1 });
-    else { const s = inv.find(s => s.id === it.id && s.up === undefined); if (s) s.n += it.n; else inv.push({ id: it.id, n: it.n }); }
+function porItens(inv,items){
+  for(const it of items){
+    if(EQUIPMENT[it.id]){
+      const {price,...copy}=it;inv.push({...copy,n:1});
+    }else{
+      const s=inv.find(s=>!EQUIPMENT[s.id]&&s.id===it.id);if(s)s.n+=it.n;else inv.push({id:it.id,n:it.n});
+    }
   }
   return inv;
 }
-const semPreco = items => items.map(({ price, ...x }) => x);
+const semPreco=items=>items.map(({price,...x})=>x);
 
 /* ---------- WebSocket ---------- */
 wss.on('connection', ws => {
@@ -182,6 +195,7 @@ wss.on('connection', ws => {
           hp: 0, maxHp: 1, party: null, trade: null, shop: null, guild: null, invites: new Map(), lastInv: 0, expBucket: 20,
           lastPosAt: Date.now(), fallingFromFlight: false
         };
+        itemManager.ensurePlayer(novo);
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         questManager.initializePlayer(novo);
         skillManager.initializePlayer(novo);
@@ -205,6 +219,8 @@ wss.on('connection', ws => {
           skillCatalog: skillManager.publicCatalog(),
           skillState: skillManager.snapshot(p),
           classCatalog: skillManager.classCatalog(),
+          itemCatalog: itemManager.catalog(),
+          itemState: itemManager.snapshot(p),
           npcCatalog: NPCS
         });
         broadcast({ t: 'join', ...resumo(p) }, p);
@@ -253,7 +269,7 @@ wss.on('connection', ws => {
         if (!m.dados || typeof m.dados !== 'object' || Array.isArray(m.dados)) return;
         if (JSON.stringify(m.dados).length > 20000) return;
         if (COMBATE_AUTORITATIVO) {
-          const protectedKeys=new Set(['L','exp','gold','inv','hp','mp','fp','eq','equp','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree']);
+          const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree']);
           for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
           Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
         } else {
@@ -280,7 +296,8 @@ wss.on('connection', ws => {
       case 'skill': if (COMBATE_AUTORITATIVO) combatManager.skill(p,m); break;
       case 'pickup': if (COMBATE_AUTORITATIVO && lootManager.pickup(p,m.id)) questManager.sync(p,{event:'inventory'}); break;
       case 'itemUse': if (COMBATE_AUTORITATIVO && combatManager.useItem(p,m)) questManager.recordEvent(p,'use-item',{itemId:m.itemId,count:1}); break;
-      case 'equipment': if (COMBATE_AUTORITATIVO) combatManager.equipment(p,m); break;
+      case 'equipment': if (COMBATE_AUTORITATIVO && combatManager.equipment(p,m)) broadcast({t:'gear',id:p.id,cls:p.dados.cls||'aprendiz',gear:{...(p.dados.eq||{})}},p); break;
+      case 'item': if (COMBATE_AUTORITATIVO) { if(m.action==='flag') itemManager.flag(p,m.index,m.key,m.value); else if(m.action==='discard') itemManager.discard(p,m.index); else if(m.action==='storagePut') itemManager.storagePut(p,m.index); else if(m.action==='storageTake') itemManager.storageTake(p,m.index); else if(m.action==='socket') itemManager.socket(p,m.where,m.ref,m.cardId); else itemManager.fail(p,'Ação de item inválida.'); } break;
       case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
       case 'npcTalk': questManager.talk(p,m.npcId); break;
       case 'npcService': if (COMBATE_AUTORITATIVO) npcServiceManager.act(p,m); break;
@@ -293,9 +310,9 @@ wss.on('connection', ws => {
         if(changed&&COMBATE_AUTORITATIVO){const st=combatManager.refresh(p);p.hp=Math.min(p.hp,st.maxHp);p.mp=Math.min(p.mp,st.maxMp);p.fp=Math.min(p.fp,st.maxFp);Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});combatManager.sync(p,{skillTreeChanged:true});if(p.party)enviarGrupo(p.party);}
         break;
       }
-      case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>{const ok=combatManager.changeClassFromQuest(player,cls);if(ok)skillManager.onClassChange(player);return ok;},grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
-      case 'resetCharacter': if (COMBATE_AUTORITATIVO) combatManager.resetPlayer(p); break;
-      case 'economy': if (COMBATE_AUTORITATIVO) economyManager.act(p,m); break;
+      case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>{const ok=combatManager.changeClassFromQuest(player,cls);if(ok){skillManager.onClassChange(player);broadcast({t:'gear',id:player.id,cls:player.dados.cls||'aprendiz',gear:{...(player.dados.eq||{})}},player);}return ok;},grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
+      case 'resetCharacter': if (COMBATE_AUTORITATIVO && combatManager.resetPlayer(p)) broadcast({t:'gear',id:p.id,cls:p.dados.cls||'aprendiz',gear:{...(p.dados.eq||{})}},p); break;
+      case 'economy': if (COMBATE_AUTORITATIVO && economyManager.act(p,m)) broadcast({t:'gear',id:p.id,cls:p.dados.cls||'aprendiz',gear:{...(p.dados.eq||{})}},p); break;
       case 'combatRespawn': if (COMBATE_AUTORITATIVO) combatManager.respawn(p,0,5); break;
       case 'worldSnapshot': if (COMBATE_AUTORITATIVO) send(p.ws,{t:'worldSnapshot',monsters:monsterManager.snapshotFor(p),loot:lootManager.snapshotFor(p)}); break;
       case 'inv': convidar(p, m); break;
@@ -556,7 +573,7 @@ function fimTroca(tr, msg){
 }
 function ofertaTroca(p, m){
   const tr = p.trade; if (!tr || !inteiro(m.gold, 0, 1e9)) return;
-  const items = lerItens(m.items, 8); if (!items) return;
+  const items = lerItens(m.items, 8, p); if (!items) return;
   tr.o.set(p.id, { items: semPreco(items), gold: m.gold, lock: false, ok: false });
   for (const o of tr.o.values()){ o.lock = false; o.ok = false; }
   estadoTroca(tr);
@@ -577,12 +594,13 @@ function confirmarTroca(p){
   const invA = tirarItens(tr.a.dados, oa.items, oa.gold), invB = tirarItens(tr.b.dados, ob.items, ob.gold);
   if (!invA || !invB) return fimTroca(tr, 'Os itens mudaram na mochila. Troca cancelada.');
   porItens(invA, ob.items); porItens(invB, oa.items);
-  if (invA.length > 24) return fimTroca(tr, `A mochila de ${tr.a.name} ficaria cheia. Troca cancelada.`);
-  if (invB.length > 24) return fimTroca(tr, `A mochila de ${tr.b.name} ficaria cheia. Troca cancelada.`);
+  if (invA.length > 32) return fimTroca(tr, `A mochila de ${tr.a.name} ficaria cheia. Troca cancelada.`);
+  if (invB.length > 32) return fimTroca(tr, `A mochila de ${tr.b.name} ficaria cheia. Troca cancelada.`);
   tr.a.dados = { ...tr.a.dados, inv: invA, gold: (tr.a.dados.gold || 0) - oa.gold + ob.gold };
   tr.b.dados = { ...tr.b.dados, inv: invB, gold: (tr.b.dados.gold || 0) - ob.gold + oa.gold };
   send(tr.a.ws, { t: 'tdone', give: oa, get: ob });
   send(tr.b.ws, { t: 'tdone', give: ob, get: oa });
+  itemManager.sync(tr.a,{event:'trade'});itemManager.sync(tr.b,{event:'trade'});
   tr.a.dirty = tr.b.dirty = true;
   salvar(tr.a); salvar(tr.b);
   fimTroca(tr, 'Troca concluída!');
@@ -594,7 +612,7 @@ function abrirLoja(p, m){
   if (p.shop) return;
   if (p.trade) return erro(p, 'Termine a troca antes de abrir a loja.');
   const title = typeof m.title === 'string' ? m.title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 30) : '';
-  const items = lerItens(m.items, 8);
+  const items = lerItens(m.items, 8, p);
   if (!title) return erro(p, 'Dê um nome para a sua loja.');
   if (!items || !items.length || items.some(it => !it.price)) return erro(p, 'Coloque pelo menos um item com preço.');
   if (!tirarItens(p.dados, semPreco(items), 0)) return erro(p, 'Os itens da loja não estão na sua mochila.');
@@ -619,13 +637,13 @@ function comprarNaLoja(p, m){
   if (!perto(p, s, 15)) return erro(p, 'Chegue mais perto da loja.');
   const it = s.shop.items[m.idx];
   if (!it || !inteiro(m.n, 1, it.n) || (it.up !== undefined && m.n !== 1)) return verLoja(p, m);
-  const lote = it.up !== undefined ? { id: it.id, n: 1, up: it.up } : { id: it.id, n: m.n };
+  const lote = EQUIPMENT[it.id] ? Object.fromEntries(Object.entries(it).filter(([k])=>k!=='price')) : { id:it.id,n:m.n };
   const custo = it.price * m.n;
   if ((p.dados.gold || 0) < custo) return erro(p, 'Ouro insuficiente.');
   const invS = tirarItens(s.dados, [lote], 0);
   if (!invS){ fecharLoja(s, 'Um item da sua loja não estava mais na mochila. A loja fechou.'); return erro(p, 'Essa loja fechou.'); }
   const invP = porItens((p.dados.inv || []).filter(Boolean).map(x => ({ ...x })), [lote]);
-  if (invP.length > 24) return erro(p, 'Sua mochila está cheia.');
+  if (invP.length > 32) return erro(p, 'Sua mochila está cheia.');
   s.dados = { ...s.dados, inv: invS, gold: (s.dados.gold || 0) + custo };
   p.dados = { ...p.dados, inv: invP, gold: (p.dados.gold || 0) - custo };
   s.dirty = p.dirty = true; salvar(s); salvar(p);
@@ -633,6 +651,7 @@ function comprarNaLoja(p, m){
   if (it.n <= 0) s.shop.items.splice(m.idx, 1);
   send(p.ws, { t: 'sbought', item: lote, cost: custo, seller: s.name });
   send(s.ws, { t: 'ssold', item: lote, cost: custo, buyer: p.name });
+  itemManager.sync(p,{event:'shop-buy'});itemManager.sync(s,{event:'shop-sell'});
   if (!s.shop.items.length) fecharLoja(s, 'Você vendeu tudo! A loja fechou.');
   else { send(s.ws, { t: 'shopmine', open: true, title: s.shop.title, items: s.shop.items }); verLoja(p, m); }
   console.log(`Loja: ${p.name} comprou de ${s.name} por ${custo}`);
@@ -763,7 +782,7 @@ async function listarGuilda(p){
 async function doarParaGuilda(p, m){
   const g = p.guild; if (!g || p.doando) return;
   const gold = inteiro(m.gold, 0, 1e9) ? m.gold : -1;
-  const items = lerItens(m.items || [], 24);
+  const items = lerItens(m.items || [], 24, p);
   if (gold < 0 || !items || items.some(it => it.up !== undefined || !PONTOS_MATERIAL[it.id])) return;
   const reserved=questManager.reservedItemIds(p);
   if(items.some(it=>reserved.has(it.id))) return erro(p,'Um desses materiais está reservado por uma missão ativa.');

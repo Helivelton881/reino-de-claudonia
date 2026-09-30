@@ -92,6 +92,8 @@
                   boneOffset: [0, 0.08, 0.02], rotation: [0, 0, 0], fallbackPosition: [0.36, 0.95, 0.12] },
       Back:     { bones: ['Back', 'Chest', 'spine.003', 'DEF-spine.003', 'Spine2', 'mixamorigSpine2', 'spine_03', 'Spine'],
                   boneOffset: [0, 0.05, -0.18], rotation: [0, 0, 0.7], fallbackPosition: [0, 1.55, -0.28] },
+      Chest:    { bones: ['Chest', 'spine.003', 'DEF-spine.003', 'Spine2', 'mixamorigSpine2', 'spine_03', 'Spine'],
+                  boneOffset: [0, 0.02, 0.12], rotation: [0, 0, 0], fallbackPosition: [0, 1.35, 0.12] },
       Head:     { bones: ['Head', 'head', 'DEF-spine.006', 'mixamorigHead'],
                   boneOffset: [0, 0, 0], rotation: [0, 0, 0], fallbackPosition: [0, 2.05, 0] },
     },
@@ -104,9 +106,11 @@
       hands:  { skinned: true },
       legs:   { skinned: true },
       feet:   { skinned: true },
-      weapon: { anchor: 'Weapon_R' },
-      offhand:{ anchor: 'Weapon_L' },
-      back:   { anchor: 'Back' },
+      weapon:    { anchor: 'Weapon_R' },
+      offhand:   { anchor: 'Weapon_L' },
+      back:      { anchor: 'Back' },
+      cape:      { anchor: 'Back' },
+      chestRigid:{ anchor: 'Chest' },
     },
     // Armas em GLB (futuro). Enquanto a lista estiver vazia, o jogo usa as armas antigas
     // (weaponMesh). Quando os arquivos existirem, basta preencher, por exemplo:

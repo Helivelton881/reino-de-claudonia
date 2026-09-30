@@ -3,10 +3,11 @@
 const { rollLoot } = require('./loot-tables');
 
 class LootManager {
-  constructor({ players, send, emitNearby, now = Date.now, rng = Math.random, ttlMs = 90000, inventoryLimit = 24 }) {
-    this.players=players; this.send=send; this.emitNearby=emitNearby; this.now=now; this.rng=rng; this.ttlMs=ttlMs; this.inventoryLimit=inventoryLimit;
+  constructor({ players, send, emitNearby, now = Date.now, rng = Math.random, ttlMs = 90000, inventoryLimit = 32, itemManager = null }) {
+    this.players=players; this.send=send; this.emitNearby=emitNearby; this.now=now; this.rng=rng; this.ttlMs=ttlMs; this.inventoryLimit=inventoryLimit; this.itemManager=itemManager;
     this.loot=new Map(); this.nextId=1;
   }
+  setItemManager(manager){ this.itemManager=manager; }
   spawn(monster, killer, options={}) {
     const allowed = new Set(options.allowedIds || [killer.id]);
     const made=[];
@@ -26,7 +27,7 @@ class LootManager {
     if (!entity) return this.reject(player,id,'Loot indisponível.');
     if (!this.allowed(entity,player)) return this.reject(player,id,'Este loot pertence a outro jogador ou grupo.');
     if (Math.hypot(entity.x-player.x,entity.z-player.z)>2.6) return this.reject(player,id,'Loot distante demais.');
-    if (entity.value.id && !this.addItem(player,entity.value.id,entity.value.n||1)) return this.reject(player,id,'Mochila cheia.');
+    if (entity.value.id && !(this.itemManager ? this.itemManager.addItem(player,entity.value) : this.addItem(player,entity.value.id,entity.value.n||1))) return this.reject(player,id,'Mochila cheia.');
     if (entity.value.gold) player.dados.gold=Math.max(0,Math.floor(Number(player.dados.gold)||0))+entity.value.gold;
     this.loot.delete(entity.id); player.dirty=true;
     this.emitNearby(entity,{t:'lootRemove',id:entity.id});

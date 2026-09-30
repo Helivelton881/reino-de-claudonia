@@ -435,9 +435,15 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   <header><b>Mochila</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
   <div class="wbody">
     <div class="gold">Ouro <b id="gold">0</b></div>
+    <div class="tabs" id="invFilters"><button type="button" data-ifilter="all" class="on">Todos</button><button type="button" data-ifilter="favorite">★</button><button type="button" data-ifilter="weapon">Armas</button><button type="button" data-ifilter="armor">Armaduras</button><button type="button" data-ifilter="rare">Raro+</button></div>
     <div class="grid" id="invGrid"></div>
     <div class="detail" id="invDetail"></div>
   </div>
+</section>
+
+<section class="win" id="winBank" hidden aria-label="Banco">
+  <header><b>Banco de Claudonia</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+  <div class="wbody" id="bankBody"></div>
 </section>
 
 <section class="win" id="winNpc" hidden aria-label="Conversa">
@@ -624,22 +630,22 @@ const ITEMS = {
 });
 const STARTERS = ['espada_treino','espada_soldado','cajado_carvalho','varinha_arcana','arco_curto'];
 const EQUIP_IDS = Object.keys(ITEMS).filter(k => ITEMS[k].kind==='eq' && ITEMS[k].slot!=='voo' && !STARTERS.includes(k));
-const SLOT_NAMES = {arma:'Arma', capacete:'Capacete', peitoral:'Peitoral', botas:'Botas', voo:'Voo'};
+const SLOT_NAMES = {arma:'Arma',offhand:'Mão secundária',capacete:'Capacete',peitoral:'Peitoral',luvas:'Luvas',botas:'Botas',capa:'Capa',acessorio1:'Acessório I',acessorio2:'Acessório II',voo:'Voo'};
 const SHOP = ['prancha_madeira','vassoura_simples','prancha_veloz','vassoura_veloz','prancha_celeste','vassoura_celeste','combustivel','pocao_vida','pocao_mana','pocao_energia'];
 // Fase 5: ferreira (loja de equipamentos e aprimoramento)
 const FORGE_MATS = ['pedra_aprimorar','runa_menor','runa_maior','perg_protecao','perg_sorte'];
 const FORGE_SHOP = FORGE_MATS.concat(Object.keys(ITEMS).filter(k=> ITEMS[k].kind === 'eq' && ITEMS[k].slot !== 'voo' && !ITEMS[k].cls && ITEMS[k].req > 1));
-const priceOf = id => ITEMS[id].price || Math.round(30*Math.pow(ITEMS[id].req, 1.5) + 60);
-const sellPrice = (id, up) => Math.floor(priceOf(id)*0.25*(1 + 0.25*(up||0)));
+const priceOf = id => { const it=ITEMS[id]; if(!it)return 0; if(it.price)return it.price; const R=rarityInfo(it); return Math.round((30*Math.pow(it.req||1,1.5)+60)*(R.upgradeCost||1)); };
+const sellPrice = (id, up) => { const it=ITEMS[id],R=rarityInfo(it); return Math.floor(priceOf(id)*0.25*(1+0.18*(up||0))*(1+(R.rank||0)*0.12)); };
 const canUpgrade = id => ITEMS[id] && ITEMS[id].kind === 'eq' && ITEMS[id].slot !== 'voo';
-// Aprimoramento como no Flyff: +1 e +2 nunca falham; no +3 a falha só gasta o material;
-// do +4 em diante, se falhar, o item QUEBRA, a menos que se use o Pergaminho de Proteção.
-// Cada falha seguida aumenta um pouco a chance da próxima tentativa.
-const UP_CHANCE = [1, 1, 1, 0.9, 0.75, 0.6, 0.45, 0.35, 0.25, 0.15, 0.1]; // chance de chegar a +N
+// Aprimoramento Fase 9: +1 a +3 garantidos; falhas seguintes alimentam pity.
+// A partir do +7 existe risco de downgrade/quebra sem proteção. Raridade aumenta o custo.
+const UP_CHANCE = [1,1,1,1,.9,.8,.68,.55,.43,.32,.24]; // chance server-authoritative para chegar a +N
 const UP_ATK = [0, 2, 4, 6, 8, 10, 13, 16, 19, 21, 24], UP_DEF = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]; // % de bônus
-const upStones = n => Math.ceil(n/2);
 const upRune = n => n <= 5 ? 'runa_menor' : 'runa_maior';
-const upGold = n => 40*n*n + 60;
+const upgradeCosts=(id,n)=>{const it=ITEMS[id],R=rarityInfo(it),mult=R.upgradeCost||1;return{stones:Math.ceil(n/2)+(R.rank>=3&&n>=7?1:0),gold:Math.round((40*n*n+60)*mult),rune:upRune(n)};};
+const upStones=(n,id)=>upgradeCosts(id||'espada_treino',n).stones;
+const upGold=(n,id)=>upgradeCosts(id||'espada_treino',n).gold;
 const itemName = (id, up) => ITEMS[id].name + (up ? ` +${up}` : '');
 
 const SKILLS = {
@@ -677,8 +683,8 @@ const maxLevel = () => ch.cls === 'aprendiz' ? 15 : 60;
    ========================================================= */
 function freshChar(){
   return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[],lastCompletedAt:{}}, skillTree:{version:2,ranks:{},legacyUnlocks:[],specialization:null,respecs:0}, skillBar:[],
-    inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],
-    eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null, voo:null}, equp:{}, hp:null, fp:null, mp:null};
+    inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}], storage:[], itemSeq:0,
+    eq:{arma:'espada_treino',offhand:null,capacete:null,peitoral:null,luvas:null,botas:null,capa:null,acessorio1:null,acessorio2:null,voo:null}, equp:{}, eqMeta:{}, hp:null, fp:null, mp:null};
 }
 let ch = freshChar();
 let dirty = false;
@@ -686,6 +692,17 @@ const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
 // Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
 let party = {leader:null, members:[], skills:{}}, trade = null, myGuild = null, guildList = null, guildAsked = false, myShop = null;
 let questCatalog = {}, questState = {active:[], completed:[], lastCompletedAt:{}}, npcCatalog = [];
+let itemCatalog = {equipment:{},sets:{},rarities:{},cards:{},inventoryLimit:32,storageLimit:60}, itemState = {inv:[],storage:[],eq:{},equp:{},eqMeta:{}};
+const SLOT_ICONS={arma:'⚔️',offhand:'🛡️',capacete:'⛑️',peitoral:'🥋',luvas:'🧤',botas:'🥾',capa:'🧣',acessorio1:'💍',acessorio2:'📿',voo:'🛹'};
+function applyItemCatalog(catalog,state){
+  if(catalog&&Array.isArray(catalog.equipment)){
+    itemCatalog={equipment:Object.fromEntries(catalog.equipment.map(x=>[x.id,x])),sets:Object.fromEntries((catalog.sets||[]).map(x=>[x.id,x])),rarities:Object.fromEntries((catalog.rarities||[]).map(x=>[x.id,x])),cards:Object.fromEntries((catalog.cards||[]).map(x=>[x.id,x])),inventoryLimit:catalog.inventoryLimit||32,storageLimit:catalog.storageLimit||60};
+    INV_SIZE=itemCatalog.inventoryLimit;
+    for(const x of catalog.equipment){ITEMS[x.id]={...(ITEMS[x.id]||{}),...x,kind:'eq',icon:SLOT_ICONS[x.slot]||'◆'};}
+    for(const c of catalog.cards||[])ITEMS[c.id]={name:c.name,icon:'🃏',kind:'card',price:c.price,desc:`Socket: +${c.value} ${c.stat}.`};
+  }
+  if(state){itemState={...itemState,...state};ch.inv=state.inv||ch.inv;ch.storage=state.storage||[];ch.eq=state.eq||ch.eq;ch.equp=state.equp||ch.equp;ch.eqMeta=state.eqMeta||{};}
+}
 let skillCatalog = {}, classCatalog = {classes:[],specializations:[]}, skillTreeState = {version:2,cls:'aprendiz',level:1,total:0,spent:0,available:0,ranks:{},specialization:null,specializationName:null,role:null,respecs:0};
 function applySkillSync(catalog,state,classes){
   if(Array.isArray(catalog)){
@@ -1682,8 +1699,18 @@ if (charSys && charSys.enabled){
   });
   charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
-// Diagnóstico: só com ?debug=1 no endereço (para testar os personagens sem mexer no código)
-if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, get props(){ return [...PROPS_AT.entries()].flatMap(([name,items])=>items.map(it=>Object.assign({name},it))); }, get npcs(){ return npcObjs; }, get camera(){ return camera; }, qaGoToNpc(id){ const n=npcObjs.find(n=>n.id===id); if(n) goToNpc(n); return !!n; }, qaAttackMonster(id){ const m=monsters.find(m=>m.id===id); if(!m) return false; selectTarget(m); return startAttack(); }, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
+// Diagnóstico: só com ?debug=1 no endereço (para testar sem alterar estado persistido).
+async function qaPreviewItem(id){
+  const item=ITEMS[id],slotMap={arma:'weapon',offhand:'offhand',capacete:'head',peitoral:'chestRigid',capa:'cape'};
+  if(!item||!item.model||!charSys||!hero.isGLB)return{ok:false,id,reason:'item/model/GLB indisponível'};
+  const slot=slotMap[item.slot];if(!slot)return{ok:false,id,reason:'slot sem preview 3D'};
+  const eq=charSys.equipment;
+  for(const s of ['weapon','back','offhand','head','chestRigid','cape'])eq.equip(hero.view,s,null);
+  const gltf=await eq.loadAsset(item.model);if(!gltf)return{ok:false,id,reason:'falha ao carregar GLB'};
+  const obj=eq.instance(gltf);obj.visible=true;eq.equip(hero.view,slot,obj);hero.root.updateMatrixWorld(true);
+  return{ok:true,id,slot,model:item.model};
+}
+if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, get props(){ return [...PROPS_AT.entries()].flatMap(([name,items])=>items.map(it=>Object.assign({name},it))); }, get npcs(){ return npcObjs; }, get camera(){ return camera; }, qaGoToNpc(id){ const n=npcObjs.find(n=>n.id===id); if(n) goToNpc(n); return !!n; }, qaAttackMonster(id){ const m=monsters.find(m=>m.id===id); if(!m) return false; selectTarget(m); return startAttack(); }, qaPreviewItem, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
 // Estado de animação do seu personagem (chamado todo quadro)
 function animateLocalGLB(h, moving, speed){
   const a = h.anim;
@@ -2003,7 +2030,7 @@ function hurtFlash(){ const h = $('hurt'); h.style.transition = 'none'; h.style.
 /* =========================================================
    INVENTÁRIO E EQUIPAMENTO
    ========================================================= */
-const INV_SIZE = 24;
+let INV_SIZE = 32;
 const countItem = id => ch.inv.filter(s=>s && s.id===id).reduce((a,s)=>a+s.n,0);
 function addItem(id, n){
   const it = ITEMS[id];
@@ -2374,6 +2401,24 @@ function setHeroWeapon(h, cls){
   h.back = weaponMesh(cls); h.back.position.set(0, 0.02, -0.3); h.back.rotation.z = 0.7; h.torso.add(h.back);
   h.hand = weaponMesh(cls); h.hand.position.set(0, -0.58, 0.14); h.hand.rotation.set(Math.PI/2, 0, 0); h.hand.visible = false; h.armR.add(h.hand);
 }
+function syncHeroEquipment(h,gear,cls){
+  if(!h)return;
+  h.gearState={...(gear||{})};h.gearToken=(h.gearToken||0)+1;const token=h.gearToken;
+  if(!h.isGLB||!charSys){setHeroWeapon(h,cls||'aprendiz');return;}
+  const eq=charSys.equipment,load=(id,slot,done)=>{
+    const item=id&&ITEMS[id],url=item&&item.model;
+    if(!url){charSys.equip(h.view,slot,null);return;}
+    eq.loadAsset(url).then(g=>{if(!g||h.gearToken!==token||h.gearState[item.slot]!==id)return;const obj=eq.instance(g);charSys.equip(h.view,slot,obj);if(done)done(obj);});
+  };
+  const wid=h.gearState.arma,witem=wid&&ITEMS[wid];
+  if(witem&&witem.model){
+    eq.loadAsset(witem.model).then(g=>{if(!g||h.gearToken!==token||h.gearState.arma!==wid)return;const hand=eq.instance(g),back=eq.instance(g);hand.visible=h.hand?h.hand.visible:false;back.visible=h.back?h.back.visible:true;charSys.equip(h.view,'weapon',hand);charSys.equip(h.view,'back',back);h.hand=hand;h.back=back;});
+  }else setHeroWeapon(h,cls||'aprendiz');
+  load(h.gearState.offhand,'offhand');
+  load(h.gearState.capacete,'head');
+  load(h.gearState.peitoral,'chestRigid');
+  load(h.gearState.capa,'cape');
+}
 function makeBoard(){
   const g = new THREE.Group(), paint = shiny(0xA8703A, 40);
   const deck = new THREE.Mesh(capsule(0.36, 1.2, 16), paint); deck.rotation.x = Math.PI/2; deck.scale.set(1, 1, 0.14); deck.position.y = 0.02; g.add(deck);
@@ -2609,7 +2654,7 @@ function npcServiceHTML(n,meta){
       html+=`<div class="shoprow"><span class="si">${iconHTML(id)}</span><div><b>${it.name}</b><span>${it.desc}</span></div><button class="btn" type="button" data-service-buy="${id}" ${ch.gold<(it.price||0)?'disabled':''}>${(it.price||0).toLocaleString('pt-BR')} ouro</button></div>`;
     }
   }
-  if(meta.service==='guild-registrar')html+='<div class="actions"><button class="btn" type="button" data-social="1">Abrir painel de grupo e guilda</button></div>';
+  if(meta.service==='guild-registrar')html+='<div class="actions"><button class="btn" type="button" data-bank="1">Abrir banco</button><button class="btn ghost" type="button" data-social="1">Grupo e guilda</button></div>';
   if(meta.service==='guide'&&meta.guideZone){
     const z=ZONES.find(x=>x.key===meta.guideZone),label=z&&z.name||meta.guideZone;
     html+=`<div class="actions"><button class="btn" type="button" data-guide-zone="${meta.guideZone}">Traçar rota: ${label}</button></div>`;
@@ -2657,30 +2702,30 @@ function buy(id){
 
 /* ---------- Ferreira: aprimorar, comprar e vender ---------- */
 let forgeTab = 'up', useProt = false, useLuck = false;
-const upChance = n => Math.min(1, UP_CHANCE[n] + (ch.upPity || 0)*0.03 + (useLuck && countItem('perg_sorte') ? 0.1 : 0));
+const upChance = n => Math.min(.98, UP_CHANCE[n] + Math.min(8,ch.upPity||0)*0.04 + (useLuck && countItem('perg_sorte') ? 0.1 : 0));
 function forgeHTML(){
   const tabs = [['up','Aprimorar'],['buy','Comprar'],['sell','Vender']];
   let html = `<div class="tabs">${tabs.map(([k,t])=>`<button type="button" data-ftab="${k}" class="${forgeTab===k?'on':''}">${t}</button>`).join('')}</div>`;
   html += `<div class="gold" style="margin-top:8px">Ouro <b>${ch.gold.toLocaleString('pt-BR')}</b> · 💎 <b>${countItem('pedra_aprimorar')}</b> · 🔹 <b>${countItem('runa_menor')}</b> · 🔷 <b>${countItem('runa_maior')}</b></div>`;
   if (trade || myShop){ return html + `<p class="note">Feche a troca ou a sua loja pessoal antes de usar a ferraria.</p>`; }
   if (forgeTab === 'up'){
-    html += `<p class="note">Cada tentativa gasta Pedras de Aprimoramento, uma Runa (Menor até +5, Maior do +6 ao +10) e ouro. O +1 e o +2 nunca falham. No +3, a falha só gasta o material. <b class="warn">Do +4 em diante, se falhar, o item quebra</b>, a não ser que você use o Pergaminho de Proteção. Cada falha seguida aumenta 3% a chance da próxima.</p>
+    html += `<p class="note">Cada tentativa gasta Pedras de Aprimoramento, uma Runa e ouro. <b>+1 a +3 são garantidos.</b> Do +4 ao +6 a falha preserva o nível. <b class="warn">Do +7 ao +10 pode haver downgrade ou quebra</b> sem Pergaminho de Proteção. Raridades altas custam mais; cada falha aumenta 4% o pity, até o limite do servidor.</p>
       <label class="check"><input type="checkbox" data-opt="prot" ${useProt ? 'checked' : ''} ${countItem('perg_protecao') ? '' : 'disabled'}> Usar Pergaminho de Proteção (tem ${countItem('perg_protecao')})</label>
       <label class="check"><input type="checkbox" data-opt="luck" ${useLuck ? 'checked' : ''} ${countItem('perg_sorte') ? '' : 'disabled'}> Usar Pergaminho da Sorte, +10% (tem ${countItem('perg_sorte')})</label>`;
-    if (ch.upPity) html += `<p class="note">Bônus por falhas seguidas: +${ch.upPity*3}%.</p>`;
+    if (ch.upPity) html += `<p class="note">Pity atual: +${Math.min(8,ch.upPity)*4}%.</p>`;
     const rows = [];
     Object.keys(SLOT_NAMES).forEach(sl=>{ const id = ch.eq[sl]; if (id && canUpgrade(id)) rows.push({key:'s:'+sl, id, up:ch.equp[sl]||0, where:'Equipado'}); });
     ch.inv.forEach((s,i)=>{ if (canUpgrade(s.id)) rows.push({key:'i:'+i, id:s.id, up:s.up||0, where:'Na mochila'}); });
     if (!rows.length) html += `<p class="note">Você não tem armas nem armaduras para aprimorar.</p>`;
     rows.forEach(r=>{
-      const n = r.up + 1, max = r.up >= 10, rune = upRune(n);
-      const risk = !max && n >= 4 && !(useProt && countItem('perg_protecao'));
-      const info = max ? 'Nível máximo.' : `Para +${n}: ${Math.round(upChance(n)*100)}% · ${upStones(n)} 💎 · 1 ${ITEMS[rune].icon} · ${upGold(n).toLocaleString('pt-BR')} ouro.${risk ? ' <b class="warn">Pode quebrar!</b>' : ''}`;
-      const ok = !max && countItem('pedra_aprimorar') >= upStones(n) && countItem(rune) >= 1 && ch.gold >= upGold(n);
+      const n=r.up+1,max=r.up>=10,cost=max?null:upgradeCosts(r.id,n),rune=cost&&cost.rune;
+      const risk=!max&&n>=7&&!(useProt&&countItem('perg_protecao'));
+      const info=max?'Nível máximo.':`Para +${n}: ${Math.round(upChance(n)*100)}% · ${cost.stones} 💎 · 1 ${ITEMS[rune].icon} · ${cost.gold.toLocaleString('pt-BR')} ouro.${risk?' <b class="warn">Risco de downgrade/quebra!</b>':''}`;
+      const ok=!max&&countItem('pedra_aprimorar')>=cost.stones&&countItem(rune)>=1&&ch.gold>=cost.gold;
       html += `<div class="row"><span class="si">${ITEMS[r.id].icon}</span><div><b>${itemName(r.id, r.up)}</b><span>${r.where}. ${info}</span></div><button class="btn" type="button" data-up="${r.key}" ${ok ? '' : 'disabled'}>Aprimorar</button></div>`;
     });
   } else if (forgeTab === 'buy'){
-    const list = FORGE_MATS.concat(FORGE_SHOP.filter(k=> !FORGE_MATS.includes(k)), Object.keys(ITEMS).filter(k=> ITEMS[k].cls && ITEMS[k].cls === ch.cls && ITEMS[k].slot === 'arma'))
+    const list=[...new Set([...FORGE_MATS,...Object.keys(ITEMS).filter(k=>ITEMS[k].kind==='eq'&&ITEMS[k].slot!=='voo'&&ITEMS[k].source==='npc'&&(!ITEMS[k].cls||ITEMS[k].cls===ch.cls))])]
       .sort((x,y)=> (ITEMS[x].kind === 'eq') - (ITEMS[y].kind === 'eq') || (ITEMS[x].req||0) - (ITEMS[y].req||0));
     list.forEach(id=>{
       const it = ITEMS[id], price = priceOf(id);
@@ -2706,7 +2751,7 @@ function enhance(key){
   const cur = kind === 's' ? (ch.equp[ref] || 0) : (entry.up || 0);
   const id = kind === 's' ? ch.eq[ref] : entry.id;
   if (!id || !canUpgrade(id) || cur >= 10) return;
-  const n = cur + 1, stones = upStones(n), gold = upGold(n), rune = upRune(n);
+  const n=cur+1,cost=upgradeCosts(id,n),stones=cost.stones,gold=cost.gold,rune=cost.rune;
   if (countItem('pedra_aprimorar') < stones){ log(`Precisa de ${stones} Pedra${stones > 1 ? 's' : ''} de Aprimoramento.`, 'bad'); return; }
   if (!countItem(rune)){ log(`Precisa de 1 ${ITEMS[rune].name}.`, 'bad'); return; }
   if (ch.gold < gold){ log('Ouro insuficiente.', 'bad'); return; }
@@ -2753,6 +2798,7 @@ $('winNpc').addEventListener('click', e=>{
   const service=e.target.closest('[data-service]');if(service&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:service.dataset.service});return;}
   const serviceBuy=e.target.closest('[data-service-buy]');if(serviceBuy&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:'buy',itemId:serviceBuy.dataset.serviceBuy});return;}
   const guide=e.target.closest('[data-guide-zone]');if(guide){const z=ZONES.find(x=>x.key===guide.dataset.guideZone);if(z){clearMoveRoute();if(!setMoveRoute(z.x,z.z,false))log('Não foi possível traçar a rota indicada.','bad');else log(`Rota marcada: ${z.name}.`,'gold');}return;}
+  const bank=e.target.closest('[data-bank]');if(bank){openWin($('winBank'),1);renderBank();return;}
   const social=e.target.closest('[data-social]');if(social){$('bSocial').click();return;}
   const b=e.target.closest('[data-buy]');if(b){buy(b.dataset.buy);return;}
   const ft=e.target.closest('[data-ftab]');if(ft){forgeTab=ft.dataset.ftab;renderNpc();return;}
@@ -2901,49 +2947,78 @@ function refreshTarget(){
   ring.material.color.set(target.giant ? 0xF2C14E : (target.type.agg ? 0xFF6B6B : 0xF2C14E));
 }
 
-let selInv = -1, selEq = null;
-function iconHTML(id){ const it = ITEMS[id]; return it.tint ? `<span class="ico ${it.tint}">${it.icon}</span>` : it.icon; }
-function itemInfo(id, up){
-  const it = ITEMS[id]; let s = `<b>${itemName(id, up)}</b><br>`;
-  if (it.kind === 'eq'){
-    const wm = 1 + UP_ATK[up||0]/100, am = 1 + UP_DEF[up||0]/100;
-    if (it.slot === 'voo') s += `${it.fly === 'board' ? 'Prancha' : 'Vassoura'} voadora. Velocidade ${it.spd}.`;
-    else s += `${SLOT_NAMES[it.slot]}. ` + (it.atk ? `Ataque ${Math.round(it.atk[0]*wm)} a ${Math.round(it.atk[1]*wm)}.` : `Defesa +${(it.def*am).toFixed(1).replace('.0','')}.`);
-    if (it.cls) s += ` <span class="req ${it.cls !== ch.cls ? 'no' : ''}">Só ${CLASSES[it.cls].name}.</span>`;
-    s += ` <span class="req ${it.req > ch.L ? 'no' : ''}">Nível ${it.req}.</span>`;
-  } else s += it.desc;
+let selInv=-1,selEq=null,invFilter='all';
+function iconHTML(id){const it=ITEMS[id];if(!it)return'◆';return it.tint?`<span class="ico ${it.tint}">${it.icon}</span>`:it.icon;}
+const rarityInfo=it=>itemCatalog.rarities[it&&it.rarity]||{id:'comum',name:'Comum',rank:0,color:'#B9C0C8'};
+const sourceLabel=s=>({npc:'NPC',common:'Monstro comum',giant:'Giant',dungeon:'Dungeon',boss:'Boss'})[s]||s||'Mundo';
+function affixText(a){if(!a)return'';const flat=['str','sta','dex','int','range'].includes(a.stat);return `${a.name||a.stat} +${flat?a.value:(a.value*100).toFixed(1)+'%'}`;}
+function setPieceCount(setId){return Object.values(ch.eq||{}).filter(id=>id&&ITEMS[id]?.setId===setId).length;}
+function itemInfo(id,up,entry=null){
+  const it=ITEMS[id];if(!it)return'<b>Item desconhecido</b>';
+  const R=rarityInfo(it);let s=`<b style="color:${R.color}">${itemName(id,up)}</b> <span class="qstate">${R.name}</span><br>`;
+  if(it.kind==='eq'){
+    const wm=1+UP_ATK[up||0]/100,am=1+UP_DEF[up||0]/100;
+    if(it.slot==='voo')s+=`${it.fly==='board'?'Prancha':'Vassoura'} voadora. Velocidade ${it.spd}.`;
+    else s+=`<b>${SLOT_NAMES[it.slot]||it.slot}</b> · ${it.atk?`Ataque ${Math.round(it.atk[0]*wm)}–${Math.round(it.atk[1]*wm)}`:`Defesa +${(Number(it.def||0)*am).toFixed(1).replace('.0','')}`}.`;
+    s+=`<br><span class="note">Fonte: ${sourceLabel(it.source)} · Tier ${it.tier||1}</span>`;
+    if(it.cls)s+=`<br><span class="req ${it.cls!==ch.cls?'no':''}">Classe: ${CLASSES[it.cls]?.name||it.cls}</span>`;
+    s+=` · <span class="req ${it.req>ch.L?'no':''}">Nível ${it.req}</span>`;
+    const meta=entry||{};
+    if(meta.affixes?.length)s+=`<div class="sub">Afixos</div>${meta.affixes.map(a=>`<div>◆ ${esc(affixText(a))}</div>`).join('')}`;
+    const sockets=meta.socketed||[],max=it.socketCount||0;
+    if(max)s+=`<div class="sub">Sockets ${sockets.length}/${max}</div>${sockets.length?sockets.map(c=>`<div>◇ ${esc(ITEMS[c]?.name||c)}</div>`).join(''):'<span class="note">Slots livres para cartas.</span>'}`;
+    if(it.setId){const set=itemCatalog.sets[it.setId],n=setPieceCount(it.setId);if(set){s+=`<div class="sub">Set ${esc(set.name)} · ${n}/5 equipado</div>`;for(const k of [2,3,4])s+=`<div class="${n>=k?'good':'note'}">${n>=k?'✓':'○'} ${k} peças: ${set.bonuses[k].map(b=>`${b.stat} +${b.mode==='pct'?(b.value*100).toFixed(1)+'%':b.value}`).join(', ')}</div>`;}}
+    const curId=ch.eq?.[it.slot];if(curId&&curId!==id&&ITEMS[curId]){const cur=ITEMS[curId],cu=ch.equp?.[it.slot]||0;let diff='';if(it.atk&&cur.atk)diff=`Dano máx. ${Math.round(it.atk[1]*wm-cur.atk[1]*(1+UP_ATK[cu]/100))>=0?'+':''}${Math.round(it.atk[1]*wm-cur.atk[1]*(1+UP_ATK[cu]/100))}`;else if(!it.atk&&!cur.atk)diff=`Defesa ${(it.def*am-cur.def*(1+UP_DEF[cu]/100))>=0?'+':''}${(it.def*am-cur.def*(1+UP_DEF[cu]/100)).toFixed(1)}`;s+=`<div class="sub">Comparação</div><div>${esc(diff)} vs. ${esc(itemName(curId,cu))}</div>`;}
+    if(meta.favorite)s+='<div class="good">★ Favorito</div>';if(meta.locked)s+='<div class="note">🔒 Bloqueado contra venda/descarte</div>';
+  }else s+=it.desc||'';
   return s;
 }
-function renderInv(){
-  $('gold').textContent = ch.gold.toLocaleString('pt-BR');
-  let html = '';
-  for (let i=0;i<INV_SIZE;i++){
-    const s = ch.inv[i];
-    html += s ? `<button class="cell ${selInv===i?'sel':''}" data-inv="${i}" type="button" aria-label="${itemName(s.id, s.up)}">${iconHTML(s.id)}${ITEMS[s.id].kind!=='eq' ? `<span class="n">${s.n}</span>` : ''}${s.up ? `<span class="up">+${s.up}</span>` : ''}</button>`
-              : `<div class="cell" aria-hidden="true"></div>`;
-  }
-  $('invGrid').innerHTML = html;
-  const det = $('invDetail');
-  if (selInv >= 0 && ch.inv[selInv]){
-    const s = ch.inv[selInv], it = ITEMS[s.id];
-    let act = '';
-    if (it.kind==='use') act = `<button class="btn" data-act="use" type="button">Usar</button>`;
-    if (it.kind==='eq') act = `<button class="btn" data-act="equip" type="button" ${it.req > ch.L || (it.cls && it.cls !== ch.cls) ? 'disabled' : ''}>Equipar</button>`;
-    det.innerHTML = itemInfo(s.id, s.up) + (trade || myShop ? `<p class="note">${trade ? 'Durante a troca, use a janela Troca para oferecer itens.' : 'Feche a loja pessoal para mexer na mochila.'}</p>`
-      : `<div class="actions">${act}<button class="btn ghost" data-act="drop" type="button">Descartar</button></div>`);
-  } else det.textContent = ch.inv.length ? 'Toque em um item para ver os detalhes.' : 'A mochila está vazia. Derrote monstros para encontrar itens.';
+function invVisible(s){
+  if(!s||!ITEMS[s.id])return false;const it=ITEMS[s.id],R=rarityInfo(it);
+  if(invFilter==='favorite')return !!s.favorite;
+  if(invFilter==='weapon')return it.kind==='eq'&&['arma','offhand'].includes(it.slot);
+  if(invFilter==='armor')return it.kind==='eq'&&['capacete','peitoral','luvas','botas','capa'].includes(it.slot);
+  if(invFilter==='rare')return it.kind==='eq'&&R.rank>=2;
+  return true;
 }
-$('winInv').addEventListener('click', e=>{
-  const c = e.target.closest('[data-inv]'); if (c){ selInv = +c.dataset.inv; renderInv(); return; }
-  const a = e.target.closest('[data-act]'); if (!a || selInv < 0 || !ch.inv[selInv] || trade || myShop) return;
-  const s = ch.inv[selInv];
-  if (a.dataset.act==='use'){ useItem(s.id); if (!ch.inv[selInv] || ch.inv[selInv].id !== s.id) selInv = -1; renderInv(); }
-  if (a.dataset.act==='equip') equip(selInv);
-  if (a.dataset.act==='drop'){
-    if (a.dataset.confirm){ ch.inv.splice(selInv,1); selInv = -1; dirty = true; refreshUI(); }
-    else { a.dataset.confirm = '1'; a.textContent = 'Toque de novo para confirmar'; }
-  }
+function renderInv(){
+  $('gold').textContent=ch.gold.toLocaleString('pt-BR');
+  $('invFilters').querySelectorAll('[data-ifilter]').forEach(b=>b.classList.toggle('on',b.dataset.ifilter===invFilter));
+  let html='',shown=0;
+  ch.inv.forEach((s,i)=>{if(!invVisible(s))return;shown++;const it=ITEMS[s.id],R=rarityInfo(it);html+=`<button class="cell ${selInv===i?'sel':''}" style="${it.kind==='eq'?'border-color:'+R.color+';box-shadow:inset 0 0 0 1px '+R.color+'55;':''}" data-inv="${i}" type="button" aria-label="${esc(itemName(s.id,s.up))}">${iconHTML(s.id)}${it.kind!=='eq'?`<span class="n">${s.n}</span>`:''}${s.up?`<span class="up">+${s.up}</span>`:''}${s.favorite?'<span class="up" style="left:2px;right:auto">★</span>':''}${s.locked?'<span class="n">🔒</span>':''}</button>`;});
+  for(let i=shown;i<INV_SIZE;i++)html+='<div class="cell" aria-hidden="true"></div>';
+  $('invGrid').innerHTML=html;
+  const det=$('invDetail');
+  if(selInv>=0&&ch.inv[selInv]){
+    const s=ch.inv[selInv],it=ITEMS[s.id];let act='';
+    if(it.kind==='use')act='<button class="btn" data-act="use" type="button">Usar</button>';
+    if(it.kind==='eq')act=`<button class="btn" data-act="equip" type="button" ${it.req>ch.L||(it.cls&&it.cls!==ch.cls)?'disabled':''}>Equipar</button><button class="btn ghost" data-act="favorite" type="button">${s.favorite?'★ Remover favorito':'☆ Favoritar'}</button><button class="btn ghost" data-act="lock" type="button">${s.locked?'🔓 Desbloquear':'🔒 Bloquear'}</button>`;
+    let socketButtons='';if(it.kind==='eq'&&(s.socketed||[]).length<(it.socketCount||0)){for(const c of Object.values(itemCatalog.cards)){if(countItem(c.id)>0)socketButtons+=`<button class="btn ghost" data-socket="${c.id}" type="button">Inserir ${esc(c.name)}</button>`;}}
+    det.innerHTML=itemInfo(s.id,s.up,s)+(trade||myShop?`<p class="note">${trade?'Durante a troca, use a janela Troca para oferecer itens.':'Feche a loja pessoal para mexer na mochila.'}</p>`:`<div class="actions">${act}${socketButtons}<button class="btn ghost" data-act="drop" type="button" ${s.locked?'disabled':''}>Descartar</button></div>`);
+  }else det.textContent=ch.inv.length?'Toque em um item para ver os detalhes.':'A mochila está vazia. Derrote monstros para encontrar itens.';
+}
+$('invFilters').addEventListener('click',e=>{const b=e.target.closest('[data-ifilter]');if(!b)return;invFilter=b.dataset.ifilter;selInv=-1;renderInv();});
+$('winInv').addEventListener('click',e=>{
+  const c=e.target.closest('[data-inv]');if(c){selInv=+c.dataset.inv;renderInv();return;}
+  const sock=e.target.closest('[data-socket]');if(sock&&selInv>=0){sendWs({t:'item',action:'socket',where:'inventory',ref:selInv,cardId:sock.dataset.socket});return;}
+  const a=e.target.closest('[data-act]');if(!a||selInv<0||!ch.inv[selInv]||trade||myShop)return;
+  const s=ch.inv[selInv];
+  if(a.dataset.act==='use'){useItem(s.id);return;}
+  if(a.dataset.act==='equip'){equip(selInv);return;}
+  if(a.dataset.act==='favorite'){sendWs({t:'item',action:'flag',index:selInv,key:'favorite',value:!s.favorite});return;}
+  if(a.dataset.act==='lock'){sendWs({t:'item',action:'flag',index:selInv,key:'locked',value:!s.locked});return;}
+  if(a.dataset.act==='drop'){if(!a.dataset.confirm){a.dataset.confirm='1';a.textContent='Confirmar descarte';return;}sendWs({t:'item',action:'discard',index:selInv});selInv=-1;}
 });
+
+function renderBank(){
+  const body=$('bankBody');if(!body||$('winBank').hidden)return;
+  const storage=ch.storage||[];let html=`<p class="note">Banco pessoal · ${storage.length}/${itemCatalog.storageLimit||60}. O acesso exige proximidade da Escrivã Mira.</p><div class="sub">Mochila</div><div class="grid">`;
+  ch.inv.forEach((s,i)=>{if(!ITEMS[s.id])return;const R=rarityInfo(ITEMS[s.id]);html+=`<button class="cell" type="button" data-bank-put="${i}" style="${ITEMS[s.id].kind==='eq'?'border-color:'+R.color:''}" title="Guardar ${esc(itemName(s.id,s.up))}">${iconHTML(s.id)}${ITEMS[s.id].kind!=='eq'?`<span class="n">${s.n}</span>`:''}${s.up?`<span class="up">+${s.up}</span>`:''}</button>`;});
+  html+=`</div><div class="sub">Armazém</div><div class="grid">`;
+  storage.forEach((s,i)=>{if(!ITEMS[s.id])return;const R=rarityInfo(ITEMS[s.id]);html+=`<button class="cell" type="button" data-bank-take="${i}" style="${ITEMS[s.id].kind==='eq'?'border-color:'+R.color:''}" title="Retirar ${esc(itemName(s.id,s.up))}">${iconHTML(s.id)}${ITEMS[s.id].kind!=='eq'?`<span class="n">${s.n}</span>`:''}${s.up?`<span class="up">+${s.up}</span>`:''}</button>`;});
+  html+='</div><p class="note">Toque em um item para transferi-lo entre mochila e banco.</p>';body.innerHTML=html;
+}
+$('winBank').addEventListener('click',e=>{const put=e.target.closest('[data-bank-put]');if(put){sendWs({t:'item',action:'storagePut',index:+put.dataset.bankPut});return;}const take=e.target.closest('[data-bank-take]');if(take){sendWs({t:'item',action:'storageTake',index:+take.dataset.bankTake});}});
 
 const STAT_ROWS = [['str','Força'],['sta','Vigor'],['dex','Destreza'],['int','Inteligência']];
 function renderChar(){
@@ -2963,10 +3038,11 @@ function renderChar(){
   Object.keys(SLOT_NAMES).forEach(sl=>{
     const id = ch.eq[sl];
     const up = id ? (ch.equp[sl] || 0) : 0;
-    html += `<button class="cell ${selEq===sl?'sel':''}" data-eq="${sl}" type="button">${id ? ITEMS[id].icon : ''}<small>${SLOT_NAMES[sl]}</small>${up ? `<span class="up">+${up}</span>` : ''}</button>`;
+    const R=id?rarityInfo(ITEMS[id]):null;
+    html += `<button class="cell ${selEq===sl?'sel':''}" style="${R?'border-color:'+R.color:''}" data-eq="${sl}" type="button">${id ? ITEMS[id].icon : ''}<small>${SLOT_NAMES[sl]}</small>${up ? `<span class="up">+${up}</span>` : ''}</button>`;
   });
   html += `</div><div class="detail" id="eqDetail">`;
-  if (selEq && ch.eq[selEq]) html += itemInfo(ch.eq[selEq], ch.equp[selEq]) + `<div class="actions"><button class="btn ghost" data-unequip="${selEq}" type="button">Tirar</button></div>`;
+  if (selEq && ch.eq[selEq]){const meta={...(ch.eqMeta?.[selEq]||{}),id:ch.eq[selEq],up:ch.equp[selEq]||0};html += itemInfo(ch.eq[selEq],ch.equp[selEq],meta) + `<div class="actions"><button class="btn ghost" data-unequip="${selEq}" type="button">Tirar</button></div>`;}
   else html += 'Toque em um espaço para ver o item. Equipe itens pela mochila.';
   html += `</div><div class="actions"><button class="btn ghost" id="switchBtn" type="button">Trocar personagem</button><button class="btn ghost" id="resetBtn" type="button">Recomeçar do zero</button></div>`;
   $('charBody').innerHTML = html;
@@ -3085,6 +3161,7 @@ function refreshUI(){
   refreshStatus(); refreshHotbar(); refreshTarget(); refreshQuestBadge(); renderQuestTracker();
   if (!$('winNpc').hidden) renderNpc();
   if (!$('winInv').hidden) renderInv();
+  if (!$('winBank').hidden) renderBank();
   if (!$('winChar').hidden) renderChar();
   if (!$('winSkills').hidden) renderSkills();
   if (!$('winQuest').hidden) renderQuestJournal();
@@ -3766,10 +3843,11 @@ function handle(m){
       if (Math.hypot(x,z) < R - 2){ player.x = x; player.z = z; player.y = heightAt(x,z); }
       log(`Bem-vindo ao Reino De Claudonia, ${m.char.nome}!`, 'good');
     }
+    applyItemCatalog(m.itemCatalog,m.itemState);
     m.others.forEach(addOther); countOnline();
     myGuild = m.guild || null; guildList = null; guildAsked = false;
     applyQuestSync(m.questCatalog,m.questState,m.questLegacy); npcCatalog = Array.isArray(m.npcCatalog) ? m.npcCatalog : [];
-    applySkillSync(m.skillCatalog,m.skillState,m.classCatalog); buildHotbar();
+    applySkillSync(m.skillCatalog,m.skillState,m.classCatalog); buildHotbar();syncHeroEquipment(hero,ch.eq,ch.cls);
     authoritativeCombat=!!m.authoritativeCombat;
     if(authoritativeCombat){
       clearMonsters();(m.monsters||[]).forEach(netMonster);
@@ -3817,9 +3895,10 @@ function handle(m){
   }
   else if(m.t==='combatState'){ch.hp=m.hp;ch.mp=m.mp;ch.fp=m.fp;if(m.inv)ch.inv=m.inv;if(m.exp!==undefined)ch.exp=m.exp;if(m.expLoss)log(`Você perdeu ${m.expLoss} de experiência.`,'bad');if(m.heal)floatText(player.x,player.y+2.4,player.z,'+'+m.heal,'heal');deadOpen=false;$('dead').hidden=true;refreshUI();}
   else if(m.t==='itemEffect'){ch.inv=m.inv;if(m.itemId==='combustivel'){player.turboT=12;floatText(player.x,player.y+2.4,player.z,'Turbo!','exp');}refreshUI();}
-  else if(m.t==='equipmentState'){ch.inv=m.inv;ch.eq=m.eq;ch.equp=m.equp;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();selInv=-1;selEq=null;refreshUI();}
+  else if(m.t==='itemState'){if(m.state)applyItemCatalog(null,m.state);if(m.ok===false&&m.msg)log(m.msg,'bad');derive();syncHeroEquipment(hero,ch.eq,ch.cls);refreshUI();}
+  else if(m.t==='equipmentState'){applyItemCatalog(null,m);if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();syncHeroEquipment(hero,ch.eq,ch.cls);selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
-  else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();setHeroWeapon(hero,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
+  else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();syncHeroEquipment(hero,ch.eq,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
   else if(m.t==='skillTreeState'){if(m.state)applySkillSync(null,m.state);if(m.ok===false&&m.msg)log(m.msg,'bad');else if(m.event==='learned')log('Rank de habilidade aumentado.','gold');else if(m.event==='respec')log('Árvore de habilidades redefinida.','gold');else if(m.event==='specialization'){banner(`${m.state?.specializationName||'Especialização'}!`,m.state?.role||'Novo caminho de classe');log(`Especialização escolhida: ${m.state?.specializationName||m.specialization}.`,'gold');}buildHotbar();refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='npcServiceState'){if(m.msg)log(m.msg,m.ok===false?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='questState'){
@@ -3832,7 +3911,7 @@ function handle(m){
     refreshUI(); if(npcOpen)renderNpc();
   }
   else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[],lastCompletedAt:{}};skillTreeState={version:2,cls:'aprendiz',level:1,total:0,spent:0,available:0,ranks:{},specialization:null,specializationName:null,role:null,respecs:0};trackedQuestId=null;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
-  else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
+  else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();syncHeroEquipment(hero,ch.eq,ch.cls);log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}
   else if(m.t==='expGain'){ch.L=m.L;ch.exp=m.exp;ch.pts=m.pts;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();floatText(player.x,player.y+2.6,player.z,`+${m.amount} EXP`,'exp');if(m.leveled)banner(`Nível ${ch.L}!`,'+2 pontos de atributo na janela Herói');refreshUI();}
@@ -3895,6 +3974,7 @@ function handle(m){
     dirty = true; save(); refreshUI();
   }
   else if (m.t === 'ginfo'){ const o = others.get(m.id); if (o){ o.g = m.g; setOtherLabel(o); } }
+  else if(m.t==='gear'){const o=others.get(m.id);if(o){o.cls=m.cls||o.cls||'aprendiz';o.gear={...(m.gear||{})};syncHeroEquipment(o.h,o.gear,o.cls);}}
 }
 
 /* ---------- Outros jogadores ---------- */
@@ -3923,10 +4003,11 @@ function makeSign(text){
 function addOther(p){
   if (others.has(p.id) || p.id === online.myId) return;
   const pal = PALETTE[p.id % PALETTE.length], h = makeCharacter({tunic:pal[0], hair:pal[1], long:p.id % 2 === 0, eye:[0x3A6FB8,0x2E8A5A,0x8A5A2A,0x6A4AB8][p.id % 4]});
-  const o = {id:p.id, name:p.name, L:p.L, g:p.g || null, s:p.s || null, sign:null, party:inParty(p.id), h, label:null, glabel:null, x:p.x, y:p.y, z:p.z, f:p.f, tx:p.x, ty:p.y, tz:p.z, tf:p.f, a:0, phase:0, bubble:null, bubbleT:0};
+  const o = {id:p.id,name:p.name,L:p.L,cls:p.cls||'aprendiz',gear:{...(p.gear||{})},g:p.g||null,s:p.s||null,sign:null,party:inParty(p.id),h,label:null,glabel:null,x:p.x,y:p.y,z:p.z,f:p.f,tx:p.x,ty:p.y,tz:p.z,tf:p.f,a:0,phase:0,bubble:null,bubbleT:0};
   setOtherLabel(o);
   h.root.position.set(o.x,o.y,o.z);
-  others.set(p.id, o);
+  others.set(p.id,o);
+  syncHeroEquipment(h,o.gear,o.cls);
 }
 function removeOther(o){
   scene.remove(o.h.root); scene.remove(o.h.shadow);
@@ -4169,7 +4250,7 @@ function shopUsed(){ // quanto de cada linha da mochila já está na loja
   const used = ch.inv.map(()=> 0);
   shopDraft.items.forEach(it=>{
     if (!ITEMS[it.id]) return;
-    if (ITEMS[it.id].kind === 'eq'){ const i = ch.inv.findIndex((q,k)=> !used[k] && q.id === it.id && (q.up||0) === (it.up||0)); if (i >= 0) used[i] = 1; }
+    if (ITEMS[it.id].kind === 'eq'){ const i = ch.inv.findIndex((q,k)=> !used[k] && q.id===it.id && (it.uid?q.uid===it.uid:(q.up||0)===(it.up||0))); if (i >= 0) used[i] = 1; }
     else { let left = it.n; ch.inv.forEach((q,k)=>{ if (left > 0 && q.id === it.id){ const u = Math.min(left, q.n - used[k]); used[k] += u; left -= u; } }); }
   });
   return used;
@@ -4226,7 +4307,7 @@ $('winShop').addEventListener('click', e=>{
   const add = e.target.closest('[data-sadd]');
   if (add){
     const q = ch.inv[+add.dataset.sadd]; if (!q || !ITEMS[q.id]) return;
-    if (ITEMS[q.id].kind === 'eq'){ if (shopDraft.items.length >= 8) return log('Cabem 8 itens na loja.', 'bad'); shopDraft.items.push({id:q.id, n:1, up:q.up||0, price:0}); }
+    if (ITEMS[q.id].kind === 'eq'){ if(q.locked)return log('Desbloqueie o item antes de vender.','bad');if (shopDraft.items.length >= 8) return log('Cabem 8 itens na loja.', 'bad'); shopDraft.items.push({id:q.id,n:1,up:q.up||0,uid:q.uid,price:0}); }
     else { const x = shopDraft.items.find(it=> it.id === q.id); if (x){ if (x.n < countItem(q.id)) x.n++; } else { if (shopDraft.items.length >= 8) return log('Cabem 8 itens na loja.', 'bad'); shopDraft.items.push({id:q.id, n:1, price:0}); } }
     renderShop(); return;
   }
@@ -4238,7 +4319,7 @@ $('winShop').addEventListener('click', e=>{
     if (shopDraft.items.some(it=> !(it.price >= 1))) return log('Todos os itens precisam de preço.', 'bad');
     if (player.flying) return log('Pouse antes de abrir a loja.', 'bad');
     shopDraft.title = title; save();
-    if (!sendWs({t:'shopopen', title, items:shopDraft.items.map(it=> ITEMS[it.id].kind === 'eq' ? {id:it.id, n:1, up:it.up||0, price:it.price} : {id:it.id, n:it.n, price:it.price})})) log('Sem conexão com o servidor.', 'bad');
+    if (!sendWs({t:'shopopen', title, items:shopDraft.items.map(it=> ITEMS[it.id].kind === 'eq' ? {id:it.id,n:1,up:it.up||0,uid:it.uid,price:it.price} : {id:it.id,n:it.n,price:it.price})})) log('Sem conexão com o servidor.', 'bad');
     return;
   }
   if (e.target.id === 'sClose'){ sendWs({t:'shopclose'}); return; }
@@ -4278,7 +4359,7 @@ function offeredUse(items){
   const used = ch.inv.map(()=> 0);
   items.forEach(it=>{
     if (!ITEMS[it.id]) return;
-    if (ITEMS[it.id].kind === 'eq'){ const i = ch.inv.findIndex((s,k)=> !used[k] && s.id === it.id && (s.up||0) === (it.up||0)); if (i >= 0) used[i] = 1; }
+    if (ITEMS[it.id].kind === 'eq'){ const i = ch.inv.findIndex((s,k)=> !used[k] && s.id===it.id && (it.uid?s.uid===it.uid:(s.up||0)===(it.up||0))); if (i >= 0) used[i] = 1; }
     else { let left = it.n; ch.inv.forEach((s,k)=>{ if (left > 0 && s.id === it.id){ const q = Math.min(left, s.n - used[k]); used[k] += q; left -= q; } }); }
   });
   return used;
@@ -4326,7 +4407,7 @@ $('winTrade').addEventListener('click', e=>{
   const add = e.target.closest('[data-tadd]');
   if (add && !(trade.mine && trade.mine.lock)){
     const s = ch.inv[+add.dataset.tadd], items = trade.draft.items; if (!s || !ITEMS[s.id]) return;
-    if (ITEMS[s.id].kind === 'eq'){ if (items.length >= 8){ log('Cabem 8 itens na troca.', 'bad'); return; } items.push({id:s.id, n:1, up:s.up||0}); }
+    if (ITEMS[s.id].kind === 'eq'){ if(s.locked){log('Desbloqueie o item antes de trocar.','bad');return;}if (items.length >= 8){ log('Cabem 8 itens na troca.', 'bad'); return; } items.push({id:s.id,n:1,up:s.up||0,uid:s.uid}); }
     else { const x = items.find(it=> it.id === s.id); if (x){ if (x.n < countItem(s.id)) x.n++; } else { if (items.length >= 8){ log('Cabem 8 itens na troca.', 'bad'); return; } items.push({id:s.id, n:1}); } }
     sendOffer(); return;
   }

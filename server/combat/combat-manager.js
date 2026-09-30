@@ -7,10 +7,11 @@ const { derivePlayer, playerDamage, monsterDamage } = require('./damage-calculat
 class CombatManager {
   constructor({ players, send, now=Date.now, rng=Math.random, awardExperience, onMonsterDeath }) {
     this.players=players; this.send=send; this.now=now; this.rng=rng; this.awardExperience=awardExperience; this.onMonsterDeath=onMonsterDeath;
-    this.monsters=null; this.skillManager=null;
+    this.monsters=null; this.skillManager=null; this.itemManager=null;
   }
   setMonsterManager(manager){ this.monsters=manager; }
   setSkillManager(manager){ this.skillManager=manager; }
+  setItemManager(manager){ this.itemManager=manager; }
   initializePlayer(player){
     const s=derivePlayer(player.dados); player.stats=s;
     for(const key of ['hp','mp','fp']) {
@@ -170,22 +171,18 @@ class CombatManager {
     slot.n--;if(slot.n<=0)inv.splice(inv.indexOf(slot),1);player[key]=Math.min(max,player[key]+rule[1]);player.dados[key]=player[key];player.nextItemAt=now+1000;player.dirty=true;this.sync(player,{inv});return true;
   }
   equipment(player,message={}){
-    const inv=Array.isArray(player.dados.inv)?player.dados.inv:[],eq=player.dados.eq||(player.dados.eq={}),upgrades=player.dados.equp||(player.dados.equp={});
-    if(message.action==='unequip'){
-      const slot=message.slot,id=eq[slot];if(!id||!EQUIPMENT[id])return this.fail(player,'Equipamento inválido.');if(inv.length>=24)return this.fail(player,'Mochila cheia.');
-      inv.push(upgrades[slot]?{id,n:1,up:upgrades[slot]}:{id,n:1});eq[slot]=null;upgrades[slot]=0;
-    }else{
-      const index=Number(message.index),entry=inv[index],item=entry&&EQUIPMENT[entry.id],stats=this.refresh(player);if(!item||item.req>stats.level||(item.cls&&item.cls!==stats.cls))return this.fail(player,'Você não pode equipar este item.');
-      inv.splice(index,1);const old=eq[item.slot];if(old)inv.push(upgrades[item.slot]?{id:old,n:1,up:upgrades[item.slot]}:{id:old,n:1});eq[item.slot]=entry.id;upgrades[item.slot]=entry.up||0;
-    }
-    player.dirty=true;this.refresh(player);this.send(player.ws,{t:'equipmentState',inv,eq,equp:upgrades,combat:{hp:player.hp,maxHp:player.stats.maxHp,mp:player.mp,maxMp:player.stats.maxMp,fp:player.fp,maxFp:player.stats.maxFp}});return true;
+    if(!this.itemManager)return this.fail(player,'Sistema de itens indisponível.');
+    const ok=message.action==='unequip'?this.itemManager.unequip(player,message.slot):this.itemManager.equip(player,message.index);
+    if(!ok)return false;
+    const st=this.refresh(player);player.hp=Math.min(player.hp,st.maxHp);player.mp=Math.min(player.mp,st.maxMp);player.fp=Math.min(player.fp,st.maxFp);Object.assign(player.dados,{hp:player.hp,mp:player.mp,fp:player.fp});
+    this.send(player.ws,{t:'equipmentState',...this.itemManager.snapshot(player),combat:{hp:player.hp,maxHp:st.maxHp,mp:player.mp,maxMp:st.maxMp,fp:player.fp,maxFp:st.maxFp}});return true;
   }
   addAttribute(player,message={}){const key=message.stat;if(!['str','sta','dex','int'].includes(key)||Math.floor(player.dados.pts||0)<1)return this.fail(player,'Ponto de atributo inválido.');player.dados[key]=Math.floor(player.dados[key]||15)+1;player.dados.pts--;player.dirty=true;this.refresh(player);this.send(player.ws,{t:'attributeState',stat:key,value:player.dados[key],pts:player.dados.pts});return true;}
-  resetPlayer(player){player.dados={L:1,exp:0,str:15,sta:15,dex:15,int:15,pts:0,gold:0,cls:'aprendiz',quest:null,quests:{active:{},completed:[]},skillTree:{version:2,ranks:{},legacyUnlocks:[],specialization:null,respecs:0},inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],eq:{arma:'espada_treino',capacete:null,peitoral:null,botas:null,voo:null},equp:{}};player.L=1;player.x=0;player.z=5;this.initializePlayer(player);player.dirty=player.posDirty=true;this.send(player.ws,{t:'resetState',dados:player.dados});if(this.skillManager)this.skillManager.sync(player,{event:'reset'});return true;}
+  resetPlayer(player){player.dados={L:1,exp:0,str:15,sta:15,dex:15,int:15,pts:0,gold:0,cls:'aprendiz',quest:null,quests:{active:{},completed:[]},skillTree:{version:2,ranks:{},legacyUnlocks:[],specialization:null,respecs:0},inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],storage:[],itemSeq:0,eq:{arma:'espada_treino',offhand:null,capacete:null,peitoral:null,luvas:null,botas:null,capa:null,acessorio1:null,acessorio2:null,voo:null},equp:{},eqMeta:{}};player.L=1;player.x=0;player.z=5;if(this.itemManager)this.itemManager.ensurePlayer(player);this.initializePlayer(player);player.dirty=player.posDirty=true;this.send(player.ws,{t:'resetState',dados:player.dados});if(this.skillManager)this.skillManager.sync(player,{event:'reset'});if(this.itemManager)this.itemManager.sync(player,{event:'reset'});return true;}
   changeClassFromQuest(player,cls){
     const rules={guerreiro:{item:'presa',n:6,weapon:'espada_soldado'},druida:{item:'chapeu',n:8,weapon:'cajado_carvalho'},mago:{item:'gosma',n:12,weapon:'varinha_arcana'},arqueiro:{item:'pelo',n:10,weapon:'arco_curto'}},rule=rules[cls];
     if(!rule||player.dados.cls!=='aprendiz'||player.L<15)return this.fail(player,'Troca de classe inválida.');const inv=player.dados.inv||[],mat=inv.find(x=>x&&x.id===rule.item&&x.n>=rule.n);if(!mat)return this.fail(player,'Materiais insuficientes.');
-    mat.n-=rule.n;if(mat.n<=0)inv.splice(inv.indexOf(mat),1);player.dados.cls=cls;for(const key of ['str','sta','dex','int'])player.dados[key]=15;player.dados.pts=2*(player.L-1);const old=player.dados.eq.arma,oldUp=player.dados.equp.arma||0;player.dados.eq.arma=rule.weapon;player.dados.equp.arma=0;if(old)inv.push(oldUp?{id:old,n:1,up:oldUp}:{id:old,n:1});player.dirty=true;this.refresh(player);player.hp=player.stats.maxHp;player.mp=player.stats.maxMp;player.fp=player.stats.maxFp;Object.assign(player.dados,{hp:player.hp,mp:player.mp,fp:player.fp});this.send(player.ws,{t:'classState',dados:player.dados,combat:{hp:player.hp,mp:player.mp,fp:player.fp}});return true;
+    mat.n-=rule.n;if(mat.n<=0)inv.splice(inv.indexOf(mat),1);const oldEntry=this.itemManager?this.itemManager.equippedEntry(player,'arma'):null;player.dados.cls=cls;for(const key of ['str','sta','dex','int'])player.dados[key]=15;player.dados.pts=2*(player.L-1);if(oldEntry)inv.push(oldEntry);player.dados.eq.arma=rule.weapon;player.dados.equp.arma=0;if(this.itemManager){const item=EQUIPMENT[rule.weapon];player.dados.eqMeta.arma=this.itemManager.normalizeMeta(item,{uid:this.itemManager.nextUid(player,rule.weapon)});}player.dirty=true;this.refresh(player);player.hp=player.stats.maxHp;player.mp=player.stats.maxMp;player.fp=player.stats.maxFp;Object.assign(player.dados,{hp:player.hp,mp:player.mp,fp:player.fp});this.send(player.ws,{t:'classState',dados:player.dados,combat:{hp:player.hp,mp:player.mp,fp:player.fp}});return true;
   }
   tick(dt){this.tickMonsterEffects();for(const p of this.players.values()){if(p.dead)continue;const s=this.refresh(p);const before=[p.hp,p.mp,p.fp];if(this.now()-(p.lastDamagedAt||0)>5000){p.hp=Math.min(s.maxHp,p.hp+s.maxHp*.025*dt);p.mp=Math.min(s.maxMp,p.mp+s.maxMp*.05*dt);p.fp=Math.min(s.maxFp,p.fp+s.maxFp*.05*dt);}if(this.bonus(p,'regen'))p.hp=Math.min(s.maxHp,p.hp+s.maxHp*.02*dt);if(before.some((v,i)=>Math.floor(v)!==Math.floor([p.hp,p.mp,p.fp][i]))){Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});p.dirty=true;}}}
   respawn(player,x,z){if(!player.dead)return false;const loss=Math.round((28*Math.pow(player.L,1.65)+22)*.03);player.dados.exp=Math.max(0,Math.floor(player.dados.exp||0)-loss);player.dead=false;player.x=x;player.z=z;const s=this.refresh(player);player.hp=s.maxHp;player.fp=s.maxFp;player.mp=s.maxMp;Object.assign(player.dados,{hp:player.hp,fp:player.fp,mp:player.mp});player.dirty=player.posDirty=true;this.sync(player,{exp:player.dados.exp,expLoss:loss});return true;}

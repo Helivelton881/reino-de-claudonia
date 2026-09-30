@@ -131,14 +131,27 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   confirmação de investimento/especialização e barra configurável de 3 skills,
   com atalho K. VFX desta fase usam apenas efeitos matemáticos/rings já existentes;
   portanto nenhum novo asset 3D foi necessário e o Blender não gerou GLB novo.
-- QA atual: 92 testes automatizados passando, incluindo duas builds da mesma
-  classe com papéis/bonificações diferentes, especialização única, range/alvo,
-  cooldown, DoT, debuff, CC, cura/buff de party e tentativas inválidas.
+- Fase 9 concluída no código local: itemização server-authoritative e data-driven em
+  `server/data/items/*` + `ItemManager`. O catálogo foi ampliado para 165 equipamentos,
+  com raridades Comum/Incomum/Raro/Épico/Lendário, fontes NPC/common/Giant/dungeon/boss,
+  slots arma/off-hand/capacete/peitoral/luvas/botas/capa/acessórios/voo, 12 sets de
+  classe com bônus 2/3/4 peças, affixes por faixa de nível, sockets/cards, lock/favorito,
+  filtros, comparação, banco 32/60 e upgrade +1..+10 rebalanceado por raridade + pity.
+- Equipamentos únicos carregam `uid`, affixes, sockets, flags e upgrade em inventário,
+  storage, equipamento, troca e loja pessoal sem confiar no cliente. Gear visível é
+  sincronizado para outros jogadores e usa GLBs pelo `EquipmentManager`.
+- Blender/MCP produziu 20 famílias visuais originais e leves para a Fase 9 em
+  `public/assets/equipment/phase9/`: 4 armas, 4 off-hands, 4 capacetes, 4 peitorais e
+  4 capas. O maior arquivo fica abaixo de 256 KB.
+- QA atual: 102 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
+  raridades/fontes/slots, affixes, set bonus, requisito nível/classe, mochila cheia,
+  lock/favorito, banco, sockets, compra NPC, upgrade lendário/pity/quebra, assets e UI.
 
 ## Limites conhecidos (próximos passos)
-- As Fases 7 e 8 estão formalmente fechadas sobre contratos de dados estáveis.
-- Próxima fase planejada: Fase 9 — itemização, raridades, sets, slots adicionais,
-  affixes, storage e integração do upgrade +1 a +10 com o novo eixo de build.
+- As Fases 7 e 8 estão formalmente fechadas; a Fase 9 aguarda apenas deploy e QA final
+  no Render para ser marcada como publicada.
+- Próxima fase planejada após fechar produção da Fase 9: Fase 10 — ecossistema de
+  monstros, variantes rare/Giant e World Bosses.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
   3D de skill continua passando pelo Blender aberto no PC antes de entrar no jogo.
 
