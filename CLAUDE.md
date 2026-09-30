@@ -150,7 +150,7 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   4 capas. O maior arquivo fica abaixo de 256 KB. Armas, off-hands e capacetes usam
   metadados de `modelScale`/posição/quaternion validados no personagem GLB para não
   entrar gigantes, atravessados ou desalinhados no gameplay.
-- QA atual: 115 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
+- QA atual: 118 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
   raridades/fontes/slots, affixes, set bonus, requisito nível/classe, mochila cheia,
   lock/favorito, banco, sockets, compra NPC, drop com metadata/UID, upgrade
   lendário/pity/quebra, assets e UI. Antes da Fase 10, o inventário recebeu rework
@@ -169,6 +169,12 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   servidor calcula quantos ranks podem ser aplicados; respec continua exigindo
   proximidade do mestre. Desktop, portrait e landscape baixo possuem layouts
   dedicados. Nenhum asset 3D novo foi necessário nesta subfase.
+- Fase 9.2: as 42 habilidades agora possuem ícones SVG próprios em
+  `public/assets/ui/skills/`, sem siglas como arte final. A mesma imagem é reutilizada
+  na árvore, painel de detalhes, barra de combo, hotbar e buffs. As paletas distinguem
+  Aprendiz/Guerreiro/Druida/Mago/Arqueiro e cada skill possui pictograma coerente com
+  sua função. Os SVGs são leves (menos de 6 KB cada), vetoriais e responsivos.
+  Esta etapa é UI 2D, portanto não exigiu Blender/GLB.
 
 ## Limites conhecidos (próximos passos)
 - As Fases 7, 8 e 9 estão formalmente fechadas e publicadas.

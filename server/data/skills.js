@@ -1,7 +1,7 @@
 'use strict';
 
 const freezeRanks = arr => Object.freeze(arr.map(x=>Object.freeze(x)));
-const skill = cfg => { const range=cfg.range??(cfg.target==='area-target'||['bolt','debuff','dot','cc'].includes(cfg.type)?14:cfg.type==='taunt'?9:['hit','double'].includes(cfg.type)?3:0); return Object.freeze({...cfg,range,maxRank:cfg.maxRank||cfg.ranks.length,ranks:freezeRanks(cfg.ranks)}); };
+const skill = cfg => { const range=cfg.range??(cfg.target==='area-target'||['bolt','debuff','dot','cc'].includes(cfg.type)?14:cfg.type==='taunt'?9:['hit','double'].includes(cfg.type)?3:0); return Object.freeze({...cfg,glyph:cfg.icon,icon:`/assets/ui/skills/${cfg.id}.svg`,range,maxRank:cfg.maxRank||cfg.ranks.length,ranks:freezeRanks(cfg.ranks)}); };
 const dmg = (...v) => v.map(multiplier=>({multiplier}));
 const passive = (...v) => v.map(x=>({passive:x}));
 const buff = (...v) => v.map(x=>({buff:x}));

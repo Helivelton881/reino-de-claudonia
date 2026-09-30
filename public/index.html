@@ -72,7 +72,8 @@ button{font-family:inherit;color:inherit}
 .chips em{font-style:normal;color:var(--gold)}
 .buffs{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 0 4px;font-size:12px;max-width:290px}
 .buffs:empty{display:none}
-.buffs span{background:rgba(38,24,12,.8);border:1px solid var(--edge-soft);border-radius:6px;padding:0 6px}
+.buffs span{background:rgba(38,24,12,.8);border:1px solid var(--edge-soft);border-radius:6px;padding:0 6px;display:inline-flex;align-items:center;gap:4px}
+.buffs .skill-buff-art{width:18px;height:18px;border-radius:4px;object-fit:cover;flex:0 0 auto}
 
 /* Alvo */
 .target{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:4;
@@ -153,6 +154,7 @@ button{font-family:inherit;color:inherit}
   display:grid;place-items:center;font-size:25px}
 .slot small{position:absolute;left:8px;top:2px;font-size:10.5px;color:var(--ink-soft);z-index:2;font-weight:800}
 .slot .n{position:absolute;right:8px;bottom:2px;font-size:12px;font-weight:800;text-shadow:0 1px 2px #000;z-index:2}
+.slot>.skill-hotbar-art{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);object-fit:cover;border-radius:50%;z-index:0;pointer-events:none}
 .slot .cd{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(0,0,0,.62);z-index:1}
 .slot.locked{filter:grayscale(1);opacity:.55}
 .slot.active{box-shadow:0 0 0 3px #FFF1B8,0 0 10px rgba(255,210,110,.9)}
@@ -394,6 +396,11 @@ button{font-family:inherit;color:inherit}
 #winSkills .skill-combo{display:grid;grid-template-columns:repeat(5,42px);gap:7px;margin:5px 0 10px}
 #winSkills .skill-combo-slot{width:42px;height:42px;border-radius:50%;border:2px solid #9c653d;background:radial-gradient(circle at 35% 30%,#49352b,#1d1713 75%);box-shadow:inset 0 0 0 2px #c18e5c;display:grid;place-items:center;color:#f4d487;font-size:10px;font-weight:900;overflow:hidden}
 #winSkills .skill-combo-slot.locked{filter:grayscale(1);opacity:.65}
+#winSkills .skill-art{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;pointer-events:none;user-select:none}
+#winSkills .skill-node-icon,#winSkills .skill-selected-icon{overflow:hidden}
+#winSkills .skill-node-icon .skill-art,#winSkills .skill-selected-icon .skill-art{border-radius:5px}
+#winSkills .skill-combo-slot .skill-art{border-radius:50%}
+#winSkills .skill-art-fallback{display:grid;place-items:center;width:100%;height:100%;font-weight:900}
 #winSkills .skill-combine{width:100%;height:40px;border-radius:18px;border:3px solid #8c837b;background:linear-gradient(180deg,#dedbd7,#918c86);box-shadow:inset 0 0 0 2px #f3f0ec;color:#342f2a;font-weight:900;cursor:pointer}
 #winSkills .skill-combine:disabled{opacity:.5;cursor:default}
 #winSkills .skill-footer{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:center}
@@ -989,6 +996,11 @@ function applySkillSync(catalog,state,classes){
 }
 const skillRank=id=>Math.max(0,Math.floor(skillTreeState.ranks&&skillTreeState.ranks[id]||0));
 const skillKnown=id=>skillRank(id)>0||(!Object.keys(skillCatalog).length&&SKILLS[id]&&SKILLS[id].cls===ch.cls&&SKILLS[id].req<=ch.L);
+function skillArt(icon,name='',className='skill-art'){
+  const safe=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  const src=typeof icon==='string'&&icon.startsWith('/')?icon:null;
+  return src?`<img class="${safe(className)}" src="${safe(src)}" alt="${safe(name)}" draggable="false">`:`<span class="skill-art-fallback">${safe(icon||'✦')}</span>`;
+}
 const questsForNpc = npcId => Object.values(questCatalog).filter(q=>q.npcId===npcId);
 const activeQuestState = questId => (questState.active||[]).find(q=>q.id===questId) || null;
 function applyQuestSync(catalog,state,legacy){
@@ -2429,8 +2441,8 @@ function addBuff(sk){
 }
 function refreshBuffs(){
   const ps = (party.members.length > 1 && party.skills) ? Object.entries(party.skills).filter(([k,t])=> t > Date.now() && PARTY_SKILLS[k]) : [];
-  $('buffs').innerHTML = buffs.map(b=>`<span title="${b.name}">${b.icon} ${Math.ceil(b.t)}s</span>`).join('')
-    + ps.map(([k,t])=>`<span title="${PARTY_SKILLS[k].name} (grupo)">${PARTY_SKILLS[k].icon} ${Math.ceil((t-Date.now())/1000)}s</span>`).join('');
+  $('buffs').innerHTML = buffs.map(b=>`<span title="${b.name}">${skillArt(b.icon,b.name,'skill-buff-art')} ${Math.ceil(b.t)}s</span>`).join('')
+    + ps.map(([k,t])=>`<span title="${PARTY_SKILLS[k].name} (grupo)">${skillArt(PARTY_SKILLS[k].icon,PARTY_SKILLS[k].name,'skill-buff-art')} ${Math.ceil((t-Date.now())/1000)}s</span>`).join('');
   $('buffCount').textContent = 'x' + (buffs.length + ps.length);
 }
 
@@ -3231,7 +3243,7 @@ function buildHotbar(){
     const el = document.createElement('div'); el.className = 'slot' + (s ? '' : ' empty');
     let icon = '', title = 'Espaço livre';
     if (s && s.kind === 'attack'){ icon = '⚔️'; title = 'Atacar o alvo'; }
-    if (s && s.kind === 'skill'){ const k = SKILLS[s.id]; icon = k.icon; title = `${k.name}: ${k.desc} Custa ${k.fp ? k.fp + ' de energia' : k.mp + ' de mana'}. Nível ${k.req}.`; }
+    if (s && s.kind === 'skill'){ const k = SKILLS[s.id]; icon = skillArt(k.icon,k.name,'skill-hotbar-art'); title = `${k.name}: ${k.desc} Custa ${k.fp ? k.fp + ' de energia' : k.mp + ' de mana'}. Nível ${k.req}.`; }
     if (s && s.kind === 'item'){ const it = ITEMS[s.id]; icon = iconHTML(s.id); title = `${it.name}: ${it.desc}`; }
     if (s && s.kind === 'fly'){ icon = '🛹'; title = 'Voar ou pousar (nível 20, precisa de prancha ou vassoura)'; }
     el.innerHTML = `<small>${i+1}</small>${icon}<span class="n"></span><div class="cd"></div>`;
@@ -3484,7 +3496,7 @@ function renderSkillTree(list){
     const nodes=skills.map(s=>{
       const rank=skillRank(s.id),can=skillUiCanLearn(s),blocked=!can&&!rank,selected=selectedSkillId===s.id,max=s.maxRank||1;
       return `<button class="skill-node ${rank?'learned':''} ${can?'available':''} ${blocked?'blocked':''} ${selected?'selected':''}" type="button" data-skill-select="${s.id}" title="${esc(s.name)}">
-        ${blocked?'<span class="skill-node-lock">🔒</span>':''}<span class="skill-node-icon">${esc(s.icon||'✦')}</span>
+        ${blocked?'<span class="skill-node-lock">🔒</span>':''}<span class="skill-node-icon">${skillArt(s.icon,s.name)}</span>
         <span class="skill-node-name">${esc(s.name)}</span><span class="skill-node-rank">Rank ${rank}/${max}</span>
       </button>`;
     }).join('');
@@ -3495,7 +3507,7 @@ function renderSkillCombo(){
   const bar=Array.isArray(ch.skillBar)?ch.skillBar.slice(0,3):[],slots=[];
   for(let i=0;i<5;i++){
     if(i>=3){slots.push('<span class="skill-combo-slot locked">🔒</span>');continue;}
-    const id=bar[i],s=id&&skillCatalog[id];slots.push(`<span class="skill-combo-slot" title="${s?esc(s.name):'Slot livre'}">${s?esc(s.icon||String(i+1)):String(i+1)}</span>`);
+    const id=bar[i],s=id&&skillCatalog[id];slots.push(`<span class="skill-combo-slot" title="${s?esc(s.name):'Slot livre'}">${s?skillArt(s.icon,s.name):String(i+1)}</span>`);
   }
   $('skillCombo').innerHTML=slots.join('');
 }
@@ -3508,7 +3520,7 @@ function renderSkillDetail(s){
     plus.disabled=maxBtn.disabled=combine.disabled=true;$('skillCost').textContent='—';$('skillReq').textContent='—';return;
   }
   const rank=skillRank(s.id),max=s.maxRank||1,next=rank+1,can=skillUiCanLearn(s),prereq=(s.requires||[]).map(r=>`${skillCatalog[r.id]?.name||r.id} R${r.rank}`).join(', ');
-  icon.textContent=s.icon||'✦';name.textContent=`${s.name} · ${skillTypeLabel(s.type)} · Rank ${rank}/${max}`;
+  icon.innerHTML=skillArt(s.icon,s.name);name.textContent=`${s.name} · ${skillTypeLabel(s.type)} · Rank ${rank}/${max}`;
   let detail=`<b>Atual:</b> ${esc(skillRankText(s,rank))}`;
   if(next<=max)detail+=`<br><b>Próximo:</b> ${esc(skillRankText(s,next))}`;
   detail+=`<br><span>Nível ${s.req}${prereq?' · Requer '+esc(prereq):''} · ${s.fp?s.fp+' FP':s.mp?s.mp+' MP':'sem custo'} · ${s.cooldown}s recarga</span>`;

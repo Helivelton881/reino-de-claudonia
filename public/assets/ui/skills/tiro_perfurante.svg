@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+ <title>Tiro Perfurante</title>
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#28533f"/><stop offset="1" stop-color="#111820"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e2ffb9"/><stop offset=".46" stop-color="#7fce66"/><stop offset="1" stop-color="#28533f"/></linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset=".42" stop-color="#aeb9c8"/><stop offset="1" stop-color="#4f5968"/></linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0a6"/><stop offset=".48" stop-color="#e0a63b"/><stop offset="1" stop-color="#8c5620"/></linearGradient>
+  <linearGradient id="fire" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff099"/><stop offset=".45" stop-color="#ff7a2f"/><stop offset="1" stop-color="#a91f22"/></linearGradient>
+  <radialGradient id="shine" cx="30%" cy="20%"><stop stop-color="#ffffff" stop-opacity=".27"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+ </defs>
+ <rect x="6" y="6" width="244" height="244" rx="34" fill="url(#bg)" stroke="#141619" stroke-width="12"/>
+ <rect x="15" y="15" width="226" height="226" rx="27" fill="none" stroke="#7fce66" stroke-width="5" opacity=".72"/>
+ <path d="M26 62 Q80 18 168 24 Q211 27 232 57 L232 28 Q232 18 220 18 H36 Q18 18 18 36 V93 Q20 76 26 62 Z" fill="url(#shine)"/>
+ <g filter="url(#shadow)"><g fill="none" stroke="url(#gold)" stroke-width="9"><circle cx="128" cy="128" r="70"/><circle cx="128" cy="128" r="38"/><path d="M128 37 V78 M128 178 V219 M37 128 H78 M178 128 H219"/></g><circle cx="128" cy="128" r="12" fill="url(#accent)"/><g transform="translate(0 0) rotate(0 128 128)"><line x1="52" y1="128" x2="184" y2="128" stroke="#f5ffd8" stroke-width="11" stroke-linecap="round" /><path d="M188 128 L156 106 L156 150 Z" fill="#f5ffd8"/><path d="M58 128 L82 111 L82 145 Z" fill="#e8c36d"/></g><path d="M54 128 H205" stroke="#7cff94" stroke-width="4"/></g>
+ <path d="M36 222 Q128 242 220 222" fill="none" stroke="#e2ffb9" stroke-width="5" opacity=".35"/>
+</svg>

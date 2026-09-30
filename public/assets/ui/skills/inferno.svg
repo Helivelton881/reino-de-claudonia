@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+ <title>Inferno</title>
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#35245f"/><stop offset="1" stop-color="#111820"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5d6ff"/><stop offset=".46" stop-color="#9a70ff"/><stop offset="1" stop-color="#35245f"/></linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset=".42" stop-color="#aeb9c8"/><stop offset="1" stop-color="#4f5968"/></linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0a6"/><stop offset=".48" stop-color="#e0a63b"/><stop offset="1" stop-color="#8c5620"/></linearGradient>
+  <linearGradient id="fire" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff099"/><stop offset=".45" stop-color="#ff7a2f"/><stop offset="1" stop-color="#a91f22"/></linearGradient>
+  <radialGradient id="shine" cx="30%" cy="20%"><stop stop-color="#ffffff" stop-opacity=".27"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+ </defs>
+ <rect x="6" y="6" width="244" height="244" rx="34" fill="url(#bg)" stroke="#141619" stroke-width="12"/>
+ <rect x="15" y="15" width="226" height="226" rx="27" fill="none" stroke="#9a70ff" stroke-width="5" opacity=".72"/>
+ <path d="M26 62 Q80 18 168 24 Q211 27 232 57 L232 28 Q232 18 220 18 H36 Q18 18 18 36 V93 Q20 76 26 62 Z" fill="url(#shine)"/>
+ <g filter="url(#shadow)"><g transform="translate(-23.039999999999992 -39.59999999999999) scale(1.18)"><path d="M130 36 C156 73 151 91 175 112 C197 132 191 175 166 197 C145 216 106 218 83 196 C57 171 65 135 91 113 C111 96 103 67 130 36 Z" fill="url(#fire)" stroke="#ffd77a" stroke-width="6"/><path d="M129 88 C145 111 143 127 155 139 C169 153 160 181 138 188 C116 196 95 180 99 157 C102 139 116 128 129 88 Z" fill="#fff0a8" opacity=".95"/></g><path d="M48 205 Q128 177 208 205" fill="none" stroke="#ff5e2d" stroke-width="12"/></g>
+ <path d="M36 222 Q128 242 220 222" fill="none" stroke="#e5d6ff" stroke-width="5" opacity=".35"/>
+</svg>

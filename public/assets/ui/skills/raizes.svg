@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+ <title>Raizes</title>
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#245b3a"/><stop offset="1" stop-color="#111820"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d8ffb4"/><stop offset=".46" stop-color="#68d48a"/><stop offset="1" stop-color="#245b3a"/></linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset=".42" stop-color="#aeb9c8"/><stop offset="1" stop-color="#4f5968"/></linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0a6"/><stop offset=".48" stop-color="#e0a63b"/><stop offset="1" stop-color="#8c5620"/></linearGradient>
+  <linearGradient id="fire" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff099"/><stop offset=".45" stop-color="#ff7a2f"/><stop offset="1" stop-color="#a91f22"/></linearGradient>
+  <radialGradient id="shine" cx="30%" cy="20%"><stop stop-color="#ffffff" stop-opacity=".27"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+ </defs>
+ <rect x="6" y="6" width="244" height="244" rx="34" fill="url(#bg)" stroke="#141619" stroke-width="12"/>
+ <rect x="15" y="15" width="226" height="226" rx="27" fill="none" stroke="#68d48a" stroke-width="5" opacity=".72"/>
+ <path d="M26 62 Q80 18 168 24 Q211 27 232 57 L232 28 Q232 18 220 18 H36 Q18 18 18 36 V93 Q20 76 26 62 Z" fill="url(#shine)"/>
+ <g filter="url(#shadow)"><g fill="none" stroke="url(#accent)" stroke-width="13" stroke-linecap="round"><path d="M128 43 C126 84 128 111 127 139 C112 154 91 165 69 192"/><path d="M128 139 C143 153 165 164 190 191"/><path d="M112 156 C96 150 79 142 65 129"/><path d="M146 157 C163 151 180 143 194 128"/></g><circle cx="128" cy="56" r="18" fill="#d8ffb4"/> </g>
+ <path d="M36 222 Q128 242 220 222" fill="none" stroke="#d8ffb4" stroke-width="5" opacity=".35"/>
+</svg>

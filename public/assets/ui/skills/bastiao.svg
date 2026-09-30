@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+ <title>Bastiao</title>
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6f2d21"/><stop offset="1" stop-color="#111820"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd28a"/><stop offset=".46" stop-color="#ff7b3b"/><stop offset="1" stop-color="#6f2d21"/></linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset=".42" stop-color="#aeb9c8"/><stop offset="1" stop-color="#4f5968"/></linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0a6"/><stop offset=".48" stop-color="#e0a63b"/><stop offset="1" stop-color="#8c5620"/></linearGradient>
+  <linearGradient id="fire" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff099"/><stop offset=".45" stop-color="#ff7a2f"/><stop offset="1" stop-color="#a91f22"/></linearGradient>
+  <radialGradient id="shine" cx="30%" cy="20%"><stop stop-color="#ffffff" stop-opacity=".27"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+ </defs>
+ <rect x="6" y="6" width="244" height="244" rx="34" fill="url(#bg)" stroke="#141619" stroke-width="12"/>
+ <rect x="15" y="15" width="226" height="226" rx="27" fill="none" stroke="#ff7b3b" stroke-width="5" opacity=".72"/>
+ <path d="M26 62 Q80 18 168 24 Q211 27 232 57 L232 28 Q232 18 220 18 H36 Q18 18 18 36 V93 Q20 76 26 62 Z" fill="url(#shine)"/>
+ <g filter="url(#shadow)"><path d="M128 42 L190 67 L180 142 Q166 190 128 213 Q90 190 76 142 L66 67 Z" fill="url(#metal)" stroke="url(#gold)" stroke-width="8"/><path d="M106 174 V91 H121 V72 H136 V91 H151 V174 Z" fill="url(#accent)" stroke="#fff2c0" stroke-width="5"/></g>
+ <path d="M36 222 Q128 242 220 222" fill="none" stroke="#ffd28a" stroke-width="5" opacity=".35"/>
+</svg>
