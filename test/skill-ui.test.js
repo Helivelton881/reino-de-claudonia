@@ -26,3 +26,25 @@ test('respec é solicitado ao mestre de classe e hotbar usa skills aprendidas',(
   assert.match(html,/function buildHotbar\(\)/);
   assert.match(html,/SKILLS\[k\]\.cls === ch\.cls && skillKnown\(k\)/);
 });
+test('fase 8 completa mostra especializações, comparação de ranks e barra configurável',()=>{
+  assert.match(html,/Especializações/);
+  assert.match(html,/data-specialize/);
+  assert.match(html,/Confirmar especialização/);
+  assert.match(html,/data-skill-bar/);
+  assert.match(html,/function skillRankText\(/);
+  assert.match(html,/Atual:<\/b>/);
+  assert.match(html,/Próximo:<\/b>/);
+});
+
+test('cliente consome catálogo server-side e expõe efeitos de status sem asset 3D novo',()=>{
+  assert.match(html,/classCatalog/);
+  assert.match(html,/applySkillSync\(m\.skillCatalog,m\.skillState,m\.classCatalog\)/);
+  assert.match(html,/m\.t==='skillEffect'/);
+  assert.match(html,/m\.t==='monsterStatus'/);
+  assert.match(html,/ringFx\(px,pz/);
+});
+
+test('HUD de grupo mostra especialização e papel recebidos do servidor',()=>{
+  assert.match(html,/x\.specialization/);
+  assert.match(html,/x\.role/);
+});
