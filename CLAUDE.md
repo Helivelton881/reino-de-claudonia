@@ -56,6 +56,11 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   (`--use-angle=d3d11`); sem placa de vídeo roda a ~1 quadro por segundo.
 - Scripts `blender_etapa_*.py` na raiz são do dono (modelagem no Blender);
   não mexer e não enviar ao GitHub sem ele pedir.
+- Blender MCP é obrigatório a partir da Fase 9 para qualquer asset 3D novo ou
+  retrabalho visual. Primitivas podem existir apenas como blockout interno; o
+  resultado integrado deve ter silhueta trabalhada, detalhes, materiais,
+  proporção/pivô revisados e acabamento consistente com MMORPG. Não integrar
+  cubos/placeholders ou modelagem provisória como arte final.
 - `server.js`: Node.js + Express + ws. Confere o login no Supabase, repassa
   posições (10 vezes por segundo), chat e salva o personagem a cada 15 s.
   O servidor usa o token do próprio jogador, então o banco (RLS) só deixa
@@ -143,14 +148,17 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 - Blender/MCP produziu 20 famílias visuais originais e leves para a Fase 9 em
   `public/assets/equipment/phase9/`: 4 armas, 4 off-hands, 4 capacetes, 4 peitorais e
   4 capas. O maior arquivo fica abaixo de 256 KB.
-- QA atual: 102 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
+- QA atual: 104 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
   raridades/fontes/slots, affixes, set bonus, requisito nível/classe, mochila cheia,
-  lock/favorito, banco, sockets, compra NPC, upgrade lendário/pity/quebra, assets e UI.
+  lock/favorito, banco, sockets, compra NPC, drop com metadata/UID, upgrade
+  lendário/pity/quebra, assets e UI.
+- Produção da Fase 9 foi validada no Render: catálogo 165, 12 sets, 5 raridades,
+  `itemState` sincronizado, personagem GLB ativo, WebGL íntegro e 20/20 famílias
+  visuais carregadas no gameplay online sem erro JS ou request falho.
 
 ## Limites conhecidos (próximos passos)
-- As Fases 7 e 8 estão formalmente fechadas; a Fase 9 aguarda apenas deploy e QA final
-  no Render para ser marcada como publicada.
-- Próxima fase planejada após fechar produção da Fase 9: Fase 10 — ecossistema de
+- As Fases 7, 8 e 9 estão formalmente fechadas e publicadas.
+- Próxima fase planejada: Fase 10 — ecossistema de
   monstros, variantes rare/Giant e World Bosses.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
   3D de skill continua passando pelo Blender aberto no PC antes de entrar no jogo.
