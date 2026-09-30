@@ -2460,6 +2460,7 @@ const NPCS = [
   {id:'ferreiro', ...npcPhysical('ferreiro'), long:true, eye:0x8A3A2A, name:'Ferreira Brunna', tag:'[Ferreira] Brunna', role:'Ferreira: aprimora, compra e vende equipamentos', tunic:0x6B4A2E, hair:0x2B2B2B},
   {id:'vigia_lobos', ...npcPhysical('vigia_lobos'), name:'Vigia Cael', tag:'[Vigia da Trilha] Cael', role:'Vigia da Trilha dos Lobos', tunic:0x355C3A, hair:0x2B241C, model:'/assets/npcs/npc_vigia_cael.glb'},
   {id:'batedora_teias', ...npcPhysical('batedora_teias'), long:true, name:'Batedora Maelis', tag:'[Batedora da Mata] Maelis', role:'Batedora da Mata das Teias', tunic:0x5A2A68, hair:0x1E2230, model:'/assets/npcs/npc_batedora_maelis.glb'},
+  {id:'guardia_lago', ...npcPhysical('guardia_lago'), long:true, name:'Guardiã Neris', tag:'[Guardiã do Lago] Neris', role:'Guardiã do Lago Espelhado', tunic:0x14545C, hair:0xD9E4EA, model:'/assets/npcs/npc_guardia_neris.glb'},
 ];
 const npcObjs = NPCS.map(n=>{
   const h = makeLegacyHero({tunic:n.tunic, hair:n.hair, long:!!n.long, eye:n.eye}), y = heightAt(n.x, n.z);

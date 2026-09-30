@@ -10,7 +10,8 @@ const META = Object.freeze({
   voo:{name:'Piloto Tito',tag:'[Mestre de Voo] Tito',role:'Mestre de Voo e mercador',service:'flight-shop'},
   ferreiro:{name:'Ferreira Brunna',tag:'[Ferreira] Brunna',role:'Ferreira: aprimora, compra e vende equipamentos',service:'forge'},
   vigia_lobos:{name:'Vigia Cael',tag:'[Vigia da Trilha] Cael',role:'Vigia da Trilha dos Lobos',service:'quest-giver'},
-  batedora_teias:{name:'Batedora Maelis',tag:'[Batedora da Mata] Maelis',role:'Batedora da Mata das Teias',service:'quest-giver'}
+  batedora_teias:{name:'Batedora Maelis',tag:'[Batedora da Mata] Maelis',role:'Batedora da Mata das Teias',service:'quest-giver'},
+  guardia_lago:{name:'Guardiã Neris',tag:'[Guardiã do Lago] Neris',role:'Guardiã do Lago Espelhado',service:'quest-giver'}
 });
 
 const NPCS = Object.freeze(STATIC_NPCS.map(p=>Object.freeze({

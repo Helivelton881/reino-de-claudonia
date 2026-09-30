@@ -30,7 +30,7 @@ test('todo modelo usado no mapa existe nos kits', () => {
 });
 
 test('NPCs regionais usam GLBs otimizados', () => {
-  for (const f of ['npc_vigia_cael.glb','npc_batedora_maelis.glb']) {
+  for (const f of ['npc_vigia_cael.glb','npc_batedora_maelis.glb','npc_guardia_neris.glb']) {
     const p = path.join(publicDir,'assets','npcs',f);
     assert.ok(fs.existsSync(p),f+' ausente');
     assert.ok(fs.statSync(p).size < 512 * 1024,f+' passou de 512 KB');
@@ -40,6 +40,8 @@ test('NPCs regionais usam GLBs otimizados', () => {
   assert.match(html,/npc_vigia_cael\.glb/);
   assert.match(html,/batedora_teias/);
   assert.match(html,/npc_batedora_maelis\.glb/);
+  assert.match(html,/guardia_lago/);
+  assert.match(html,/npc_guardia_neris\.glb/);
 });
 
 test('página carrega o gerenciador e os monstros do Bestiary', () => {

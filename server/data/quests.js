@@ -222,6 +222,51 @@ const WEB_FOREST = Object.freeze({
   }
 });
 
+const MIRROR_LAKE = Object.freeze({
+  jornada_33_lago_espelhado:{
+    id:'jornada_33_lago_espelhado',title:'Chamado do Lago',npcId:'batedora_teias',category:'story',abandonable:true,
+    description:'Maelis recebeu relatos de distúrbios ao norte e pede que você procure a guardiã responsável pelas margens do Lago Espelhado.',
+    requirements:{level:38,clsNot:'aprendiz',completedQuest:'jornada_32_passagem_segura'},
+    objectives:[{type:'talk',npcId:'guardia_lago',count:1,label:'Fale com a Guardiã Neris',hint:'Siga pela estrada ao norte até a margem segura do Lago Espelhado.'}],reward:{exp:2200,gold:300}
+  },
+  jornada_34_vozes_superficie:{
+    id:'jornada_34_vozes_superficie',title:'Vozes na Superfície',npcId:'guardia_lago',category:'story',abandonable:true,
+    description:'Neris percebe que os espíritos estão se aproximando demais da margem e precisa reduzir a pressão sobre o posto.',
+    requirements:{level:38,clsNot:'aprendiz',completedQuest:'jornada_33_lago_espelhado'},
+    objectives:[{type:'kill',monsterKey:'espirito',count:7,label:'Derrote Espíritos do Lago',hint:'Os Espíritos do Lago rondam as margens e águas rasas do Lago Espelhado.'}],reward:{exp:4200,gold:380}
+  },
+  jornada_35_essencia_reflexo:{
+    id:'jornada_35_essencia_reflexo',title:'Essência do Reflexo',npcId:'guardia_lago',category:'story',abandonable:true,
+    description:'A guardiã precisa de essências para estabilizar os marcos que protegem a rota ao redor do lago.',
+    requirements:{level:40,clsNot:'aprendiz',completedQuest:'jornada_34_vozes_superficie'},
+    objectives:[{type:'delivery',itemId:'essencia',count:6,label:'Entregue Essências do Lago',hint:'Continue enfrentando Espíritos do Lago até obter as essências necessárias.'}],reward:{exp:5200,gold:450}
+  },
+  jornada_36_margens_espelhadas:{
+    id:'jornada_36_margens_espelhadas',title:'Margens Espelhadas',npcId:'guardia_lago',category:'story',abandonable:true,
+    description:'Neris quer que você reconheça o centro da região antes de prosseguir com a contenção espiritual.',
+    requirements:{level:41,clsNot:'aprendiz',completedQuest:'jornada_35_essencia_reflexo'},
+    objectives:[{type:'explore',areaId:'espirito',count:1,label:'Explore o Lago Espelhado',hint:'Avance até o centro da região dos Espíritos do Lago.'}],reward:{exp:4600,gold:420}
+  },
+  jornada_37_lago_inquieto:{
+    id:'jornada_37_lago_inquieto',title:'Lago Inquieto',npcId:'guardia_lago',category:'story',abandonable:true,
+    description:'A presença espiritual voltou a crescer. Neris pede uma patrulha mais profunda antes que as margens sejam tomadas.',
+    requirements:{level:43,clsNot:'aprendiz',completedQuest:'jornada_36_margens_espelhadas'},
+    objectives:[{type:'kill',monsterKey:'espirito',count:9,label:'Derrote Espíritos do Lago',hint:'Patrulhe o Lago Espelhado e disperse os espíritos mais agressivos.'}],reward:{exp:7600,gold:620}
+  },
+  jornada_38_reserva_essencias:{
+    id:'jornada_38_reserva_essencias',title:'Reserva de Essências',npcId:'guardia_lago',category:'story',abandonable:true,
+    description:'O posto precisa de uma reserva de essências para manter os marcos protetores ativos durante a noite.',
+    requirements:{level:45,clsNot:'aprendiz',completedQuest:'jornada_37_lago_inquieto'},
+    objectives:[{type:'delivery',itemId:'essencia',count:8,label:'Entregue Essências do Lago',hint:'Espíritos do Lago podem deixar Essência do Lago.'}],reward:{exp:9200,gold:740}
+  },
+  jornada_39_silencio_profundo:{
+    id:'jornada_39_silencio_profundo',title:'Silêncio Profundo',npcId:'guardia_lago',category:'story',abandonable:true,
+    description:'Uma última patrulha decidirá se as margens podem voltar a ser consideradas seguras para os viajantes.',
+    requirements:{level:47,clsNot:'aprendiz',completedQuest:'jornada_38_reserva_essencias'},
+    objectives:[{type:'kill',monsterKey:'espirito',count:12,label:'Derrote Espíritos do Lago',hint:'Complete a patrulha final no Lago Espelhado.'}],reward:{exp:12000,gold:900}
+  }
+});
+
 const CLASS_TRIALS = Object.freeze({
   prova_guerreiro:{
     id:'prova_guerreiro',title:'Prova do Guerreiro',npcId:'guerreiro',category:'class-trial',exclusiveGroup:'class-trial',abandonable:true,
@@ -249,4 +294,4 @@ const CLASS_TRIALS = Object.freeze({
   }
 });
 
-module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...WEB_FOREST,...CLASS_TRIALS});
+module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...WEB_FOREST,...MIRROR_LAKE,...CLASS_TRIALS});

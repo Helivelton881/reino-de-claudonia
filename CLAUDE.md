@@ -92,15 +92,18 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 - Fase 7.6: cadeia nível 29-37 na Mata das Teias com 7 novas quests e a NPC
   regional Batedora Maelis. O modelo `npc_batedora_maelis.glb` foi criado no
   Blender e integrado pelo carregador GLTF dos NPCs regionais.
-- Catálogo atual: 36 quests (32 de história + 4 provas) e 8 NPCs funcionais.
-- QA atual: 60 testes automatizados passando.
+- Fase 7.7: cadeia nível 38-47 no Lago Espelhado com 7 novas quests e a NPC
+  regional Guardiã Neris. O modelo `npc_guardia_neris.glb` foi criado no Blender
+  e integrado pelo mesmo carregador GLTF dos NPCs regionais.
+- Catálogo atual: 43 quests (39 de história + 4 provas) e 9 NPCs funcionais.
+- QA atual: 61 testes automatizados passando.
 
 ## Limites conhecidos (próximos passos)
-- A Fase 7 ainda precisa preencher a progressão 38-60 e ampliar o elenco atual
-  de 8 NPCs em direção à meta do roadmap (25-30 NPCs e 40-60 quests).
-- Próxima subfase planejada: Fase 7.7, cobrindo níveis 38-47 no Lago Espelhado
-  com o Espírito do Lago, mantendo o continente contínuo e sem portais artificiais.
-- Antes da 7.7, auditar dados/NPCs/assets existentes. Qualquer novo NPC, monstro,
+- A Fase 7 ainda precisa preencher a progressão 48-60 e ampliar o elenco atual
+  de 9 NPCs em direção à meta do roadmap (25-30 NPCs e 40-60 quests).
+- Próxima subfase planejada: Fase 7.8, cobrindo níveis 48-60 nas Ruínas do Ciclope
+  com o Ciclope de Lava, mantendo o continente contínuo e sem portais artificiais.
+- Antes da 7.8, auditar dados/NPCs/assets existentes. Qualquer novo NPC, monstro,
   boss, arma, armadura, pet, montaria, prop ou objeto 3D de skill passa pelo
   Blender aberto no PC antes de entrar no jogo.
 - Fases seguintes do plano mestre: Skill Tree, itemização/sets, Giants/Bosses,

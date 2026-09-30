@@ -23,9 +23,9 @@ test('navegação do servidor inclui natureza, NPCs e props compartilhados',()=>
   const nav=new WorldNavigation();
   const c=world.solidNaturalColliders()[0];
   assert.equal(nav.blockedAt(c.x,c.z,0),true);
-  assert.equal(world.STATIC_NPCS.length,8);
+  assert.equal(world.STATIC_NPCS.length,9);
   assert.equal(world.STATIC_PROP_COLLIDERS.length,30);
-  assert.equal(nav.colliders.length,764);
+  assert.equal(nav.colliders.length,765);
   assert.ok(nav.colliders.some(x=>x.kind==='tree'));
   assert.ok(nav.colliders.some(x=>x.kind==='bush'));
   assert.ok(nav.colliders.some(x=>x.kind==='rock'));

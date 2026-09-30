@@ -25,19 +25,20 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui 32 quests de historia, quatro provas e oito NPCs',()=>{
+test('catalogo possui 39 quests de historia, quatro provas e nove NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
-  assert.equal(catalog.length,36);
-  assert.equal(catalog.filter(q=>q.category==='story').length,32);
+  assert.equal(catalog.length,43);
+  assert.equal(catalog.filter(q=>q.category==='story').length,39);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
   for(const type of ['talk','kill','explore','delivery','collect']) assert.ok(types.has(type));
   assert.ok(catalog.filter(q=>q.category==='class-trial').every(q=>q.exclusiveGroup==='class-trial'));
-  assert.equal(NPCS.length,8);
+  assert.equal(NPCS.length,9);
   assert.ok(NPCS.some(n=>n.service==='forge'));
   assert.ok(NPCS.some(n=>n.service==='flight-shop'));
   assert.ok(NPCS.some(n=>n.id==='vigia_lobos'&&n.service==='quest-giver'));
   assert.ok(NPCS.some(n=>n.id==='batedora_teias'&&n.service==='quest-giver'));
+  assert.ok(NPCS.some(n=>n.id==='guardia_lago'&&n.service==='quest-giver'));
 });
 
 test('cadeia inicial exige conclusao da quest anterior',()=>{
@@ -195,6 +196,21 @@ test('cadeia 29-37 usa a Mata das Teias e a batedora regional',()=>{
   const batedora=NPCS.find(n=>n.id==='batedora_teias');
   assert.ok(batedora);
   assert.ok(Math.hypot(batedora.x-ZONES.aranha.x,batedora.z-ZONES.aranha.z)>ZONES.aranha.radius);
+});
+
+test('cadeia 38-47 usa o Lago Espelhado e a guardiã regional',()=>{
+  const {player,sent}=makePlayer({L:47,dados:{L:47,cls:'arqueiro',quests:{active:{},completed:['prova_arqueiro','jornada_32_passagem_segura']}}}),qm=manager(sent);
+  assert.equal(qm.accept(player,'jornada_33_lago_espelhado'),true);
+  const catalog=qm.publicCatalog();
+  const ids=['jornada_33_lago_espelhado','jornada_34_vozes_superficie','jornada_35_essencia_reflexo','jornada_36_margens_espelhadas','jornada_37_lago_inquieto','jornada_38_reserva_essencias','jornada_39_silencio_profundo'];
+  assert.ok(ids.every(id=>catalog.some(q=>q.id===id)));
+  assert.deepEqual(ids.map(id=>catalog.find(q=>q.id===id).requirements.level),[38,38,40,41,43,45,47]);
+  assert.equal(catalog.find(q=>q.id==='jornada_34_vozes_superficie').objectives[0].monsterKey,'espirito');
+  assert.equal(catalog.find(q=>q.id==='jornada_35_essencia_reflexo').objectives[0].itemId,'essencia');
+  assert.equal(catalog.find(q=>q.id==='jornada_36_margens_espelhadas').objectives[0].areaId,'espirito');
+  const guardia=NPCS.find(n=>n.id==='guardia_lago');
+  assert.ok(guardia);
+  assert.ok(Math.hypot(guardia.x-ZONES.espirito.x,guardia.z-ZONES.espirito.z)>ZONES.espirito.radius);
 });
 
 test('personagem antigo já classado recebe prova concluida e libera pos-classe',()=>{
