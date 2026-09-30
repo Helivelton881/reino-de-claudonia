@@ -1,11 +1,7 @@
 'use strict';
 
 const EQUIPMENT = require('../data/equipment');
-
-const CLASSES = Object.freeze({
-  aprendiz:{ main:'str', hp:1 }, guerreiro:{ main:'str', hp:1.2 }, druida:{ main:'str', hp:1.05, mpInt:4 },
-  mago:{ main:'int', hp:0.9, mpInt:4.5, ranged:true }, arqueiro:{ main:'dex', hp:0.95, ranged:true }
-});
+const { CLASSES } = require('../data/classes');
 const UP_ATK = [0,2,4,6,8,10,13,16,19,21,24];
 const UP_DEF = [0,2,4,6,8,10,12,14,16,18,20];
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, Number(n) || 0));

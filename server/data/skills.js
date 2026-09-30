@@ -1,88 +1,64 @@
 'use strict';
 
-const rank = (multiplier, extra={}) => Object.freeze({multiplier,...extra});
-const buffRank = (buff) => Object.freeze({buff:Object.freeze(buff)});
-const skill = cfg => Object.freeze({...cfg,ranks:Object.freeze(cfg.ranks.map(Object.freeze))});
+const freezeRanks = arr => Object.freeze(arr.map(x=>Object.freeze(x)));
+const skill = cfg => { const range=cfg.range??(cfg.target==='area-target'||['bolt','debuff','dot','cc'].includes(cfg.type)?14:cfg.type==='taunt'?9:['hit','double'].includes(cfg.type)?3:0); return Object.freeze({...cfg,range,maxRank:cfg.maxRank||cfg.ranks.length,ranks:freezeRanks(cfg.ranks)}); };
+const dmg = (...v) => v.map(multiplier=>({multiplier}));
+const passive = (...v) => v.map(x=>({passive:x}));
+const buff = (...v) => v.map(x=>({buff:x}));
+const debuff = (...v) => v.map(x=>({debuff:x}));
+const dot = (...v) => v.map(x=>({dot:x}));
+const cc = (...v) => v.map(x=>({cc:x}));
+const heal = (...v) => v.map(healPower=>({healPower}));
 
 module.exports = Object.freeze({
-  golpe_forte: skill({
-    id:'golpe_forte',cls:'aprendiz',name:'Golpe Forte',icon:'💥',req:1,type:'hit',target:'enemy',fp:6,cooldown:4,maxRank:5,autoRank1:true,
-    description:'Golpe físico concentrado. Cada rank aumenta o multiplicador de dano.',
-    tree:{row:0,col:0},ranks:[rank(1.8),rank(1.95),rank(2.1),rank(2.25),rank(2.4)]
-  }),
-  corte_duplo: skill({
-    id:'corte_duplo',cls:'aprendiz',name:'Corte Duplo',icon:'⚡',req:8,type:'double',target:'enemy',fp:10,cooldown:7,maxRank:5,
-    description:'Executa dois cortes rápidos. Requer domínio de Golpe Forte.',
-    requires:[{id:'golpe_forte',rank:2}],tree:{row:1,col:0},ranks:[rank(1.2),rank(1.28),rank(1.36),rank(1.44),rank(1.52)]
-  }),
+  golpe_forte:skill({id:'golpe_forte',cls:'aprendiz',name:'Golpe Forte',icon:'GF',req:1,type:'hit',target:'enemy',fp:6,cooldown:4,autoRank1:true,description:'Golpe fisico concentrado.',tree:{row:0,col:0},ranks:dmg(1.8,1.95,2.1,2.25,2.4)}),
+  corte_duplo:skill({id:'corte_duplo',cls:'aprendiz',name:'Corte Duplo',icon:'CD',req:8,type:'double',target:'enemy',fp:10,cooldown:7,description:'Dois cortes rapidos.',requires:[{id:'golpe_forte',rank:2}],tree:{row:1,col:0},ranks:dmg(1.2,1.28,1.36,1.44,1.52)}),
 
-  investida: skill({
-    id:'investida',cls:'guerreiro',name:'Investida',icon:'💥',req:15,type:'hit',target:'enemy',fp:8,cooldown:5,maxRank:5,autoRank1:true,
-    description:'Golpe pesado de abertura do Guerreiro.',
-    tree:{row:0,col:0},ranks:[rank(2.1),rank(2.22),rank(2.34),rank(2.46),rank(2.6)]
-  }),
-  grito: skill({
-    id:'grito',cls:'guerreiro',name:'Grito de Guerra',icon:'📣',req:17,type:'buff',target:'self',mp:10,cooldown:30,maxRank:5,
-    description:'Aumenta o ataque temporariamente.',
-    requires:[{id:'investida',rank:2}],tree:{row:1,col:0},ranks:[
-      buffRank({id:'grito',seconds:30,atk:.20}),buffRank({id:'grito',seconds:32,atk:.23}),buffRank({id:'grito',seconds:34,atk:.26}),buffRank({id:'grito',seconds:36,atk:.29}),buffRank({id:'grito',seconds:40,atk:.32})
-    ]
-  }),
-  redemoinho: skill({
-    id:'redemoinho',cls:'guerreiro',name:'Redemoinho',icon:'🌀',req:20,type:'aoe',target:'area-self',around:'self',radius:4,fp:15,cooldown:10,maxRank:5,
-    description:'Ataque em área ao redor do Guerreiro.',
-    requires:[{id:'grito',rank:2}],tree:{row:2,col:0},ranks:[rank(1.4),rank(1.5,{radius:4.1}),rank(1.6,{radius:4.2}),rank(1.7,{radius:4.3}),rank(1.8,{radius:4.5})]
-  }),
+  investida:skill({id:'investida',cls:'guerreiro',name:'Investida',icon:'IN',req:15,type:'hit',target:'enemy',fp:8,cooldown:5,autoRank1:true,description:'Golpe pesado de abertura.',tree:{row:0,col:0},ranks:dmg(2.1,2.22,2.34,2.46,2.6)}),
+  grito:skill({id:'grito',cls:'guerreiro',name:'Grito de Guerra',icon:'GG',req:17,type:'buff',target:'self',mp:10,cooldown:30,description:'Aumenta o ataque temporariamente.',requires:[{id:'investida',rank:2}],tree:{row:1,col:0},ranks:buff({id:'grito',seconds:30,atk:.2},{id:'grito',seconds:32,atk:.23},{id:'grito',seconds:34,atk:.26},{id:'grito',seconds:36,atk:.29},{id:'grito',seconds:40,atk:.32})}),
+  redemoinho:skill({id:'redemoinho',cls:'guerreiro',name:'Redemoinho',icon:'RE',req:20,type:'aoe',target:'area-self',around:'self',radius:4,fp:15,cooldown:10,description:'Ataque em area ao redor do Guerreiro.',requires:[{id:'grito',rank:2}],tree:{row:2,col:0},ranks:[{multiplier:1.4,radius:4},{multiplier:1.5,radius:4.1},{multiplier:1.6,radius:4.2},{multiplier:1.7,radius:4.3},{multiplier:1.8,radius:4.5}]}),
+  couraca:skill({id:'couraca',cls:'guerreiro',name:'Couraca de Aco',icon:'CA',req:24,type:'passive',target:'self',cooldown:0,description:'Passiva de defesa e vida.',requires:[{id:'investida',rank:3}],tree:{row:2,col:1},ranks:passive({def:.05,hp:.04},{def:.08,hp:.06},{def:.11,hp:.08},{def:.14,hp:.1},{def:.18,hp:.12})}),
+  quebra_guarda:skill({id:'quebra_guarda',cls:'guerreiro',name:'Quebra Guarda',icon:'QG',req:28,type:'debuff',target:'enemy',fp:12,cooldown:12,description:'Reduz a defesa do alvo.',requires:[{id:'redemoinho',rank:2}],tree:{row:3,col:0},ranks:debuff({id:'quebra_guarda',seconds:6,armorDown:.12},{id:'quebra_guarda',seconds:7,armorDown:.15},{id:'quebra_guarda',seconds:8,armorDown:.18},{id:'quebra_guarda',seconds:9,armorDown:.21},{id:'quebra_guarda',seconds:10,armorDown:.25})}),
+  brado_desafio:skill({id:'brado_desafio',cls:'guerreiro',name:'Brado de Desafio',icon:'BD',req:34,type:'taunt',target:'enemy',mp:14,cooldown:18,description:'Forca o alvo a focar no Guerreiro e reduz seu ataque.',requires:[{id:'couraca',rank:2}],tree:{row:3,col:1},ranks:debuff({id:'desafio',seconds:4,attackDown:.08,taunt:true},{id:'desafio',seconds:5,attackDown:.11,taunt:true},{id:'desafio',seconds:6,attackDown:.14,taunt:true},{id:'desafio',seconds:7,attackDown:.17,taunt:true},{id:'desafio',seconds:8,attackDown:.2,taunt:true})}),
 
-  cura: skill({
-    id:'cura',cls:'druida',name:'Cura',icon:'💚',req:15,type:'heal',target:'self',mp:12,cooldown:3,maxRank:5,autoRank1:true,
-    description:'Restaura vida com base em Inteligência e rank.',
-    tree:{row:0,col:0},ranks:[{healPower:1},{healPower:1.15},{healPower:1.3},{healPower:1.45},{healPower:1.65}]
-  }),
-  bencao: skill({
-    id:'bencao',cls:'druida',name:'Bênção',icon:'✨',req:17,type:'buff',target:'self',mp:15,cooldown:45,maxRank:5,
-    description:'Aumenta defesa e regeneração.',
-    requires:[{id:'cura',rank:2}],tree:{row:1,col:0},ranks:[
-      buffRank({id:'bencao',seconds:60,def:.25,regen:1}),buffRank({id:'bencao',seconds:62,def:.28,regen:1}),buffRank({id:'bencao',seconds:64,def:.31,regen:1}),buffRank({id:'bencao',seconds:66,def:.34,regen:1}),buffRank({id:'bencao',seconds:70,def:.38,regen:1})
-    ]
-  }),
-  punho: skill({
-    id:'punho',cls:'druida',name:'Punho Sagrado',icon:'👊',req:20,type:'hit',target:'enemy',fp:10,cooldown:6,maxRank:5,stat:'int',
-    description:'Ataque corpo a corpo escalado por Inteligência.',
-    requires:[{id:'bencao',rank:2}],tree:{row:2,col:0},ranks:[rank(1.9),rank(2.0),rank(2.1),rank(2.2),rank(2.35)]
-  }),
+  cura:skill({id:'cura',cls:'druida',name:'Cura',icon:'CU',req:15,type:'heal',target:'self',mp:12,cooldown:3,autoRank1:true,description:'Restaura vida com base em Inteligencia.',tree:{row:0,col:0},ranks:heal(1,1.15,1.3,1.45,1.65)}),
+  bencao:skill({id:'bencao',cls:'druida',name:'Bencao',icon:'BE',req:17,type:'buff',target:'self',mp:15,cooldown:45,description:'Aumenta defesa e regeneracao.',requires:[{id:'cura',rank:2}],tree:{row:1,col:0},ranks:buff({id:'bencao',seconds:60,def:.25,regen:1},{id:'bencao',seconds:62,def:.28,regen:1},{id:'bencao',seconds:64,def:.31,regen:1},{id:'bencao',seconds:66,def:.34,regen:1},{id:'bencao',seconds:70,def:.38,regen:1})}),
+  punho:skill({id:'punho',cls:'druida',name:'Punho Sagrado',icon:'PS',req:20,type:'hit',target:'enemy',fp:10,cooldown:6,stat:'int',description:'Golpe corpo a corpo escalado por Inteligencia.',requires:[{id:'bencao',rank:2}],tree:{row:2,col:0},ranks:dmg(1.9,2,2.1,2.2,2.35)}),
+  devocao:skill({id:'devocao',cls:'druida',name:'Devocao',icon:'DE',req:24,type:'passive',target:'self',cooldown:0,description:'Passiva de mana e eficiencia de cura.',requires:[{id:'cura',rank:3}],tree:{row:2,col:1},ranks:passive({mp:.05,healing:.05},{mp:.08,healing:.08},{mp:.11,healing:.11},{mp:.14,healing:.14},{mp:.18,healing:.18})}),
+  raizes:skill({id:'raizes',cls:'druida',name:'Raizes Prendentes',icon:'RP',req:28,type:'cc',target:'enemy',mp:16,cooldown:14,description:'Imobiliza temporariamente um inimigo.',requires:[{id:'punho',rank:2}],tree:{row:3,col:0},ranks:cc({id:'raizes',kind:'root',seconds:2.5},{id:'raizes',kind:'root',seconds:3},{id:'raizes',kind:'root',seconds:3.5},{id:'raizes',kind:'root',seconds:4},{id:'raizes',kind:'root',seconds:4.5})}),
+  onda_vida:skill({id:'onda_vida',cls:'druida',name:'Onda de Vida',icon:'OV',req:34,type:'party-heal',target:'party',mp:24,cooldown:10,description:'Cura aliados proximos do grupo.',requires:[{id:'devocao',rank:2}],tree:{row:3,col:1},ranks:heal(.7,.82,.94,1.06,1.2)}),
 
-  bola_fogo: skill({
-    id:'bola_fogo',cls:'mago',name:'Bola de Fogo',icon:'🔥',req:15,type:'bolt',target:'enemy',mp:8,cooldown:2.5,maxRank:5,magic:true,autoRank1:true,
-    description:'Projétil mágico de fogo.',
-    tree:{row:0,col:0},ranks:[rank(1.9),rank(2.02),rank(2.14),rank(2.26),rank(2.4)]
-  }),
-  lanca_gelo: skill({
-    id:'lanca_gelo',cls:'mago',name:'Lança de Gelo',icon:'❄️',req:17,type:'bolt',target:'enemy',mp:12,cooldown:6,maxRank:5,magic:true,slow:4,
-    description:'Dano mágico e redução temporária de velocidade.',
-    requires:[{id:'bola_fogo',rank:2}],tree:{row:1,col:0},ranks:[rank(1.5,{slow:4}),rank(1.58,{slow:4.5}),rank(1.66,{slow:5}),rank(1.74,{slow:5.5}),rank(1.85,{slow:6})]
-  }),
-  tempestade: skill({
-    id:'tempestade',cls:'mago',name:'Tempestade',icon:'⛈️',req:20,type:'aoe',target:'area-target',around:'target',radius:4.5,mp:25,cooldown:12,maxRank:5,magic:true,
-    description:'Dano em área centrado no alvo.',
-    requires:[{id:'lanca_gelo',rank:2}],tree:{row:2,col:0},ranks:[rank(1.5),rank(1.6,{radius:4.6}),rank(1.7,{radius:4.7}),rank(1.8,{radius:4.8}),rank(1.95,{radius:5})]
-  }),
+  bola_fogo:skill({id:'bola_fogo',cls:'mago',name:'Bola de Fogo',icon:'BF',req:15,type:'bolt',target:'enemy',mp:8,cooldown:2.5,magic:true,autoRank1:true,description:'Projetil magico de fogo.',tree:{row:0,col:0},ranks:dmg(1.9,2.02,2.14,2.26,2.4)}),
+  lanca_gelo:skill({id:'lanca_gelo',cls:'mago',name:'Lanca de Gelo',icon:'LG',req:17,type:'bolt',target:'enemy',mp:12,cooldown:6,magic:true,description:'Dano magico e lentidao.',requires:[{id:'bola_fogo',rank:2}],tree:{row:1,col:0},ranks:[{multiplier:1.5,slow:4},{multiplier:1.58,slow:4.5},{multiplier:1.66,slow:5},{multiplier:1.74,slow:5.5},{multiplier:1.85,slow:6}]}),
+  tempestade:skill({id:'tempestade',cls:'mago',name:'Tempestade',icon:'TE',req:20,type:'aoe',target:'area-target',around:'target',radius:4.5,mp:25,cooldown:12,magic:true,description:'Dano em area centrado no alvo.',requires:[{id:'lanca_gelo',rank:2}],tree:{row:2,col:0},ranks:[{multiplier:1.5,radius:4.5},{multiplier:1.6,radius:4.6},{multiplier:1.7,radius:4.7},{multiplier:1.8,radius:4.8},{multiplier:1.95,radius:5}]}),
+  foco_arcano:skill({id:'foco_arcano',cls:'mago',name:'Foco Arcano',icon:'FA',req:24,type:'passive',target:'self',cooldown:0,description:'Passiva de dano magico e mana.',requires:[{id:'bola_fogo',rank:3}],tree:{row:2,col:1},ranks:passive({magicAtk:.05,mp:.04},{magicAtk:.08,mp:.06},{magicAtk:.11,mp:.08},{magicAtk:.14,mp:.1},{magicAtk:.18,mp:.12})}),
+  combustao:skill({id:'combustao',cls:'mago',name:'Combustao',icon:'CO',req:28,type:'dot',target:'enemy',mp:18,cooldown:10,magic:true,description:'Aplica dano magico ao longo do tempo.',requires:[{id:'tempestade',rank:2}],tree:{row:3,col:0},ranks:dot({id:'combustao',seconds:6,interval:2,multiplier:.35},{id:'combustao',seconds:7,interval:2,multiplier:.4},{id:'combustao',seconds:8,interval:2,multiplier:.45},{id:'combustao',seconds:9,interval:2,multiplier:.5},{id:'combustao',seconds:10,interval:2,multiplier:.55})}),
+  prisao_arcana:skill({id:'prisao_arcana',cls:'mago',name:'Prisao Arcana',icon:'PA',req:34,type:'cc',target:'enemy',mp:20,cooldown:16,magic:true,description:'Atordoa o inimigo por curto periodo.',requires:[{id:'foco_arcano',rank:2}],tree:{row:3,col:1},ranks:cc({id:'prisao',kind:'stun',seconds:1.5},{id:'prisao',kind:'stun',seconds:1.8},{id:'prisao',kind:'stun',seconds:2.1},{id:'prisao',kind:'stun',seconds:2.4},{id:'prisao',kind:'stun',seconds:2.8})}),
 
-  tiro_certeiro: skill({
-    id:'tiro_certeiro',cls:'arqueiro',name:'Tiro Certeiro',icon:'🎯',req:15,type:'bolt',target:'enemy',fp:6,cooldown:3,maxRank:5,critAdd:.5,autoRank1:true,
-    description:'Disparo preciso com bônus de crítico.',
-    tree:{row:0,col:0},ranks:[rank(1.9,{critAdd:.5}),rank(2.0,{critAdd:.52}),rank(2.1,{critAdd:.54}),rank(2.2,{critAdd:.56}),rank(2.35,{critAdd:.60})]
-  }),
-  olho_aguia: skill({
-    id:'olho_aguia',cls:'arqueiro',name:'Olho de Águia',icon:'🦅',req:17,type:'buff',target:'self',mp:10,cooldown:40,maxRank:5,
-    description:'Aumenta chance de crítico temporariamente.',
-    requires:[{id:'tiro_certeiro',rank:2}],tree:{row:1,col:0},ranks:[
-      buffRank({id:'aguia',seconds:30,crit:.25}),buffRank({id:'aguia',seconds:32,crit:.28}),buffRank({id:'aguia',seconds:34,crit:.31}),buffRank({id:'aguia',seconds:36,crit:.34}),buffRank({id:'aguia',seconds:40,crit:.38})
-    ]
-  }),
-  chuva_flechas: skill({
-    id:'chuva_flechas',cls:'arqueiro',name:'Chuva de Flechas',icon:'🌧️',req:20,type:'aoe',target:'area-target',around:'target',radius:4.5,fp:15,cooldown:10,maxRank:5,
-    description:'Disparos em área ao redor do alvo.',
-    requires:[{id:'olho_aguia',rank:2}],tree:{row:2,col:0},ranks:[rank(1.4),rank(1.5,{radius:4.6}),rank(1.6,{radius:4.7}),rank(1.7,{radius:4.8}),rank(1.85,{radius:5})]
-  })
+  tiro_certeiro:skill({id:'tiro_certeiro',cls:'arqueiro',name:'Tiro Certeiro',icon:'TC',req:15,type:'bolt',target:'enemy',fp:6,cooldown:3,autoRank1:true,description:'Disparo preciso com bonus de critico.',tree:{row:0,col:0},ranks:[{multiplier:1.9,critAdd:.5},{multiplier:2,critAdd:.52},{multiplier:2.1,critAdd:.54},{multiplier:2.2,critAdd:.56},{multiplier:2.35,critAdd:.6}]}),
+  olho_aguia:skill({id:'olho_aguia',cls:'arqueiro',name:'Olho de Aguia',icon:'OA',req:17,type:'buff',target:'self',mp:10,cooldown:40,description:'Aumenta chance de critico.',requires:[{id:'tiro_certeiro',rank:2}],tree:{row:1,col:0},ranks:buff({id:'aguia',seconds:30,crit:.25},{id:'aguia',seconds:32,crit:.28},{id:'aguia',seconds:34,crit:.31},{id:'aguia',seconds:36,crit:.34},{id:'aguia',seconds:40,crit:.38})}),
+  chuva_flechas:skill({id:'chuva_flechas',cls:'arqueiro',name:'Chuva de Flechas',icon:'CF',req:20,type:'aoe',target:'area-target',around:'target',radius:4.5,fp:15,cooldown:10,description:'Disparos em area ao redor do alvo.',requires:[{id:'olho_aguia',rank:2}],tree:{row:2,col:0},ranks:[{multiplier:1.4,radius:4.5},{multiplier:1.5,radius:4.6},{multiplier:1.6,radius:4.7},{multiplier:1.7,radius:4.8},{multiplier:1.85,radius:5}]}),
+  instinto:skill({id:'instinto',cls:'arqueiro',name:'Instinto do Rastreador',icon:'IR',req:24,type:'passive',target:'self',cooldown:0,description:'Passiva de critico e velocidade.',requires:[{id:'tiro_certeiro',rank:3}],tree:{row:2,col:1},ranks:passive({crit:.02,attackSpeed:.03},{crit:.03,attackSpeed:.05},{crit:.04,attackSpeed:.07},{crit:.05,attackSpeed:.09},{crit:.07,attackSpeed:.12})}),
+  flecha_sangrenta:skill({id:'flecha_sangrenta',cls:'arqueiro',name:'Flecha Sangrenta',icon:'FS',req:28,type:'dot',target:'enemy',fp:12,cooldown:9,description:'Aplica sangramento ao longo do tempo.',requires:[{id:'chuva_flechas',rank:2}],tree:{row:3,col:0},ranks:dot({id:'sangramento',seconds:6,interval:2,multiplier:.3},{id:'sangramento',seconds:7,interval:2,multiplier:.35},{id:'sangramento',seconds:8,interval:2,multiplier:.4},{id:'sangramento',seconds:9,interval:2,multiplier:.45},{id:'sangramento',seconds:10,interval:2,multiplier:.5})}),
+  armadilha:skill({id:'armadilha',cls:'arqueiro',name:'Armadilha de Contencao',icon:'AC',req:34,type:'cc',target:'enemy',fp:14,cooldown:15,description:'Prende o alvo por alguns segundos.',requires:[{id:'instinto',rank:2}],tree:{row:3,col:1},ranks:cc({id:'armadilha',kind:'root',seconds:2},{id:'armadilha',kind:'root',seconds:2.5},{id:'armadilha',kind:'root',seconds:3},{id:'armadilha',kind:'root',seconds:3.5},{id:'armadilha',kind:'root',seconds:4})}),
+
+  fortaleza:skill({id:'fortaleza',cls:'guerreiro',specialization:'guardiao',name:'Fortaleza Compartilhada',icon:'FO',req:60,type:'party-buff',target:'party',mp:24,cooldown:45,description:'Aumenta a defesa de aliados proximos.',requires:[{id:'couraca',rank:3}],tree:{row:5,col:0},ranks:buff({id:'fortaleza',seconds:25,def:.18},{id:'fortaleza',seconds:28,def:.22},{id:'fortaleza',seconds:31,def:.26},{id:'fortaleza',seconds:34,def:.3},{id:'fortaleza',seconds:38,def:.35})}),
+  bastiao:skill({id:'bastiao',cls:'guerreiro',specialization:'guardiao',name:'Bastiao',icon:'BA',req:60,type:'passive',target:'self',cooldown:0,description:'Passiva avancada de vida e defesa.',requires:[{id:'couraca',rank:4}],tree:{row:5,col:1},ranks:passive({hp:.05,def:.04},{hp:.08,def:.06},{hp:.11,def:.08},{hp:.14,def:.1},{hp:.18,def:.13})}),
+  laminas_gemeas:skill({id:'laminas_gemeas',cls:'guerreiro',specialization:'duelista',name:'Laminas Gemeas',icon:'LG',req:60,type:'double',target:'enemy',fp:18,cooldown:7,description:'Dois golpes de alto dano.',requires:[{id:'quebra_guarda',rank:3}],tree:{row:5,col:0},ranks:dmg(1.45,1.55,1.65,1.75,1.9)}),
+  adrenalina:skill({id:'adrenalina',cls:'guerreiro',specialization:'duelista',name:'Adrenalina',icon:'AD',req:60,type:'passive',target:'self',cooldown:0,description:'Passiva de ataque e velocidade.',requires:[{id:'grito',rank:4}],tree:{row:5,col:1},ranks:passive({atk:.04,attackSpeed:.04},{atk:.06,attackSpeed:.06},{atk:.08,attackSpeed:.08},{atk:.1,attackSpeed:.1},{atk:.13,attackSpeed:.13})}),
+
+  circulo_vida:skill({id:'circulo_vida',cls:'druida',specialization:'sacerdote',name:'Circulo de Vida',icon:'CV',req:60,type:'party-heal',target:'party',mp:30,cooldown:8,description:'Cura forte em grupo.',requires:[{id:'onda_vida',rank:3}],tree:{row:5,col:0},ranks:heal(.9,1.05,1.2,1.35,1.55)}),
+  aura_graca:skill({id:'aura_graca',cls:'druida',specialization:'sacerdote',name:'Aura da Graca',icon:'AG',req:60,type:'party-buff',target:'party',mp:28,cooldown:50,description:'Defesa e regeneracao para o grupo.',requires:[{id:'devocao',rank:4}],tree:{row:5,col:1},ranks:buff({id:'graca',seconds:30,def:.1,regen:1},{id:'graca',seconds:34,def:.13,regen:1},{id:'graca',seconds:38,def:.16,regen:1},{id:'graca',seconds:42,def:.19,regen:1},{id:'graca',seconds:48,def:.22,regen:1})}),
+  sequencia_celeste:skill({id:'sequencia_celeste',cls:'druida',specialization:'monge',name:'Sequencia Celeste',icon:'SC',req:60,type:'double',target:'enemy',fp:18,cooldown:6,stat:'int',description:'Combo corpo a corpo com Inteligencia.',requires:[{id:'punho',rank:4}],tree:{row:5,col:0},ranks:dmg(1.4,1.5,1.6,1.7,1.85)}),
+  disciplina:skill({id:'disciplina',cls:'druida',specialization:'monge',name:'Disciplina',icon:'DI',req:60,type:'passive',target:'self',cooldown:0,description:'Passiva equilibrada de ataque e defesa.',requires:[{id:'punho',rank:3}],tree:{row:5,col:1},ranks:passive({atk:.03,def:.03},{atk:.05,def:.05},{atk:.07,def:.07},{atk:.09,def:.09},{atk:.12,def:.12})}),
+
+  ruptura_arcana:skill({id:'ruptura_arcana',cls:'mago',specialization:'arcanista',name:'Ruptura Arcana',icon:'RA',req:60,type:'debuff',target:'enemy',mp:24,cooldown:12,magic:true,description:'Aumenta o dano recebido pelo alvo.',requires:[{id:'prisao_arcana',rank:3}],tree:{row:5,col:0},ranks:debuff({id:'ruptura_arcana',seconds:6,vuln:.08},{id:'ruptura_arcana',seconds:7,vuln:.11},{id:'ruptura_arcana',seconds:8,vuln:.14},{id:'ruptura_arcana',seconds:9,vuln:.17},{id:'ruptura_arcana',seconds:10,vuln:.21})}),
+  maestria_arcana:skill({id:'maestria_arcana',cls:'mago',specialization:'arcanista',name:'Maestria Arcana',icon:'MA',req:60,type:'passive',target:'self',cooldown:0,description:'Passiva de dano magico e critico.',requires:[{id:'foco_arcano',rank:4}],tree:{row:5,col:1},ranks:passive({magicAtk:.04,crit:.01},{magicAtk:.07,crit:.02},{magicAtk:.1,crit:.03},{magicAtk:.13,crit:.04},{magicAtk:.17,crit:.05})}),
+  inferno:skill({id:'inferno',cls:'mago',specialization:'elementalista',name:'Inferno Persistente',icon:'IP',req:60,type:'dot',target:'enemy',mp:28,cooldown:11,magic:true,description:'Dano elemental persistente intenso.',requires:[{id:'combustao',rank:3}],tree:{row:5,col:0},ranks:dot({id:'inferno',seconds:8,interval:2,multiplier:.5},{id:'inferno',seconds:9,interval:2,multiplier:.56},{id:'inferno',seconds:10,interval:2,multiplier:.62},{id:'inferno',seconds:11,interval:2,multiplier:.68},{id:'inferno',seconds:12,interval:2,multiplier:.75})}),
+  dominio_elemental:skill({id:'dominio_elemental',cls:'mago',specialization:'elementalista',name:'Dominio Elemental',icon:'DE',req:60,type:'passive',target:'self',cooldown:0,description:'Passiva que fortalece DoTs e mana.',requires:[{id:'combustao',rank:4}],tree:{row:5,col:1},ranks:passive({dot:.05,mp:.03},{dot:.08,mp:.05},{dot:.11,mp:.07},{dot:.14,mp:.09},{dot:.18,mp:.12})}),
+
+  marca_predador:skill({id:'marca_predador',cls:'arqueiro',specialization:'cacador',name:'Marca do Predador',icon:'MP',req:60,type:'debuff',target:'enemy',fp:16,cooldown:12,description:'Marca o alvo para aumentar o dano recebido.',requires:[{id:'armadilha',rank:3}],tree:{row:5,col:0},ranks:debuff({id:'marca_predador',seconds:7,vuln:.07},{id:'marca_predador',seconds:8,vuln:.1},{id:'marca_predador',seconds:9,vuln:.13},{id:'marca_predador',seconds:10,vuln:.16},{id:'marca_predador',seconds:11,vuln:.2})}),
+  instinto_alcateia:skill({id:'instinto_alcateia',cls:'arqueiro',specialization:'cacador',name:'Instinto da Alcateia',icon:'IA',req:60,type:'party-buff',target:'party',mp:22,cooldown:45,description:'Aumenta critico do grupo.',requires:[{id:'instinto',rank:4}],tree:{row:5,col:1},ranks:buff({id:'alcateia',seconds:25,crit:.06},{id:'alcateia',seconds:28,crit:.08},{id:'alcateia',seconds:31,crit:.1},{id:'alcateia',seconds:34,crit:.12},{id:'alcateia',seconds:38,crit:.15})}),
+  tiro_perfurante:skill({id:'tiro_perfurante',cls:'arqueiro',specialization:'atirador',name:'Tiro Perfurante',icon:'TP',req:60,type:'bolt',target:'enemy',fp:18,cooldown:6,description:'Disparo de alto dano de alvo unico.',requires:[{id:'tiro_certeiro',rank:4}],tree:{row:5,col:0},ranks:dmg(2.3,2.45,2.6,2.75,2.95)}),
+  postura_precisao:skill({id:'postura_precisao',cls:'arqueiro',specialization:'atirador',name:'Postura de Precisao',icon:'PP',req:60,type:'passive',target:'self',cooldown:0,description:'Passiva de alcance, ataque e critico.',requires:[{id:'instinto',rank:4}],tree:{row:5,col:1},ranks:passive({range:.5,atk:.03,crit:.01},{range:1,atk:.05,crit:.02},{range:1.5,atk:.07,crit:.03},{range:2,atk:.09,crit:.04},{range:2.5,atk:.12,crit:.05})})
 });

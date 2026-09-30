@@ -106,3 +106,20 @@ test('orçamento limita novas rotas A* por tick',()=>{
   manager.tick(0.1);
   assert.equal(plans,16);
 });
+
+test('crowd control server-side impede movimento e ataque enquanto ativo',()=>{
+  const x=makeManager({playerX:5,playerZ:0,startX:0,startZ:0,aggressive:false});
+  x.monster.targetId=x.player.id;
+  const before={x:x.monster.x,z:x.monster.z};
+  x.monster.rootUntil=5000;
+  x.advance(100);
+  assert.equal(x.monster.x,before.x);
+  assert.equal(x.monster.z,before.z);
+  assert.equal(x.attacks,0);
+
+  x.monster.rootUntil=0;
+  x.monster.stunUntil=5000;
+  x.advance(100);
+  assert.equal(x.monster.state,'stunned');
+  assert.equal(x.attacks,0);
+});

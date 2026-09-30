@@ -185,6 +185,7 @@ wss.on('connection', ws => {
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         questManager.initializePlayer(novo);
         skillManager.initializePlayer(novo);
+        if (COMBATE_AUTORITATIVO) combatManager.refresh(novo);
         await carregarGuilda(novo);
         if (ws.readyState !== 1) return;
         p = novo;
@@ -203,6 +204,7 @@ wss.on('connection', ws => {
           questLegacy: p.dados.quest || null,
           skillCatalog: skillManager.publicCatalog(),
           skillState: skillManager.snapshot(p),
+          classCatalog: skillManager.classCatalog(),
           npcCatalog: NPCS
         });
         broadcast({ t: 'join', ...resumo(p) }, p);
@@ -282,7 +284,15 @@ wss.on('connection', ws => {
       case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
       case 'npcTalk': questManager.talk(p,m.npcId); break;
       case 'npcService': if (COMBATE_AUTORITATIVO) npcServiceManager.act(p,m); break;
-      case 'skillTree': if(m.action==='learn') skillManager.learn(p,m.skillId); else if(m.action==='respec') skillManager.respec(p,m.npcId); else skillManager.fail(p,'Ação de árvore inválida.'); break;
+      case 'skillTree': {
+        let changed=false;
+        if(m.action==='learn') changed=skillManager.learn(p,m.skillId);
+        else if(m.action==='respec') changed=skillManager.respec(p,m.npcId);
+        else if(m.action==='specialize') changed=skillManager.chooseSpecialization(p,m.specialization,m.npcId);
+        else skillManager.fail(p,'Ação de árvore inválida.');
+        if(changed&&COMBATE_AUTORITATIVO){const st=combatManager.refresh(p);p.hp=Math.min(p.hp,st.maxHp);p.mp=Math.min(p.mp,st.maxMp);p.fp=Math.min(p.fp,st.maxFp);Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});combatManager.sync(p,{skillTreeChanged:true});if(p.party)enviarGrupo(p.party);}
+        break;
+      }
       case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>{const ok=combatManager.changeClassFromQuest(player,cls);if(ok)skillManager.onClassChange(player);return ok;},grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
       case 'resetCharacter': if (COMBATE_AUTORITATIVO) combatManager.resetPlayer(p); break;
       case 'economy': if (COMBATE_AUTORITATIVO) economyManager.act(p,m); break;
@@ -399,7 +409,7 @@ function enviarGrupo(party){
   const agora = Date.now();
   for (const k of Object.keys(party.skills)) if (party.skills[k] <= agora) delete party.skills[k];
   const members = [...party.members].map(id => players.get(id)).filter(Boolean)
-    .map(o => ({ id: o.id, name: o.name, L: o.L, hp: o.hp, max: o.maxHp }));
+    .map(o => { const ss=skillManager.snapshot(o); return { id:o.id, name:o.name, L:o.L, hp:o.hp, max:o.maxHp, specialization:ss.specializationName, role:ss.role }; });
   const skills = {}; for (const [k, t] of Object.entries(party.skills)) skills[k] = Math.ceil((t - agora) / 1000);
   paraGrupo(party, { t: 'party', leader: party.leader, members, level: party.level, exp: party.exp, need: grupoExpNeed(party.level),
     points: party.points, advanced: party.advanced, mode: party.mode, skills });

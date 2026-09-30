@@ -59,6 +59,10 @@ class MonsterManager {
       wanderX:point.x,
       wanderZ:point.z,
       slowUntil:0,
+      rootUntil:0,
+      stunUntil:0,
+      tauntUntil:0,
+      effects:{},
       navPath:[],
       navIndex:0,
       navTargetX:null,
@@ -142,6 +146,7 @@ class MonsterManager {
         continue;
       }
 
+      if(m.stunUntil>now){m.state='stunned';if(network)this.emit(m,{t:'monsterMove',id:m.id,x:m.x,z:m.z,state:m.state,targetId:m.targetId,hp:m.hp});continue;}
       let target=m.targetId&&this.players.get(m.targetId);
       if(target&&(target.dead||Math.hypot(target.x-m.spawnX,target.z-m.spawnZ)>Math.max(28,this.zones[m.zone].radius*1.8))){
         target=null;
@@ -193,6 +198,7 @@ class MonsterManager {
   }
 
   moveToward(m,x,z,dt,now,mult=1,approachRange=0){
+    if(m.rootUntil>now||m.stunUntil>now)return false;
     const dx=x-m.x,dz=z-m.z,len=Math.hypot(dx,dz)||1;
     const pad=this.navPad(m);
     let vx=dx/len,vz=dz/len,distance=len;
