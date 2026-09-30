@@ -150,13 +150,14 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   4 capas. O maior arquivo fica abaixo de 256 KB. Armas, off-hands e capacetes usam
   metadados de `modelScale`/posição/quaternion validados no personagem GLB para não
   entrar gigantes, atravessados ou desalinhados no gameplay.
-- QA atual: 108 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
+- QA atual: 109 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
   raridades/fontes/slots, affixes, set bonus, requisito nível/classe, mochila cheia,
   lock/favorito, banco, sockets, compra NPC, drop com metadata/UID, upgrade
   lendário/pity/quebra, assets e UI. Antes da Fase 10, o inventário recebeu rework
   visual baseado em referência Canva: janela larga fantasy, busca, tabs, 40 slots
   visuais (32 ativos + 8 bloqueados), paper doll com 10 slots e viewport 3D real
-  do personagem/equipamentos, com rotação por arraste e layout responsivo mobile.
+  do personagem/equipamentos, com rotação por arraste e layout responsivo mobile;
+  landscape baixo (ex.: 926x428) usa composição compacta sem overflow ou distorção.
 - Produção da Fase 9 foi validada no Render: catálogo 165, 12 sets, 5 raridades,
   `itemState` sincronizado, personagem GLB ativo, WebGL íntegro e 20/20 famílias
   visuais carregadas no gameplay online sem erro JS ou request falho.

@@ -27,3 +27,10 @@ test('inventario grande abre centralizado e possui adaptacao responsiva',()=>{
   assert.ok(html.includes('@media(max-width:860px)'));
   assert.ok(html.includes('#winInv .inv-grid{grid-template-columns:repeat(8'));
 });
+
+test('inventario preserva proporcao em landscape baixo como iPhone deitado',()=>{
+  assert.ok(html.includes('@media (orientation:landscape) and (max-height:560px)'));
+  assert.ok(html.includes('#winInv .inv-body{height:calc(100% - 40px)'));
+  assert.ok(html.includes('#winInv .inv-preview-frame{min-height:0;flex:1}'));
+  assert.ok(html.includes('#winInv .inv-grid{grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-rows:minmax(39px,1fr)'));
+});

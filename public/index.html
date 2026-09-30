@@ -310,6 +310,38 @@ button{font-family:inherit;color:inherit}
   #winInv .inv-bag{order:1}
   #winInv .inv-footer{order:3}
 }
+@media (orientation:landscape) and (max-height:560px){
+  #winInv.inv-window{width:min(900px,96vw);height:min(392px,94vh);max-height:none}
+  #winInv .inv-titlebar{height:40px;padding:0 52px}
+  #winInv .inv-titlebar b{font-size:22px}
+  #winInv .inv-titlebar:before,#winInv .inv-titlebar:after{top:5px;width:28px;height:28px;border-width:2px}
+  #winInv .inv-titlebar:before{left:calc(50% - 88px)}
+  #winInv .inv-titlebar:after{right:calc(50% - 88px)}
+  #winInv .inv-titlebar .x{right:8px;top:5px;width:30px;height:30px;font-size:21px}
+  #winInv .inv-help{right:46px;top:7px;width:26px;height:26px;font-size:16px}
+  #winInv .inv-body{height:calc(100% - 40px);box-sizing:border-box;grid-template-columns:38% minmax(0,1fr);grid-template-rows:minmax(0,1fr) 28px;gap:6px 9px;padding:7px 9px 5px;overflow:hidden}
+  #winInv .inv-paperdoll{order:1;min-height:0;gap:5px;overflow:hidden}
+  #winInv .inv-preview-frame{min-height:0;flex:1}
+  #invCharacter{inset:4px 42px 34px;width:calc(100% - 84px);height:calc(100% - 38px)}
+  #winInv .inv-detail{min-height:0;height:54px;padding:5px 7px;font-size:10px;line-height:1.15}
+  #winInv .inv-bag{order:2;min-height:0;gap:5px;overflow:hidden}
+  #winInv .inv-search{grid-template-columns:22px auto minmax(120px,1fr);gap:5px;font-size:11px}
+  #winInv .inv-search-icon{width:19px;height:19px;font-size:17px}
+  #winInv .inv-search input{height:26px!important;font-size:11px!important}
+  #winInv .inv-tabs{gap:5px}
+  #winInv .inv-tabs button{height:29px;font-size:12px}
+  #winInv .inv-grid{grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-rows:minmax(39px,1fr);gap:4px;min-height:0;padding:4px;overflow:auto}
+  #winInv .inv-grid .cell{aspect-ratio:auto;min-height:39px;font-size:20px}
+  #winInv .inv-footer{order:3;height:28px;padding:0 8px}
+  #winInv .inv-footer .inv-coin{width:19px;height:19px}
+  #winInv .inv-footer #gold{font-size:13px}
+  #winInv .inv-capacity{font-size:10px}
+  #winInv .inv-left{left:7px;top:8px;grid-template-columns:44px;gap:5px}
+  #winInv .inv-right{right:7px;top:8px;grid-template-columns:44px;gap:5px}
+  #winInv .inv-bottom{left:94px;right:94px;bottom:5px;grid-template-columns:repeat(2,44px);gap:5px}
+  #winInv .inv-eqslot{width:44px;height:44px;border-width:1.5px;font-size:20px}
+  #winInv .inv-eqslot small{font-size:7px}
+}
 
 /* Textos flutuantes */
 #floats{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:3}
