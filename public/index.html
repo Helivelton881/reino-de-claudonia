@@ -5159,7 +5159,13 @@ const qaSnapshot = () => Object.freeze({
   inventory: qaClone(ch.inv),
   equipment: Object.freeze({slots:qaClone(ch.eq), upgrades:qaClone(ch.equp), metadata:qaClone(ch.eqMeta)}),
   skills: Object.freeze({tree:qaClone(skillTreeState), hotbar:qaClone(ch.skillBar), buffs:qaClone(buffs)}),
-  combat: Object.freeze({targetId:target?.id || null, targetHp:target?.hp ?? null, autoAttack:!!autoAttack, authoritative:!!authoritativeCombat})
+  combat: Object.freeze({targetId:target?.id || null, targetHp:target?.hp ?? null, autoAttack:!!autoAttack, authoritative:!!authoritativeCombat}),
+  world: Object.freeze({
+    moveGoal:qaClone(player.moveGoal), movePathLength:player.movePath?.length || 0, npcGoal:player.npcGoal?.id || null,
+    npcOpen:npcOpen?.id || null,
+    npcs:npcObjs.map(n=>({id:n.id,name:n.name,x:n.x,z:n.z,distance:Math.hypot(n.x-player.x,n.z-player.z)})),
+    monsters:monsters.filter(m=>!m.dead).map(m=>({id:m.id,name:m.type?.name || m.type?.id || 'monster',level:m.type?.level ?? m.level ?? null,hp:m.hp,x:m.x,z:m.z,distance:Math.hypot(m.x-player.x,m.z-player.z)}))
+  })
 });
 Object.defineProperty(window, '__CLAUDONIA_QA__', {
   value: Object.freeze({version:'1.0.0', mode:'read-only', snapshot:qaSnapshot}),
