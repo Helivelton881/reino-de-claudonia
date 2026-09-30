@@ -154,3 +154,48 @@ test('loja NPC vende apenas equipamento marcado como npc e rejeita tiers futuros
   assert.equal(eco.act(p,{action:'buy',itemId:'guerreiro_arma_8'}),true);
   assert.ok(p.dados.inv.some(x=>x.id==='guerreiro_arma_8'));
 });
+
+
+test('equip rejeita classe nivel e unequip respeita mochila cheia',()=>{
+  const sent=[],mgr=new ItemManager({send:(ws,m)=>sent.push(m)});
+  const low=makePlayer({L:10,cls:'guerreiro'});low.L=10;
+  mgr.addItem(low,{id:'guerreiro_arma_60'});
+  mgr.ensurePlayer(low);
+  assert.equal(mgr.equip(low,0),false,'nivel baixo deve ser rejeitado');
+  const wrong=makePlayer({L:60,cls:'mago'});wrong.L=60;
+  mgr.addItem(wrong,{id:'guerreiro_arma_60'});
+  mgr.ensurePlayer(wrong);
+  assert.equal(mgr.equip(wrong,0),false,'classe errada deve ser rejeitada');
+  const full=makePlayer();
+  full.dados.eq.capacete='guerreiro_vigilia_capacete';
+  full.dados.eqMeta.capacete={uid:'eq:helm',affixes:[],socketed:[]};
+  full.dados.inv=Array.from({length:INVENTORY_LIMIT},(_,i)=>({id:'pocao_vida',n:i+1}));
+  mgr.ensurePlayer(full);
+  assert.equal(full.dados.inv.length,INVENTORY_LIMIT);
+  assert.equal(mgr.unequip(full,'capacete'),false,'unequip nao pode estourar limite');
+  assert.equal(full.dados.eq.capacete,'guerreiro_vigilia_capacete');
+});
+
+test('drop server-side gera equipamento com raridade e afixos e preserva uid no pickup',()=>{
+  const {rollLoot,equipmentPool}=require('../server/loot/loot-tables');
+  const LootManager=require('../server/loot/loot-manager');
+  const monster={level:60,giant:true,material:'nucleo',x:0,z:0};
+  assert.ok(equipmentPool(monster).length>0);
+  const seq=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];let qi=0;
+  const rng=()=>seq[qi++%seq.length];
+  const rolled=rollLoot(monster,{rng,luck:3});
+  const gear=rolled.find(x=>x&&x.id&&EQUIPMENT[x.id]);
+  assert.ok(gear,'giant deve poder gerar equipamento');
+  assert.equal(gear.rarity,EQUIPMENT[gear.id].rarity);
+  assert.equal(gear.affixes.length,RARITIES[gear.rarity].affixes);
+  const p=makePlayer({inv:[]});p.x=0;p.z=0;
+  const players=new Map([[p.id,p]]),sent=[];
+  const mgr=new ItemManager({send:(ws,m)=>sent.push(m)});
+  const loot=new LootManager({players,send:(ws,m)=>sent.push(m),emitNearby:()=>{},rng:()=>0,itemManager:mgr});
+  const entity={id:999,x:0,z:0,value:gear,allowed:new Set([p.id]),expiresAt:Date.now()+10000};
+  loot.loot.set(entity.id,entity);
+  assert.equal(loot.pickup(p,999),true);
+  const row=p.dados.inv.find(x=>x.id===gear.id);
+  assert.ok(row&&row.uid,'pickup de gear precisa criar uid persistente');
+  assert.deepEqual(row.affixes,gear.affixes);
+});

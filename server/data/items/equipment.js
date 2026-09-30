@@ -70,7 +70,7 @@ const sourceAt={8:'npc',16:'common',24:'giant',32:'dungeon',40:'giant',48:'dunge
 for(const cls of Object.keys(CLASS_VISUAL)){
   for(let i=0;i<weaponLevels.length;i++){
     const req=weaponLevels[i],source=sourceAt[req],rarity=SOURCE_RARITY[source],R=RARITIES[rarity],base=req*(cls==='mago'?1.2:cls==='druida'?1.08:1.15)*R.statMult;
-    add(`${cls}_arma_${req}`,{name:`${weaponNoun[cls]} ${weaponTier[i]} do ${className[cls]}`,slot:'arma',req,cls,atk:[Math.round(base*.86),Math.round(base*1.18)],source,rarity,tier:i+1,model:asset(CLASS_VISUAL[cls].weapon),visualSlot:'weapon',affixBias:cls==='guerreiro'?['str','sta']:cls==='druida'?['int','healing']:cls==='mago'?['int','magicAtk']:['dex','crit']});
+    add(`${cls}_arma_${req}`,{name:`${weaponNoun[cls]} ${weaponTier[i]} do ${className[cls]}`,slot:'arma',req,cls,atk:[Math.round(base*.86),Math.round(base*1.18)],source,rarity,tier:i+1,model:asset(CLASS_VISUAL[cls].weapon),visualSlot:'weapon',affixBias:cls==='guerreiro'?['str','sta']:cls==='druida'?['int','healing']:cls==='mago'?['int','atkPct']:['dex','crit']});
   }
 }
 
@@ -109,7 +109,7 @@ const accessories=[
   ['guerreiro','medalha_regente_60','Medalha do Regente','acessorio2',60,'boss','lendario',['str','defPct']],
   ['druida','broche_aurora_40','Broche da Aurora Astral','acessorio1',40,'dungeon','epico',['int','healing']],
   ['druida','relicario_vida_60','Relicário da Vida Soberana','acessorio2',60,'boss','lendario',['healing','mpPct']],
-  ['mago','anel_eclipse_40','Anel do Eclipse Astral','acessorio1',40,'dungeon','epico',['int','magicAtk']],
+  ['mago','anel_eclipse_40','Anel do Eclipse Astral','acessorio1',40,'dungeon','epico',['int','atkPct']],
   ['mago','sigilo_arcano_60','Sigilo Arcano Soberano','acessorio2',60,'boss','lendario',['crit','dot']],
   ['arqueiro','anel_horizonte_40','Anel do Horizonte Astral','acessorio1',40,'dungeon','epico',['dex','crit']],
   ['arqueiro','insignia_predador_60','Insígnia do Predador Soberano','acessorio2',60,'boss','lendario',['attackSpeed','range']]
