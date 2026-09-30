@@ -258,6 +258,59 @@ button{font-family:inherit;color:inherit}
 #npcBody p{margin:0 0 10px;font-size:14.5px;line-height:1.4}
 #npcBody .role{color:var(--gold);font-weight:700;margin-bottom:6px}
 
+/* Inventário — skin fantasy criada a partir da referência Canva */
+#winInv.inv-window{width:min(1180px,96vw);max-height:min(760px,94vh);background:#ead8aa;border:3px solid #8b5630;border-radius:16px;box-shadow:0 18px 48px rgba(0,0,0,.58),inset 0 0 0 2px #f8e9bd;color:#3b2a1c;overflow:hidden}
+#winInv .inv-titlebar{position:relative;justify-content:center;height:58px;padding:0 64px;background:linear-gradient(180deg,#8a3e2d 0%,#6f2f23 55%,#512117 100%);border-bottom:3px solid #b57a3f;border-radius:12px 12px 0 0;box-shadow:inset 0 1px 0 #d6a36c,inset 0 -2px 0 #4a1b13}
+#winInv .inv-titlebar:before,#winInv .inv-titlebar:after{content:"";position:absolute;top:8px;width:38px;height:38px;border:3px solid #d8a35e;transform:rotate(45deg);border-radius:7px;background:linear-gradient(135deg,#7e3c2d,#5a251b);box-shadow:inset 0 0 0 2px #512117}
+#winInv .inv-titlebar:before{left:calc(50% - 110px)}#winInv .inv-titlebar:after{right:calc(50% - 110px)}
+#winInv .inv-titlebar b{position:relative;z-index:2;font-family:Georgia,"Times New Roman",serif;font-size:27px;letter-spacing:.2px;color:#fff2d5;text-shadow:0 2px 2px #3c160f}
+#winInv .inv-titlebar .x{position:absolute;right:12px;top:9px;width:40px;height:40px;background:radial-gradient(circle at 35% 30%,#ffb33b,#df651f 62%,#8a3215 100%);box-shadow:0 0 0 2px #6b321c,0 0 0 4px #d6a35f;color:#5b2413;font-size:28px;font-weight:900}
+#winInv .inv-help{position:absolute;right:62px;top:12px;width:34px;height:34px;border-radius:50%;border:2px solid #8b542c;background:radial-gradient(circle,#f8ca62,#d28a2f);color:#5d341b;font-weight:900;font-size:20px;z-index:4;box-shadow:0 0 0 2px #e7bd72}
+#winInv .inv-body{position:relative;display:grid;grid-template-columns:390px minmax(0,1fr);grid-template-rows:minmax(0,1fr) 36px;gap:14px 16px;padding:14px 16px 10px;background:linear-gradient(180deg,#f1dfb3 0%,#e8d2a1 100%);overflow:hidden}
+#winInv .inv-paperdoll{min-width:0;display:flex;flex-direction:column;gap:8px}
+#winInv .inv-preview-frame{position:relative;min-height:505px;border-radius:10px;border:2px solid #b37643;background:radial-gradient(ellipse at 50% 72%,rgba(155,116,66,.19),transparent 36%),linear-gradient(180deg,#f2e1b7,#e9d4a5);box-shadow:inset 0 0 0 2px #f8edcc,inset 0 0 32px rgba(105,69,31,.12);overflow:hidden}
+#winInv .inv-preview-frame:after{content:"";position:absolute;left:24%;right:24%;bottom:58px;height:18px;border-radius:50%;background:rgba(84,61,32,.16);filter:blur(3px);pointer-events:none}
+#invCharacter{position:absolute;inset:24px 50px 48px;width:calc(100% - 100px);height:calc(100% - 72px);z-index:1;cursor:grab;touch-action:none}
+#invCharacter:active{cursor:grabbing}
+#winInv .inv-equip{position:absolute;z-index:3;display:grid;gap:8px}
+#winInv .inv-left{left:10px;top:16px;grid-template-columns:56px}
+#winInv .inv-right{right:10px;top:16px;grid-template-columns:56px}
+#winInv .inv-bottom{left:128px;right:128px;bottom:10px;grid-template-columns:repeat(2,56px);justify-content:center}
+#winInv .inv-eqslot{width:56px;height:56px;border-radius:8px;border:2px solid #9b6038;background:linear-gradient(180deg,#3b322b,#201b18);box-shadow:inset 0 0 0 2px #5d4637,0 2px 3px rgba(0,0,0,.22);display:grid;place-items:center;position:relative;color:#f3d390;font-size:25px;cursor:pointer}
+#winInv .inv-bottom .inv-eqslot{width:auto}
+#winInv .inv-eqslot.empty{color:#9d8a75;font-size:21px}
+#winInv .inv-eqslot small{position:absolute;left:2px;right:2px;bottom:1px;font-size:8.5px;line-height:1;color:#d5c3a6;text-align:center;text-shadow:0 1px 2px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#winInv .inv-eqslot.sel{border-color:#ffcf58;box-shadow:inset 0 0 0 2px #916321,0 0 0 2px #f6c64a}
+#winInv .inv-eqslot .up{position:absolute;left:3px;top:2px;font-size:10px;color:#ffd65a;font-weight:900}
+#winInv .inv-detail{min-height:96px;margin:0;padding:8px 10px;border:1px solid #b5814c;border-radius:8px;background:#f7e7bf;color:#4a3422;overflow:auto;box-shadow:inset 0 0 0 1px #fff0cf}
+#winInv .inv-detail b{color:#60351c}
+#winInv .inv-bag{min-width:0;display:flex;flex-direction:column;gap:8px}
+#winInv .inv-search{display:grid;grid-template-columns:26px auto minmax(180px,1fr);align-items:center;gap:7px;color:#4c321e;font-weight:700}
+#winInv .inv-search-icon{width:23px;height:23px;border-radius:6px;display:grid;place-items:center;background:linear-gradient(180deg,#ffd35c,#e9a92e);border:1px solid #9e6b2e;color:#fff8de;font-size:22px;line-height:1}
+#winInv .inv-search label{font-size:14px}
+#winInv .inv-search input{height:34px!important;margin:0!important;border-radius:5px!important;border:2px solid #6f4a31!important;background:#3b342e!important;color:#f6ead5!important;font-size:14px!important;box-shadow:inset 0 1px 4px rgba(0,0,0,.38)}
+#winInv .inv-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+#winInv .inv-tabs button{height:36px;border-radius:7px;border:2px solid #9a5f37;background:linear-gradient(180deg,#a96d47,#77452e);color:#f4d5ad;font-family:Georgia,"Times New Roman",serif;font-size:15px;cursor:pointer;box-shadow:inset 0 1px 0 #d5a476}
+#winInv .inv-tabs button.on{background:linear-gradient(180deg,#ffd768,#f4b633);color:#613816;border-color:#c5872a;box-shadow:inset 0 1px 0 #fff0a9}
+#winInv .inv-grid{grid-template-columns:repeat(8,minmax(48px,1fr));gap:5px;padding:6px;border:2px solid #a76d3f;border-radius:8px;background:#c6a272;box-shadow:inset 0 0 0 2px #e5c89b;overflow:auto;align-content:start;min-height:390px}
+#winInv .inv-grid .cell{aspect-ratio:1;border-radius:5px;background:linear-gradient(145deg,#3b342d,#211d1a);border:2px solid #a55f39;box-shadow:inset 0 0 0 1px #60483b;font-size:25px}
+#winInv .inv-grid .cell:hover{transform:translateY(-1px);border-color:#e2a552}
+#winInv .inv-grid .cell.locked{cursor:default;color:#9b8a79;font-size:22px;background:linear-gradient(145deg,#4a423a,#2b2723);opacity:.85}
+#winInv .inv-footer{grid-column:1/-1;display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:2px solid #a36c3d;border-radius:7px;background:#4a423a;color:#f6e9d0;box-shadow:inset 0 0 0 1px #7b6651}
+#winInv .inv-footer .inv-coin{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#f7c83c;color:#8c5a0d;border:2px solid #a86a15;font-weight:900}
+#winInv .inv-footer #gold{font-size:16px;color:#fff2c5}
+#winInv .inv-capacity{margin-left:auto;font-size:12.5px;color:#dcccb2}
+@media(max-width:860px){
+  #winInv.inv-window{width:96vw;max-height:92vh}
+  #winInv .inv-body{grid-template-columns:1fr;grid-template-rows:auto auto 36px;overflow:auto}
+  #winInv .inv-preview-frame{min-height:360px}
+  #invCharacter{inset:10px 50px 44px;height:calc(100% - 54px)}
+  #winInv .inv-grid{grid-template-columns:repeat(5,minmax(44px,1fr));min-height:0}
+  #winInv .inv-paperdoll{order:2}
+  #winInv .inv-bag{order:1}
+  #winInv .inv-footer{order:3}
+}
+
 /* Textos flutuantes */
 #floats{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:3}
 .ft{position:absolute;left:0;top:0;font-weight:800;font-size:20px;white-space:nowrap;
@@ -431,13 +484,42 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <div id="hurt"></div>
 <div id="banner"><b id="banT">Reino De Claudonia</b><span id="banS">Vila do Vale</span></div>
 
-<section class="win" id="winInv" hidden aria-label="Mochila">
-  <header><b>Mochila</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
-  <div class="wbody">
-    <div class="gold">Ouro <b id="gold">0</b></div>
-    <div class="tabs" id="invFilters"><button type="button" data-ifilter="all" class="on">Todos</button><button type="button" data-ifilter="favorite">★</button><button type="button" data-ifilter="weapon">Armas</button><button type="button" data-ifilter="armor">Armaduras</button><button type="button" data-ifilter="rare">Raro+</button></div>
-    <div class="grid" id="invGrid"></div>
-    <div class="detail" id="invDetail"></div>
+<section class="win inv-window" id="winInv" hidden aria-label="Inventário">
+  <header class="inv-titlebar">
+    <button class="inv-help" type="button" aria-label="Ajuda do inventário">?</button>
+    <b>Inventário</b>
+    <button class="x" type="button" data-close aria-label="Fechar">×</button>
+  </header>
+  <div class="wbody inv-body">
+    <aside class="inv-paperdoll">
+      <div class="inv-preview-frame">
+        <div class="inv-equip inv-left" id="invEquipLeft"></div>
+        <canvas id="invCharacter" width="360" height="420" aria-label="Prévia 3D do personagem equipado"></canvas>
+        <div class="inv-equip inv-right" id="invEquipRight"></div>
+        <div class="inv-equip inv-bottom" id="invEquipBottom"></div>
+      </div>
+      <div class="detail inv-detail" id="invDetail"></div>
+    </aside>
+    <main class="inv-bag">
+      <div class="inv-search">
+        <span class="inv-search-icon">›</span>
+        <label for="invSearch">Buscar:</label>
+        <input id="invSearch" type="search" maxlength="40" autocomplete="off" placeholder="Nome do item">
+      </div>
+      <div class="tabs inv-tabs" id="invFilters">
+        <button type="button" data-ifilter="all" class="on">Todos</button>
+        <button type="button" data-ifilter="general">Geral</button>
+        <button type="button" data-ifilter="equipment">Equip.</button>
+        <button type="button" data-ifilter="favorite">Favoritos</button>
+        <button type="button" data-ifilter="rare">Raro+</button>
+      </div>
+      <div class="grid inv-grid" id="invGrid"></div>
+    </main>
+    <footer class="inv-footer">
+      <span class="inv-coin">◈</span>
+      <b id="gold">0</b>
+      <span class="inv-capacity" id="invCapacity">0 / 32</span>
+    </footer>
   </div>
 </section>
 
@@ -1694,8 +1776,9 @@ function upgradeCharacter(h, local){
 }
 if (charSys && charSys.enabled){
   charSys.onReady.push(()=>{
-    upgradeCharacter(hero, true);
-    try { others.forEach(o=> upgradeCharacter(o.h)); } catch (e) {}
+    upgradeCharacter(hero,true);
+    try{others.forEach(o=>upgradeCharacter(o.h));}catch(e){}
+    if(!$('winInv').hidden){initInventoryPreview();renderInv();}
   });
   charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
@@ -2430,6 +2513,52 @@ function syncHeroEquipment(h,gear,cls){
   load(h.gearState.peitoral,'chestRigid');
   load(h.gearState.capa,'cape');
 }
+let invPreview=null,invPreviewYaw=0;
+function initInventoryPreview(){
+  const c=$('invCharacter');
+  if(invPreview||!c||!charSys||!charSys.ready)return !!invPreview;
+  const r=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true,powerPreference:'high-performance'});
+  r.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));r.setClearColor(0x000000,0);
+  const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(28,1,.1,20);
+  sc.add(new THREE.HemisphereLight(0xfff1d8,0x6b5540,1.15));
+  sc.add(new THREE.AmbientLight(0xffead1,.45));
+  const key=new THREE.DirectionalLight(0xffdfb8,1.4);key.position.set(-3,5,4);sc.add(key);
+  const rim=new THREE.DirectionalLight(0xa8c9ff,.55);rim.position.set(3,3,-3);sc.add(rim);
+  const view=charSys.createView({inventory:true});if(!view)return false;
+  charSys.views.delete(view);view.root.rotation.y=invPreviewYaw;sc.add(view.root);
+  view.anim.setState('Idle');
+  invPreview={renderer:r,scene:sc,camera:cam,view,hero:{isGLB:true,root:view.root,view,anim:view.anim},token:0,gearKey:'',last:performance.now()};
+  const drag={on:false,x:0};
+  c.addEventListener('pointerdown',e=>{drag.on=true;drag.x=e.clientX;c.setPointerCapture?.(e.pointerId);});
+  c.addEventListener('pointermove',e=>{if(!drag.on)return;invPreviewYaw+=(e.clientX-drag.x)*.012;drag.x=e.clientX;view.root.rotation.y=invPreviewYaw;});
+  const end=()=>{drag.on=false};c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);
+  syncInventoryPreviewGear(true);requestAnimationFrame(inventoryPreviewFrame);return true;
+}
+function syncInventoryPreviewGear(force=false){
+  if(!invPreview)return;
+  const gear=ch.eq||{},key=JSON.stringify(gear);
+  if(!force&&invPreview.gearKey===key)return;
+  invPreview.gearKey=key;const token=++invPreview.token,eq=charSys.equipment,v=invPreview.view;
+  for(const slot of ['weapon','back','offhand','head','chestRigid','cape'])eq.equip(v,slot,null);
+  const map={arma:'weapon',offhand:'offhand',capacete:'head',peitoral:'chestRigid',capa:'cape'};
+  for(const [gameSlot,viewSlot] of Object.entries(map)){
+    const id=gear[gameSlot],item=id&&ITEMS[id];if(!item?.model)continue;
+    eq.loadAsset(item.model).then(g=>{if(!g||!invPreview||token!==invPreview.token||ch.eq?.[gameSlot]!==id)return;const obj=prepareEquipmentModel(eq.instance(g),item);obj.visible=true;eq.equip(v,viewSlot,obj);});
+  }
+}
+function inventoryPreviewFrame(now){
+  if(!invPreview)return;
+  requestAnimationFrame(inventoryPreviewFrame);
+  if($('winInv').hidden)return;
+  const c=$('invCharacter'),w=Math.max(1,c.clientWidth|0),h=Math.max(1,c.clientHeight|0);
+  if(c.width!==w||c.height!==h){invPreview.renderer.setSize(w,h,false);invPreview.camera.aspect=w/h;invPreview.camera.updateProjectionMatrix();}
+  const dt=Math.min(.05,Math.max(.001,(now-invPreview.last)/1000));invPreview.last=now;
+  invPreview.view.anim.update(dt);invPreview.view.root.rotation.y=invPreviewYaw;
+  const box=new THREE.Box3().setFromObject(invPreview.view.model),center=new THREE.Vector3(),size=new THREE.Vector3();box.getCenter(center);box.getSize(size);
+  const targetY=Math.max(.9,center.y),fov=THREE.MathUtils.degToRad(invPreview.camera.fov),fit=Math.max(4.8,(size.y*.5)/Math.tan(fov*.5)*1.18);invPreview.camera.position.set(center.x,targetY+0.02,fit);invPreview.camera.lookAt(center.x,targetY,center.z);
+  invPreview.renderer.render(invPreview.scene,invPreview.camera);
+}
+
 function makeBoard(){
   const g = new THREE.Group(), paint = shiny(0xA8703A, 40);
   const deck = new THREE.Mesh(capsule(0.36, 1.2, 16), paint); deck.rotation.x = Math.PI/2; deck.scale.set(1, 1, 0.14); deck.position.y = 0.02; g.add(deck);
@@ -2958,7 +3087,7 @@ function refreshTarget(){
   ring.material.color.set(target.giant ? 0xF2C14E : (target.type.agg ? 0xFF6B6B : 0xF2C14E));
 }
 
-let selInv=-1,selEq=null,invFilter='all';
+let selInv=-1,selEq=null,invFilter='all',invQuery='';
 function iconHTML(id){const it=ITEMS[id];if(!it)return'◆';return it.tint?`<span class="ico ${it.tint}">${it.icon}</span>`:it.icon;}
 const rarityInfo=it=>itemCatalog.rarities[it&&it.rarity]||{id:'comum',name:'Comum',rank:0,color:'#B9C0C8'};
 const sourceLabel=s=>({npc:'NPC',common:'Monstro comum',giant:'Giant',dungeon:'Dungeon',boss:'Boss'})[s]||s||'Mundo';
@@ -2985,19 +3114,34 @@ function itemInfo(id,up,entry=null){
   return s;
 }
 function invVisible(s){
-  if(!s||!ITEMS[s.id])return false;const it=ITEMS[s.id],R=rarityInfo(it);
+  if(!s||!ITEMS[s.id])return false;const it=ITEMS[s.id],R=rarityInfo(it),q=invQuery.trim().toLocaleLowerCase('pt-BR');
+  if(q&&!itemName(s.id,s.up).toLocaleLowerCase('pt-BR').includes(q))return false;
   if(invFilter==='favorite')return !!s.favorite;
-  if(invFilter==='weapon')return it.kind==='eq'&&['arma','offhand'].includes(it.slot);
-  if(invFilter==='armor')return it.kind==='eq'&&['capacete','peitoral','luvas','botas','capa'].includes(it.slot);
+  if(invFilter==='general')return it.kind!=='eq';
+  if(invFilter==='equipment')return it.kind==='eq';
   if(invFilter==='rare')return it.kind==='eq'&&R.rank>=2;
   return true;
 }
+const INV_LEFT_SLOTS=['arma','offhand','capa','voo'],INV_RIGHT_SLOTS=['capacete','peitoral','luvas','botas'],INV_BOTTOM_SLOTS=['acessorio1','acessorio2'];
+function invEqButton(sl){
+  const id=ch.eq?.[sl],it=id&&ITEMS[id],up=id?(ch.equp?.[sl]||0):0,R=it?rarityInfo(it):null,icon=it?iconHTML(id):(SLOT_ICONS[sl]||'◇');
+  return `<button class="inv-eqslot ${id?'':'empty'} ${selEq===sl?'sel':''}" type="button" data-inv-eqslot="${sl}" style="${R?'border-color:'+R.color:''}" title="${esc(id?itemName(id,up):SLOT_NAMES[sl])}">${icon}${up?`<span class="up">+${up}</span>`:''}<small>${SLOT_NAMES[sl]}</small></button>`;
+}
+function renderInvEquipment(){
+  $('invEquipLeft').innerHTML=INV_LEFT_SLOTS.map(invEqButton).join('');
+  $('invEquipRight').innerHTML=INV_RIGHT_SLOTS.map(invEqButton).join('');
+  $('invEquipBottom').innerHTML=INV_BOTTOM_SLOTS.map(invEqButton).join('');
+}
 function renderInv(){
-  $('gold').textContent=ch.gold.toLocaleString('pt-BR');
+  $('gold').textContent=(ch.gold||0).toLocaleString('pt-BR');
+  $('invCapacity').textContent=`${ch.inv.length} / ${INV_SIZE}`;
   $('invFilters').querySelectorAll('[data-ifilter]').forEach(b=>b.classList.toggle('on',b.dataset.ifilter===invFilter));
+  if($('invSearch').value!==invQuery)$('invSearch').value=invQuery;
+  renderInvEquipment();
   let html='',shown=0;
   ch.inv.forEach((s,i)=>{if(!invVisible(s))return;shown++;const it=ITEMS[s.id],R=rarityInfo(it);html+=`<button class="cell ${selInv===i?'sel':''}" style="${it.kind==='eq'?'border-color:'+R.color+';box-shadow:inset 0 0 0 1px '+R.color+'55;':''}" data-inv="${i}" type="button" aria-label="${esc(itemName(s.id,s.up))}">${iconHTML(s.id)}${it.kind!=='eq'?`<span class="n">${s.n}</span>`:''}${s.up?`<span class="up">+${s.up}</span>`:''}${s.favorite?'<span class="up" style="left:2px;right:auto">★</span>':''}${s.locked?'<span class="n">🔒</span>':''}</button>`;});
   for(let i=shown;i<INV_SIZE;i++)html+='<div class="cell" aria-hidden="true"></div>';
+  for(let i=INV_SIZE;i<40;i++)html+='<div class="cell locked" title="Espaço bloqueado" aria-hidden="true">🔒</div>';
   $('invGrid').innerHTML=html;
   const det=$('invDetail');
   if(selInv>=0&&ch.inv[selInv]){
@@ -3006,12 +3150,20 @@ function renderInv(){
     if(it.kind==='eq')act=`<button class="btn" data-act="equip" type="button" ${it.req>ch.L||(it.cls&&it.cls!==ch.cls)?'disabled':''}>Equipar</button><button class="btn ghost" data-act="favorite" type="button">${s.favorite?'★ Remover favorito':'☆ Favoritar'}</button><button class="btn ghost" data-act="lock" type="button">${s.locked?'🔓 Desbloquear':'🔒 Bloquear'}</button>`;
     let socketButtons='';if(it.kind==='eq'&&(s.socketed||[]).length<(it.socketCount||0)){for(const c of Object.values(itemCatalog.cards)){if(countItem(c.id)>0)socketButtons+=`<button class="btn ghost" data-socket="${c.id}" type="button">Inserir ${esc(c.name)}</button>`;}}
     det.innerHTML=itemInfo(s.id,s.up,s)+(trade||myShop?`<p class="note">${trade?'Durante a troca, use a janela Troca para oferecer itens.':'Feche a loja pessoal para mexer na mochila.'}</p>`:`<div class="actions">${act}${socketButtons}<button class="btn ghost" data-act="drop" type="button" ${s.locked?'disabled':''}>Descartar</button></div>`);
-  }else det.textContent=ch.inv.length?'Toque em um item para ver os detalhes.':'A mochila está vazia. Derrote monstros para encontrar itens.';
+  }else if(selEq&&ch.eq?.[selEq]){
+    const id=ch.eq[selEq],up=ch.equp?.[selEq]||0,meta={...(ch.eqMeta?.[selEq]||{}),id,up};
+    det.innerHTML=itemInfo(id,up,meta)+`<div class="actions"><button class="btn ghost" data-inv-unequip="${selEq}" type="button">Tirar equipamento</button></div>`;
+  }else det.innerHTML='<b>Equipamento e mochila</b><br><span class="note">Selecione um slot ou item. Arraste o personagem para girá-lo.</span>';
+  initInventoryPreview();syncInventoryPreviewGear();
 }
 $('invFilters').addEventListener('click',e=>{const b=e.target.closest('[data-ifilter]');if(!b)return;invFilter=b.dataset.ifilter;selInv=-1;renderInv();});
+$('invSearch').addEventListener('input',e=>{invQuery=e.target.value||'';selInv=-1;renderInv();});
 $('winInv').addEventListener('click',e=>{
-  const c=e.target.closest('[data-inv]');if(c){selInv=+c.dataset.inv;renderInv();return;}
+  const eqs=e.target.closest('[data-inv-eqslot]');if(eqs){selEq=eqs.dataset.invEqslot;selInv=-1;renderInv();return;}
+  const uneq=e.target.closest('[data-inv-unequip]');if(uneq){sendWs({t:'equipment',action:'unequip',slot:uneq.dataset.invUnequip});return;}
+  const c=e.target.closest('[data-inv]');if(c){selInv=+c.dataset.inv;selEq=null;renderInv();return;}
   const sock=e.target.closest('[data-socket]');if(sock&&selInv>=0){sendWs({t:'item',action:'socket',where:'inventory',ref:selInv,cardId:sock.dataset.socket});return;}
+  if(e.target.closest('.inv-help')){log('Inventário: use a busca e filtros; selecione itens para equipar. Arraste o personagem para girar a prévia 3D.','gold');return;}
   const a=e.target.closest('[data-act]');if(!a||selInv<0||!ch.inv[selInv]||trade||myShop)return;
   const s=ch.inv[selInv];
   if(a.dataset.act==='use'){useItem(s.id);return;}
@@ -3147,9 +3299,10 @@ function openWin(w, side){
   if (!w.hidden){ w.hidden = true; return; }
   w.hidden = false; w.style.zIndex = ++zTop;
   if (!w.dataset.placed){
-    const ww = w.offsetWidth, narrow = innerWidth < 760;
-    const left = narrow ? (innerWidth - ww)/2 : (side > 0 ? innerWidth/2 + 12 : innerWidth/2 - ww - 12);
-    w.style.left = Math.max(8, left) + 'px'; w.style.top = (narrow ? 70 : 90) + 'px'; w.dataset.placed = '1';
+    const ww=w.offsetWidth,narrow=innerWidth<760,large=w.id==='winInv';
+    const left=large?(innerWidth-ww)/2:(narrow?(innerWidth-ww)/2:(side>0?innerWidth/2+12:innerWidth/2-ww-12));
+    const top=large?Math.max(8,(innerHeight-w.offsetHeight)/2):(narrow?70:90);
+    w.style.left=Math.max(8,left)+'px';w.style.top=top+'px';w.dataset.placed='1';
   }
   refreshUI();
 }

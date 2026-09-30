@@ -150,16 +150,22 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   4 capas. O maior arquivo fica abaixo de 256 KB. Armas, off-hands e capacetes usam
   metadados de `modelScale`/posição/quaternion validados no personagem GLB para não
   entrar gigantes, atravessados ou desalinhados no gameplay.
-- QA atual: 105 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
+- QA atual: 108 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
   raridades/fontes/slots, affixes, set bonus, requisito nível/classe, mochila cheia,
   lock/favorito, banco, sockets, compra NPC, drop com metadata/UID, upgrade
-  lendário/pity/quebra, assets e UI.
+  lendário/pity/quebra, assets e UI. Antes da Fase 10, o inventário recebeu rework
+  visual baseado em referência Canva: janela larga fantasy, busca, tabs, 40 slots
+  visuais (32 ativos + 8 bloqueados), paper doll com 10 slots e viewport 3D real
+  do personagem/equipamentos, com rotação por arraste e layout responsivo mobile.
 - Produção da Fase 9 foi validada no Render: catálogo 165, 12 sets, 5 raridades,
   `itemState` sincronizado, personagem GLB ativo, WebGL íntegro e 20/20 famílias
   visuais carregadas no gameplay online sem erro JS ou request falho.
 
 ## Limites conhecidos (próximos passos)
 - As Fases 7, 8 e 9 estão formalmente fechadas e publicadas.
+- Pré-Fase 10 UI: referência editável de inventário criada no Canva sob o design
+  `DAHWrK1NTLE` (`Reino de Claudonia — Inventário UI Reference`). A implementação
+  runtime permanece HTML/CSS/Three.js para usar o personagem real, não uma imagem estática.
 - Próxima fase planejada: Fase 10 — ecossistema de
   monstros, variantes rare/Giant e World Bosses.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
