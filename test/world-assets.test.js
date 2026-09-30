@@ -29,13 +29,17 @@ test('todo modelo usado no mapa existe nos kits', () => {
   for (const n of propUsed) if (!nature.has(n)) assert.ok(props.has(n), 'objetos sem ' + n);
 });
 
-test('NPC regional da Trilha dos Lobos usa GLB otimizado', () => {
-  const p = path.join(publicDir,'assets','npcs','npc_vigia_cael.glb');
-  assert.ok(fs.existsSync(p),'npc_vigia_cael.glb ausente');
-  assert.ok(fs.statSync(p).size < 512 * 1024,'npc_vigia_cael.glb passou de 512 KB');
+test('NPCs regionais usam GLBs otimizados', () => {
+  for (const f of ['npc_vigia_cael.glb','npc_batedora_maelis.glb']) {
+    const p = path.join(publicDir,'assets','npcs',f);
+    assert.ok(fs.existsSync(p),f+' ausente');
+    assert.ok(fs.statSync(p).size < 512 * 1024,f+' passou de 512 KB');
+  }
   const html = fs.readFileSync(path.join(publicDir,'index.html'),'utf8');
   assert.match(html,/vigia_lobos/);
   assert.match(html,/npc_vigia_cael\.glb/);
+  assert.match(html,/batedora_teias/);
+  assert.match(html,/npc_batedora_maelis\.glb/);
 });
 
 test('página carrega o gerenciador e os monstros do Bestiary', () => {

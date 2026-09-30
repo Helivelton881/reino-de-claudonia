@@ -25,18 +25,19 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui 25 quests de historia, quatro provas e sete NPCs',()=>{
+test('catalogo possui 32 quests de historia, quatro provas e oito NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
-  assert.equal(catalog.length,29);
-  assert.equal(catalog.filter(q=>q.category==='story').length,25);
+  assert.equal(catalog.length,36);
+  assert.equal(catalog.filter(q=>q.category==='story').length,32);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
   for(const type of ['talk','kill','explore','delivery','collect']) assert.ok(types.has(type));
   assert.ok(catalog.filter(q=>q.category==='class-trial').every(q=>q.exclusiveGroup==='class-trial'));
-  assert.equal(NPCS.length,7);
+  assert.equal(NPCS.length,8);
   assert.ok(NPCS.some(n=>n.service==='forge'));
   assert.ok(NPCS.some(n=>n.service==='flight-shop'));
   assert.ok(NPCS.some(n=>n.id==='vigia_lobos'&&n.service==='quest-giver'));
+  assert.ok(NPCS.some(n=>n.id==='batedora_teias'&&n.service==='quest-giver'));
 });
 
 test('cadeia inicial exige conclusao da quest anterior',()=>{
@@ -179,6 +180,21 @@ test('cadeia 20-28 usa a Trilha dos Lobos e o vigia regional',()=>{
   const vigia=NPCS.find(n=>n.id==='vigia_lobos');
   assert.ok(vigia);
   assert.ok(Math.hypot(vigia.x-ZONES.lobo.x,vigia.z-ZONES.lobo.z)>ZONES.lobo.radius);
+});
+
+test('cadeia 29-37 usa a Mata das Teias e a batedora regional',()=>{
+  const {player,sent}=makePlayer({L:37,dados:{L:37,cls:'mago',quests:{active:{},completed:['prova_mago','jornada_25_guardiao_trilha']}}}),qm=manager(sent);
+  assert.equal(qm.accept(player,'jornada_26_mata_teias'),true);
+  const catalog=qm.publicCatalog();
+  const ids=['jornada_26_mata_teias','jornada_27_primeiras_teias','jornada_28_seda_resistente','jornada_29_coracao_mata','jornada_30_teias_cerradas','jornada_31_estoque_seda','jornada_32_passagem_segura'];
+  assert.ok(ids.every(id=>catalog.some(q=>q.id===id)));
+  assert.deepEqual(ids.map(id=>catalog.find(q=>q.id===id).requirements.level),[29,29,30,31,33,35,37]);
+  assert.equal(catalog.find(q=>q.id==='jornada_27_primeiras_teias').objectives[0].monsterKey,'aranha');
+  assert.equal(catalog.find(q=>q.id==='jornada_28_seda_resistente').objectives[0].itemId,'seda');
+  assert.equal(catalog.find(q=>q.id==='jornada_29_coracao_mata').objectives[0].areaId,'aranha');
+  const batedora=NPCS.find(n=>n.id==='batedora_teias');
+  assert.ok(batedora);
+  assert.ok(Math.hypot(batedora.x-ZONES.aranha.x,batedora.z-ZONES.aranha.z)>ZONES.aranha.radius);
 });
 
 test('personagem antigo já classado recebe prova concluida e libera pos-classe',()=>{

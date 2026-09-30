@@ -177,6 +177,51 @@ const WOLF_TRAIL = Object.freeze({
   }
 });
 
+const WEB_FOREST = Object.freeze({
+  jornada_26_mata_teias:{
+    id:'jornada_26_mata_teias',title:'Rumo à Mata das Teias',npcId:'vigia_lobos',category:'story',abandonable:true,
+    description:'Cael recebeu relatos de uma nova ameaça ao sul da rota e pede que você procure a batedora responsável pela mata.',
+    requirements:{level:29,clsNot:'aprendiz',completedQuest:'jornada_25_guardiao_trilha'},
+    objectives:[{type:'talk',npcId:'batedora_teias',count:1,label:'Fale com a Batedora Maelis',hint:'Siga pela estrada sudoeste até o posto antes da Mata das Teias.'}],reward:{exp:1800,gold:260}
+  },
+  jornada_27_primeiras_teias:{
+    id:'jornada_27_primeiras_teias',title:'Primeiras Teias',npcId:'batedora_teias',category:'story',abandonable:true,
+    description:'Maelis precisa abrir espaço na borda da mata antes que as aranhas fechem a passagem.',
+    requirements:{level:29,clsNot:'aprendiz',completedQuest:'jornada_26_mata_teias'},
+    objectives:[{type:'kill',monsterKey:'aranha',count:7,label:'Derrote Aranhas Sombrias',hint:'As Aranhas Sombrias ocupam a Mata das Teias.'}],reward:{exp:3500,gold:340}
+  },
+  jornada_28_seda_resistente:{
+    id:'jornada_28_seda_resistente',title:'Seda Resistente',npcId:'batedora_teias',category:'story',abandonable:true,
+    description:'Maelis usa a seda das criaturas para reforçar cordas, armadilhas e passagens de emergência.',
+    requirements:{level:30,clsNot:'aprendiz',completedQuest:'jornada_27_primeiras_teias'},
+    objectives:[{type:'delivery',itemId:'seda',count:6,label:'Entregue Sedas de Aranha',hint:'Continue caçando Aranhas Sombrias até obter a seda necessária.'}],reward:{exp:4300,gold:390}
+  },
+  jornada_29_coracao_mata:{
+    id:'jornada_29_coracao_mata',title:'Coração da Mata',npcId:'batedora_teias',category:'story',abandonable:true,
+    description:'Antes da patrulha profunda, Maelis quer que você reconheça o núcleo da região infestada.',
+    requirements:{level:31,clsNot:'aprendiz',completedQuest:'jornada_28_seda_resistente'},
+    objectives:[{type:'explore',areaId:'aranha',count:1,label:'Explore a Mata das Teias',hint:'Avance até o centro do território das Aranhas Sombrias.'}],reward:{exp:3800,gold:350}
+  },
+  jornada_30_teias_cerradas:{
+    id:'jornada_30_teias_cerradas',title:'Teias Cerradas',npcId:'batedora_teias',category:'story',abandonable:true,
+    description:'As criaturas voltaram a ocupar as passagens. Maelis ordena uma patrulha mais profunda.',
+    requirements:{level:33,clsNot:'aprendiz',completedQuest:'jornada_29_coracao_mata'},
+    objectives:[{type:'kill',monsterKey:'aranha',count:9,label:'Derrote Aranhas Sombrias',hint:'Patrulhe a Mata das Teias e reduza a concentração de aranhas.'}],reward:{exp:6200,gold:520}
+  },
+  jornada_31_estoque_seda:{
+    id:'jornada_31_estoque_seda',title:'Estoque de Seda',npcId:'batedora_teias',category:'story',abandonable:true,
+    description:'O posto precisa de uma reserva final de seda antes de fechar a patrulha desta região.',
+    requirements:{level:35,clsNot:'aprendiz',completedQuest:'jornada_30_teias_cerradas'},
+    objectives:[{type:'delivery',itemId:'seda',count:8,label:'Entregue Sedas de Aranha',hint:'Aranhas Sombrias podem deixar Seda de Aranha.'}],reward:{exp:7600,gold:610}
+  },
+  jornada_32_passagem_segura:{
+    id:'jornada_32_passagem_segura',title:'Passagem Segura',npcId:'batedora_teias',category:'story',abandonable:true,
+    description:'Uma última ofensiva decidirá se a rota pela mata pode ser liberada para aventureiros experientes.',
+    requirements:{level:37,clsNot:'aprendiz',completedQuest:'jornada_31_estoque_seda'},
+    objectives:[{type:'kill',monsterKey:'aranha',count:12,label:'Derrote Aranhas Sombrias',hint:'Complete a patrulha final dentro da Mata das Teias.'}],reward:{exp:9200,gold:760}
+  }
+});
+
 const CLASS_TRIALS = Object.freeze({
   prova_guerreiro:{
     id:'prova_guerreiro',title:'Prova do Guerreiro',npcId:'guerreiro',category:'class-trial',exclusiveGroup:'class-trial',abandonable:true,
@@ -204,4 +249,4 @@ const CLASS_TRIALS = Object.freeze({
   }
 });
 
-module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...CLASS_TRIALS});
+module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...WEB_FOREST,...CLASS_TRIALS});
