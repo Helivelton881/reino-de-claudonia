@@ -100,7 +100,7 @@ test('jogador morto não pode deslocar posição',()=>{
 });
 
 test('todos os colliders autoritativos bloqueiam o centro para o jogador',()=>{
-  assert.equal(nav.colliders.length,762);
+  assert.equal(nav.colliders.length,763);
   for(const c of nav.colliders){
     assert.equal(nav.isPlayerWalkable(c.x,c.z,.45),false,`${c.kind||'estrutura'} em ${c.x},${c.z}`);
   }

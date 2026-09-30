@@ -84,19 +84,22 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   e minimapa.
 - Fase 7.3: jornada original nível 1-15 com 12 quests e objetivos talk, kill,
   explore, delivery e collect; provas de classe exigem jornada concluída.
-- Fase 7.4: jornada pós-classe nível 15-20 com 6 quests, totalizando 22 quests
-  (18 de história + 4 provas), tracker HUD, navegação ao objetivo, beacon 3D e
-  marcador de objetivo no minimapa.
-- QA atual: 57 testes automatizados passando. Smoke Playwright de produção da
-  Fase 7.4 validou HTTP 200, catálogo de 22 quests, tracker ativo, botão de
-  rastreamento, qtLocate/qtCycle, minimapa, WebGL saudável e zero page/request errors.
+- Fase 7.4: jornada pós-classe nível 15-20 com 6 quests, tracker HUD,
+  navegação ao objetivo, beacon 3D e marcador de objetivo no minimapa.
+- Fase 7.5: cadeia nível 20-28 na Trilha dos Lobos com 7 novas quests e o NPC
+  regional Vigia Cael. O modelo `npc_vigia_cael.glb` foi criado no Blender e
+  integrado com fallback para o personagem legado. O catálogo passa a ter
+  29 quests (25 de história + 4 provas) e 7 NPCs funcionais.
+- QA atual: 59 testes automatizados passando. O smoke local da Fase 7.5 validou
+  o Vigia Cael em x=82/z=30, GLB HTTP 200, WebGL saudável, tracker/minimapa e
+  zero page/request errors.
 
 ## Limites conhecidos (próximos passos)
-- A Fase 7 ainda precisa preencher a progressão 20-60 e ampliar o elenco atual
-  de 6 NPCs em direção à meta do roadmap (25-30 NPCs e 40-60 quests).
-- Próxima subfase planejada: Fase 7.5, cobrindo níveis 20-28 na Trilha dos Lobos
-  com o Lobo Cinzento, mantendo o continente contínuo e sem portais artificiais.
-- Antes da 7.5, auditar dados/NPCs/assets existentes. Qualquer novo NPC, monstro,
+- A Fase 7 ainda precisa preencher a progressão 29-60 e ampliar o elenco atual
+  de 7 NPCs em direção à meta do roadmap (25-30 NPCs e 40-60 quests).
+- Próxima subfase planejada: Fase 7.6, cobrindo níveis 29-37 na Mata das Teias
+  com a Aranha Sombria, mantendo o continente contínuo e sem portais artificiais.
+- Antes da 7.6, auditar dados/NPCs/assets existentes. Qualquer novo NPC, monstro,
   boss, arma, armadura, pet, montaria, prop ou objeto 3D de skill passa pelo
   Blender aberto no PC antes de entrar no jogo.
 - Fases seguintes do plano mestre: Skill Tree, itemização/sets, Giants/Bosses,

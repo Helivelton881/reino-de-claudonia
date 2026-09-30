@@ -2458,6 +2458,7 @@ const NPCS = [
   {id:'arqueiro', ...npcPhysical('arqueiro'), long:true, eye:0x7A5A2A, name:'Caçadora Nyra', tag:'[Mestra Arqueira] Nyra', role:'Instrutora de Arqueiro', tunic:0x3C6B3A, hair:0x6B3A1E},
   {id:'voo', ...npcPhysical('voo'), name:'Piloto Tito', tag:'[Mestre de Voo] Tito', role:'Mestre de Voo e mercador', tunic:0x2F6FA8, hair:0xE07A2E},
   {id:'ferreiro', ...npcPhysical('ferreiro'), long:true, eye:0x8A3A2A, name:'Ferreira Brunna', tag:'[Ferreira] Brunna', role:'Ferreira: aprimora, compra e vende equipamentos', tunic:0x6B4A2E, hair:0x2B2B2B},
+  {id:'vigia_lobos', ...npcPhysical('vigia_lobos'), name:'Vigia Cael', tag:'[Vigia da Trilha] Cael', role:'Vigia da Trilha dos Lobos', tunic:0x355C3A, hair:0x2B241C, model:'/assets/npcs/npc_vigia_cael.glb'},
 ];
 const npcObjs = NPCS.map(n=>{
   const h = makeLegacyHero({tunic:n.tunic, hair:n.hair, long:!!n.long, eye:n.eye}), y = heightAt(n.x, n.z);
@@ -2468,6 +2469,14 @@ const npcObjs = NPCS.map(n=>{
   [markAvailable,markActive,markReady].forEach(mark=>{ mark.scale.set(5.76,1.1,1); mark.position.y=3.35; mark.visible=false; h.root.add(mark); });
   addCollider({x:n.x, z:n.z, r:0.6});
   return Object.assign({h, markAvailable, markActive, markReady}, n);
+});
+const npcModelLoader = new THREE.GLTFLoader();
+npcObjs.filter(n=>n.model).forEach(n=>{
+  npcModelLoader.load(n.model,gltf=>{
+    const model=gltf.scene||gltf.scenes&&gltf.scenes[0]; if(!model)return;
+    n.h.legL.visible=n.h.legR.visible=n.h.armL.visible=n.h.armR.visible=n.h.torso.visible=false;
+    model.position.set(0,0,0); model.scale.setScalar(1); castAll(model); n.h.root.add(model); n.customModel=model;
+  },undefined,err=>console.warn('[NPC] modelo 3D indisponível, usando fallback',n.id,err));
 });
 
 /* ---------- Moradores que passeiam pela vila ---------- */

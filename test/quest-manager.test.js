@@ -25,17 +25,18 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui 18 quests de historia, quatro provas e seis NPCs',()=>{
+test('catalogo possui 25 quests de historia, quatro provas e sete NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
-  assert.equal(catalog.length,22);
-  assert.equal(catalog.filter(q=>q.category==='story').length,18);
+  assert.equal(catalog.length,29);
+  assert.equal(catalog.filter(q=>q.category==='story').length,25);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
   for(const type of ['talk','kill','explore','delivery','collect']) assert.ok(types.has(type));
   assert.ok(catalog.filter(q=>q.category==='class-trial').every(q=>q.exclusiveGroup==='class-trial'));
-  assert.equal(NPCS.length,6);
+  assert.equal(NPCS.length,7);
   assert.ok(NPCS.some(n=>n.service==='forge'));
   assert.ok(NPCS.some(n=>n.service==='flight-shop'));
+  assert.ok(NPCS.some(n=>n.id==='vigia_lobos'&&n.service==='quest-giver'));
 });
 
 test('cadeia inicial exige conclusao da quest anterior',()=>{
@@ -165,6 +166,21 @@ test('cadeia pos-classe respeita ordem e termina com missao de voo',()=>{
   assert.equal(q.objectives[0].type,'talk');
   assert.equal(q.objectives[0].npcId,'ferreiro');
 });
+test('cadeia 20-28 usa a Trilha dos Lobos e o vigia regional',()=>{
+  const {player,sent}=makePlayer({L:28,dados:{L:28,cls:'guerreiro',quests:{active:{},completed:['prova_guerreiro','jornada_18_licenca_voo']}}}),qm=manager(sent);
+  assert.equal(qm.accept(player,'jornada_19_posto_lobos'),true);
+  const catalog=qm.publicCatalog();
+  const ids=['jornada_19_posto_lobos','jornada_20_primeiro_uivo','jornada_21_peles_trilha','jornada_22_centro_alcateia','jornada_23_alcateia_cinzenta','jornada_24_reserva_peles','jornada_25_guardiao_trilha'];
+  assert.ok(ids.every(id=>catalog.some(q=>q.id===id)));
+  assert.deepEqual(ids.map(id=>catalog.find(q=>q.id===id).requirements.level),[20,21,22,23,24,26,28]);
+  assert.equal(catalog.find(q=>q.id==='jornada_20_primeiro_uivo').objectives[0].monsterKey,'lobo');
+  assert.equal(catalog.find(q=>q.id==='jornada_21_peles_trilha').objectives[0].itemId,'pele_lobo');
+  assert.equal(catalog.find(q=>q.id==='jornada_22_centro_alcateia').objectives[0].areaId,'lobo');
+  const vigia=NPCS.find(n=>n.id==='vigia_lobos');
+  assert.ok(vigia);
+  assert.ok(Math.hypot(vigia.x-ZONES.lobo.x,vigia.z-ZONES.lobo.z)>ZONES.lobo.radius);
+});
+
 test('personagem antigo já classado recebe prova concluida e libera pos-classe',()=>{
   const {player,sent}=makePlayer({L:16,dados:{L:16,cls:'druida',quest:null,quests:null}}),qm=manager(sent);
   const state=qm.initializePlayer(player);

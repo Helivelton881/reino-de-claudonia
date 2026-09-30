@@ -26,7 +26,8 @@
     {id:'mago',x:-6.8,z:-6.1,r:.6,kind:'npc'},
     {id:'arqueiro',x:6.8,z:-6.1,r:.6,kind:'npc'},
     {id:'voo',x:0,z:-10,r:.6,kind:'npc'},
-    {id:'ferreiro',x:6,z:9.5,r:.6,kind:'npc'}
+    {id:'ferreiro',x:6,z:9.5,r:.6,kind:'npc'},
+    {id:'vigia_lobos',x:82,z:30,r:.6,kind:'npc'}
   ];
   const COTTAGES=[];
   for(let i=0;i<11;i++){

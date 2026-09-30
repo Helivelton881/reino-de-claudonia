@@ -29,6 +29,15 @@ test('todo modelo usado no mapa existe nos kits', () => {
   for (const n of propUsed) if (!nature.has(n)) assert.ok(props.has(n), 'objetos sem ' + n);
 });
 
+test('NPC regional da Trilha dos Lobos usa GLB otimizado', () => {
+  const p = path.join(publicDir,'assets','npcs','npc_vigia_cael.glb');
+  assert.ok(fs.existsSync(p),'npc_vigia_cael.glb ausente');
+  assert.ok(fs.statSync(p).size < 512 * 1024,'npc_vigia_cael.glb passou de 512 KB');
+  const html = fs.readFileSync(path.join(publicDir,'index.html'),'utf8');
+  assert.match(html,/vigia_lobos/);
+  assert.match(html,/npc_vigia_cael\.glb/);
+});
+
 test('página carrega o gerenciador e os monstros do Bestiary', () => {
   const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
   assert.match(html, /world-asset-manager\.js/);

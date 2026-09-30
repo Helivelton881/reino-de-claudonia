@@ -132,6 +132,51 @@ const POST_CLASS = Object.freeze({
   }
 });
 
+const WOLF_TRAIL = Object.freeze({
+  jornada_19_posto_lobos:{
+    id:'jornada_19_posto_lobos',title:'Posto da Trilha',npcId:'voo',category:'story',abandonable:true,
+    description:'Tito quer abrir uma rota segura até o posto avançado que vigia a Trilha dos Lobos.',
+    requirements:{level:20,clsNot:'aprendiz',completedQuest:'jornada_18_licenca_voo'},
+    objectives:[{type:'talk',npcId:'vigia_lobos',count:1,label:'Fale com o Vigia Cael',hint:'Siga para leste até o posto antes da Trilha dos Lobos.'}],reward:{exp:1200,gold:200}
+  },
+  jornada_20_primeiro_uivo:{
+    id:'jornada_20_primeiro_uivo',title:'Primeiro Uivo',npcId:'vigia_lobos',category:'story',abandonable:true,
+    description:'Cael precisa reduzir a pressão da alcateia sobre o caminho de viajantes.',
+    requirements:{level:21,clsNot:'aprendiz',completedQuest:'jornada_19_posto_lobos'},
+    objectives:[{type:'kill',monsterKey:'lobo',count:6,label:'Derrote Lobos Cinzentos',hint:'Os Lobos Cinzentos ocupam a trilha a leste do posto.'}],reward:{exp:2600,gold:280}
+  },
+  jornada_21_peles_trilha:{
+    id:'jornada_21_peles_trilha',title:'Peles da Trilha',npcId:'vigia_lobos',category:'story',abandonable:true,
+    description:'O posto precisa de peles resistentes para reforçar mantas e proteções contra o frio da mata.',
+    requirements:{level:22,clsNot:'aprendiz',completedQuest:'jornada_20_primeiro_uivo'},
+    objectives:[{type:'delivery',itemId:'pele_lobo',count:5,label:'Entregue Peles de Lobo',hint:'Continue caçando Lobos Cinzentos até obter as peles.'}],reward:{exp:3200,gold:320}
+  },
+  jornada_22_centro_alcateia:{
+    id:'jornada_22_centro_alcateia',title:'Centro da Alcateia',npcId:'vigia_lobos',category:'story',abandonable:true,
+    description:'Cael quer que você reconheça o coração do território antes da próxima patrulha.',
+    requirements:{level:23,clsNot:'aprendiz',completedQuest:'jornada_21_peles_trilha'},
+    objectives:[{type:'explore',areaId:'lobo',count:1,label:'Explore a Trilha dos Lobos',hint:'Avance até o centro do território dos Lobos Cinzentos.'}],reward:{exp:2400,gold:250}
+  },
+  jornada_23_alcateia_cinzenta:{
+    id:'jornada_23_alcateia_cinzenta',title:'Alcateia Cinzenta',npcId:'vigia_lobos',category:'story',abandonable:true,
+    description:'A movimentação aumentou e o posto precisa de uma patrulha mais profunda.',
+    requirements:{level:24,clsNot:'aprendiz',completedQuest:'jornada_22_centro_alcateia'},
+    objectives:[{type:'kill',monsterKey:'lobo',count:8,label:'Derrote Lobos Cinzentos',hint:'Patrulhe a Trilha dos Lobos e enfrente a alcateia.'}],reward:{exp:4200,gold:400}
+  },
+  jornada_24_reserva_peles:{
+    id:'jornada_24_reserva_peles',title:'Reserva do Posto',npcId:'vigia_lobos',category:'story',abandonable:true,
+    description:'Cael quer deixar o posto abastecido antes de enviar o relatório para a vila.',
+    requirements:{level:26,clsNot:'aprendiz',completedQuest:'jornada_23_alcateia_cinzenta'},
+    objectives:[{type:'delivery',itemId:'pele_lobo',count:7,label:'Entregue Peles de Lobo',hint:'Lobos Cinzentos podem deixar Pele de Lobo.'}],reward:{exp:5200,gold:450}
+  },
+  jornada_25_guardiao_trilha:{
+    id:'jornada_25_guardiao_trilha',title:'Guardião da Trilha',npcId:'vigia_lobos',category:'story',abandonable:true,
+    description:'A última patrulha decidirá se a rota pode ser considerada segura para aventureiros experientes.',
+    requirements:{level:28,clsNot:'aprendiz',completedQuest:'jornada_24_reserva_peles'},
+    objectives:[{type:'kill',monsterKey:'lobo',count:10,label:'Derrote Lobos Cinzentos',hint:'Complete a patrulha final na Trilha dos Lobos.'}],reward:{exp:7000,gold:600}
+  }
+});
+
 const CLASS_TRIALS = Object.freeze({
   prova_guerreiro:{
     id:'prova_guerreiro',title:'Prova do Guerreiro',npcId:'guerreiro',category:'class-trial',exclusiveGroup:'class-trial',abandonable:true,
@@ -159,4 +204,4 @@ const CLASS_TRIALS = Object.freeze({
   }
 });
 
-module.exports=Object.freeze({...STORY,...POST_CLASS,...CLASS_TRIALS});
+module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...CLASS_TRIALS});
