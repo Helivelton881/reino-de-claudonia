@@ -73,30 +73,34 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   fica em `dados.equp[slot]`. `dados.upPity` guarda as falhas seguidas.
 
 ## Estado atual
-- Fases 1 a 4: ilha, combate, classes, voo, login e multiplayer. No ar.
-- Fase 5 (versão 0.6.0, regras do Flyff):
-  - Aprimoramento +1 a +10 com Pedras, Runa Menor/Maior e ouro. +1 e +2 sempre
-    dão certo; no +3 a falha só gasta material; do +4 em diante o item quebra,
-    a não ser com Pergaminho de Proteção. Pergaminho da Sorte +10%. Cada falha
-    seguida +3%. Bônus: arma até +24%, armadura até +20% (tabela do Flyff).
-  - Loja pessoal: o jogador senta e vende até 8 itens; outros tocam nele para comprar.
-  - Grupo até 8: nível próprio, vira avançado no nível 10, pontos, 4 habilidades
-    de 1 minuto, EXP dividida por nível ou por contribuição, bônus por membro.
-  - Guilda: fundar exige nível 20, 10.000 de ouro e grupo com mais 2 pessoas;
-    sobe de nível com doações de ouro e materiais; membros por nível (10 a 100);
-    cargos Líder, Conselheiro (5), Capitão (10), Apoiador (20), Novato;
-    +1% de EXP por nível da guilda (até 10%).
-  - Visual novo e mundo grande com 9 regiões de monstros até o nível 60
-    (Lobo Cinzento, Aranha da Mata, Espírito do Lago, Ciclope Rochoso novos),
-    equipamentos dos níveis 25 a 55, moradores andando na vila, borboletas e pássaros.
+- Fases 1 a 5: mundo aberto contínuo, login/multiplayer, classes, voo, grupo,
+  guilda, troca, loja pessoal, equipamentos, economia e upgrade +1 a +10.
+- Fase 6: movimento, colisão, combate, monstros, dano, HP, EXP, loot e respawn
+  são server-authoritative. Jogador, NPC e monstros usam A* sobre o mesmo mapa
+  físico compartilhado; servidor bloqueia speedhack, teleporte e atravessar obstáculos.
+- Fase 7.1: QuestManager data-driven e server-authoritative; provas das quatro
+  classes migradas; aceitar, abandonar, concluir e progresso são validados no servidor.
+- Fase 7.2: diário de missões, atalho J, botão mobile e marcadores !/? no mundo
+  e minimapa.
+- Fase 7.3: jornada original nível 1-15 com 12 quests e objetivos talk, kill,
+  explore, delivery e collect; provas de classe exigem jornada concluída.
+- Fase 7.4: jornada pós-classe nível 15-20 com 6 quests, totalizando 22 quests
+  (18 de história + 4 provas), tracker HUD, navegação ao objetivo, beacon 3D e
+  marcador de objetivo no minimapa.
+- QA atual: 57 testes automatizados passando. Smoke Playwright de produção da
+  Fase 7.4 validou HTTP 200, catálogo de 22 quests, tracker ativo, botão de
+  rastreamento, qtLocate/qtCycle, minimapa, WebGL saudável e zero page/request errors.
 
 ## Limites conhecidos (próximos passos)
-- Os monstros ainda rodam no navegador de cada jogador: cada um vê os seus.
-  Próximo passo: monstros, dano e drops decididos no servidor, o que também
-  impede trapaças (hoje o servidor confia nos dados que o jogo manda).
-- Grupo e loja pessoal não são salvos: somem quando alguém recarrega a página.
-- Próximas ideias no estilo Flyff: missões (quests), masmorras com chefe,
-  subclasses, mascotes, conjuntos de equipamento, guerra de guildas.
+- A Fase 7 ainda precisa preencher a progressão 20-60 e ampliar o elenco atual
+  de 6 NPCs em direção à meta do roadmap (25-30 NPCs e 40-60 quests).
+- Próxima subfase planejada: Fase 7.5, cobrindo níveis 20-28 na Trilha dos Lobos
+  com o Lobo Cinzento, mantendo o continente contínuo e sem portais artificiais.
+- Antes da 7.5, auditar dados/NPCs/assets existentes. Qualquer novo NPC, monstro,
+  boss, arma, armadura, pet, montaria, prop ou objeto 3D de skill passa pelo
+  Blender aberto no PC antes de entrar no jogo.
+- Fases seguintes do plano mestre: Skill Tree, itemização/sets, Giants/Bosses,
+  dungeons, pets/social, expansão 60-100, PvP/guild, lifestyle e Live Ops.
 
 ## Como testar antes de enviar
 - `node --check server.js` e conferir a sintaxe do script do `index.html`.
