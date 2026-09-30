@@ -29,6 +29,8 @@ class QuestManager {
     if(!q.active||typeof q.active!=='object'||Array.isArray(q.active)) q.active={};
     if(!Array.isArray(q.completed)) q.completed=[];
     q.completed=[...new Set(q.completed.filter(id=>typeof id==='string'&&QUESTS[id]))];
+    if(!q.lastCompletedAt||typeof q.lastCompletedAt!=='object'||Array.isArray(q.lastCompletedAt)) q.lastCompletedAt={};
+    q.lastCompletedAt=Object.fromEntries(Object.entries(q.lastCompletedAt).filter(([id,ts])=>QUESTS[id]&&QUESTS[id].repeatable&&Number.isFinite(Number(ts))));
     d.quests=q;
     return q;
   }
@@ -66,6 +68,8 @@ class QuestManager {
     return Object.values(QUESTS).map(q=>({
       id:q.id,title:q.title,description:q.description||'',npcId:q.npcId,category:q.category,exclusiveGroup:q.exclusiveGroup||null,
       abandonable:q.abandonable!==false,
+      repeatable:!!q.repeatable,
+      cooldownHours:q.repeatable?Math.max(1,Number(q.cooldownHours)||24):0,
       requirements:{...(q.requirements||{})},
       objectives:(q.objectives||[]).map(o=>({...o})),
       reward:q.reward?{...q.reward}:null
@@ -75,7 +79,7 @@ class QuestManager {
   snapshot(player) {
     const state=this.initializePlayer(player);
     const active=Object.keys(state.active).filter(id=>QUESTS[id]).map(id=>this.publicQuestState(player,id));
-    return {active,completed:[...state.completed]};
+    return {active,completed:[...state.completed],lastCompletedAt:{...state.lastCompletedAt}};
   }
 
   publicQuestState(player,id) {
@@ -112,8 +116,17 @@ class QuestManager {
   accept(player,id) {
     const def=QUESTS[id],state=this.ensureState(player);
     if(!def) return this.fail(player,'Missão inválida.');
-    if(state.completed.includes(id)) return this.fail(player,'Esta missão já foi concluída.');
+    if(state.completed.includes(id)&&!def.repeatable) return this.fail(player,'Esta missão já foi concluída.');
     if(state.active[id]) return this.fail(player,'Esta missão já está ativa.');
+    if(def.repeatable){
+      const last=Number(state.lastCompletedAt[id])||0;
+      const cooldown=Math.max(1,Number(def.cooldownHours)||24)*60*60*1000;
+      if(last&&this.now()<last+cooldown){
+        const mins=Math.max(1,Math.ceil((last+cooldown-this.now())/60000));
+        const hours=Math.floor(mins/60),rest=mins%60;
+        return this.fail(player,`Missão diária disponível em ${hours?hours+'h ':''}${rest}min.`);
+      }
+    }
     const reqErr=this.requirementError(player,def);
     if(reqErr) return this.fail(player,reqErr);
     if(def.exclusiveGroup){
@@ -226,7 +239,8 @@ class QuestManager {
     }
     if(!this.consumeDeliveries(player,def)) return this.fail(player,'Os itens de entrega não estão mais no inventário.');
     delete state.active[id];
-    if(!state.completed.includes(id)) state.completed.push(id);
+    if(def.repeatable) state.lastCompletedAt[id]=this.now();
+    else if(!state.completed.includes(id)) state.completed.push(id);
     this.syncLegacy(player,state);
     player.dirty=true;
     this.sync(player,{event:'completed',questId:id,inventory:Array.isArray(player.dados.inv)?player.dados.inv:[]});

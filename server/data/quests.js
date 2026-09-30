@@ -312,6 +312,57 @@ const CYCLOPS_RUINS = Object.freeze({
   }
 });
 
+const SIDE_AND_DAILY = Object.freeze({
+  side_01_treino_guardiao:{
+    id:'side_01_treino_guardiao',title:'Treino de Guardião',npcId:'guerreiro',category:'side',abandonable:true,
+    description:'Borin quer manter os aventureiros experientes preparados para proteger as rotas entre a vila e o Planalto do Musgo.',
+    requirements:{level:16,clsNot:'aprendiz',completedQuest:'jornada_13_novo_caminho'},
+    objectives:[{type:'kill',monsterKey:'golem',count:5,label:'Derrote Golens Rúnicos',hint:'Os Golens Rúnicos vivem no Planalto do Musgo.'}],reward:{exp:2200,gold:260}
+  },
+  side_02_olhos_na_trilha:{
+    id:'side_02_olhos_na_trilha',title:'Olhos na Trilha',npcId:'arqueiro',category:'side',abandonable:true,
+    description:'Nyra quer mapas recentes das rotas de caça e pede uma patrulha curta na região dos lobos.',
+    requirements:{level:22,clsNot:'aprendiz',completedQuest:'jornada_19_posto_lobos'},
+    objectives:[{type:'explore',areaId:'lobo',count:1,label:'Reconheça a Trilha dos Lobos',hint:'Entre na região e confirme as condições da rota.'}],reward:{exp:2600,gold:300}
+  },
+  side_03_fios_de_estudo:{
+    id:'side_03_fios_de_estudo',title:'Fios para Estudo',npcId:'druida',category:'side',abandonable:true,
+    description:'Aurélia estuda materiais naturais capazes de resistir a magia e precisa de seda da Mata das Teias.',
+    requirements:{level:31,clsNot:'aprendiz',completedQuest:'jornada_26_mata_teias'},
+    objectives:[{type:'delivery',itemId:'seda',count:4,label:'Entregue Sedas de Aranha',hint:'Aranhas Sombrias podem deixar Seda de Aranha.'}],reward:{exp:3600,gold:360}
+  },
+  side_04_resonancia_lago:{
+    id:'side_04_resonancia_lago',title:'Ressonância do Lago',npcId:'mago',category:'side',abandonable:true,
+    description:'Eldran quer comparar a energia dos espíritos com seus estudos arcanos e pede uma amostra do Lago Espelhado.',
+    requirements:{level:40,clsNot:'aprendiz',completedQuest:'jornada_33_lago_espelhado'},
+    objectives:[{type:'delivery',itemId:'essencia',count:4,label:'Entregue Essências do Lago',hint:'Espíritos do Lago podem deixar Essência do Lago.'}],reward:{exp:4800,gold:460}
+  },
+  daily_01_patrulha_lobos:{
+    id:'daily_01_patrulha_lobos',title:'Patrulha Diária: Lobos',npcId:'vigia_lobos',category:'daily',abandonable:true,repeatable:true,cooldownHours:24,
+    description:'Cael mantém uma patrulha diária para impedir que a alcateia volte a fechar a estrada.',
+    requirements:{level:20,clsNot:'aprendiz',completedQuest:'jornada_19_posto_lobos'},
+    objectives:[{type:'kill',monsterKey:'lobo',count:5,label:'Derrote Lobos Cinzentos',hint:'Patrulhe a Trilha dos Lobos.'}],reward:{exp:1800,gold:180}
+  },
+  daily_02_limpeza_teias:{
+    id:'daily_02_limpeza_teias',title:'Patrulha Diária: Teias',npcId:'batedora_teias',category:'daily',abandonable:true,repeatable:true,cooldownHours:24,
+    description:'Maelis precisa abrir as passagens da mata todos os dias para manter o posto abastecido.',
+    requirements:{level:29,clsNot:'aprendiz',completedQuest:'jornada_26_mata_teias'},
+    objectives:[{type:'kill',monsterKey:'aranha',count:6,label:'Derrote Aranhas Sombrias',hint:'Limpe as rotas da Mata das Teias.'}],reward:{exp:2600,gold:240}
+  },
+  daily_03_vigilia_lago:{
+    id:'daily_03_vigilia_lago',title:'Patrulha Diária: Lago',npcId:'guardia_lago',category:'daily',abandonable:true,repeatable:true,cooldownHours:24,
+    description:'Neris vigia as margens diariamente e recompensa quem ajuda a conter os espíritos mais agressivos.',
+    requirements:{level:38,clsNot:'aprendiz',completedQuest:'jornada_33_lago_espelhado'},
+    objectives:[{type:'kill',monsterKey:'espirito',count:6,label:'Derrote Espíritos do Lago',hint:'Patrulhe as margens do Lago Espelhado.'}],reward:{exp:3600,gold:320}
+  },
+  daily_04_ronda_ruinas:{
+    id:'daily_04_ronda_ruinas',title:'Patrulha Diária: Ruínas',npcId:'sentinela_ruinas',category:'daily',abandonable:true,repeatable:true,cooldownHours:24,
+    description:'Oren mantém uma ronda diária nas ruínas para impedir que novos ciclopes ocupem as entradas.',
+    requirements:{level:48,clsNot:'aprendiz',completedQuest:'jornada_40_ruinas_ciclope'},
+    objectives:[{type:'kill',monsterKey:'ciclope',count:6,label:'Derrote Ciclopes das Ruínas',hint:'Patrulhe as Ruínas do Ciclope.'}],reward:{exp:5200,gold:420}
+  }
+});
+
 const CLASS_TRIALS = Object.freeze({
   prova_guerreiro:{
     id:'prova_guerreiro',title:'Prova do Guerreiro',npcId:'guerreiro',category:'class-trial',exclusiveGroup:'class-trial',abandonable:true,
@@ -339,4 +390,4 @@ const CLASS_TRIALS = Object.freeze({
   }
 });
 
-module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...WEB_FOREST,...MIRROR_LAKE,...CYCLOPS_RUINS,...CLASS_TRIALS});
+module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...WEB_FOREST,...MIRROR_LAKE,...CYCLOPS_RUINS,...SIDE_AND_DAILY,...CLASS_TRIALS});

@@ -13,6 +13,7 @@ test('diario de missoes e atalho J existem na interface',()=>{
   assert.match(html,/function renderQuestJournal\(/);
   assert.match(html,/k==='j'/);
   assert.match(html,/data-qtab="active"/);
+  assert.match(html,/data-qtab="daily"/);
   assert.match(html,/data-qabandon/);
 });
 
@@ -57,4 +58,14 @@ test('rastreador conhece a origem dos materiais ate o Planalto do Musgo',()=>{
   assert.match(html,/def\.type==='kill'/);
   assert.match(html,/def\.type==='explore'/);
   assert.match(html,/def\.type==='talk'/);
+});
+
+test('fase 7.9 mostra side quests e diarias com cooldown na interface',()=>{
+  assert.match(html,/function questCategoryLabel\(/);
+  assert.match(html,/function questWaitLabel\(/);
+  assert.match(html,/questRepeatableReady/);
+  assert.match(html,/questRepeatableWait/);
+  assert.match(html,/category==='daily'/);
+  assert.match(html,/Missão secundária/);
+  assert.match(html,/Missão diária/);
 });

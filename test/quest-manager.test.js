@@ -25,11 +25,14 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui 46 quests de historia, quatro provas e dez NPCs',()=>{
+test('catalogo possui historia, side quests, diarias, quatro provas e dez NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
-  assert.equal(catalog.length,50);
+  assert.equal(catalog.length,58);
   assert.equal(catalog.filter(q=>q.category==='story').length,46);
+  assert.equal(catalog.filter(q=>q.category==='side').length,4);
+  assert.equal(catalog.filter(q=>q.category==='daily').length,4);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
+  assert.ok(catalog.filter(q=>q.category==='daily').every(q=>q.repeatable===true&&q.cooldownHours===24));
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
   for(const type of ['talk','kill','explore','delivery','collect']) assert.ok(types.has(type));
   assert.ok(catalog.filter(q=>q.category==='class-trial').every(q=>q.exclusiveGroup==='class-trial'));
@@ -228,6 +231,26 @@ test('cadeia 48-60 usa as Ruínas do Ciclope e o sentinela regional',()=>{
   const sentinela=NPCS.find(n=>n.id==='sentinela_ruinas');
   assert.ok(sentinela);
   assert.ok(Math.hypot(sentinela.x-ZONES.ciclope.x,sentinela.z-ZONES.ciclope.z)>ZONES.ciclope.radius);
+});
+
+test('side quest conclui uma vez e diária respeita cooldown de 24h',()=>{
+  let now=1_000_000;
+  const {player,sent}=makePlayer({L:28,dados:{L:28,cls:'guerreiro',quests:{active:{},completed:['prova_guerreiro','jornada_13_novo_caminho','jornada_19_posto_lobos']}}}),qm=manager(sent,()=>now);
+  assert.equal(qm.accept(player,'side_01_treino_guardiao'),true);
+  qm.recordEvent(player,'kill',{monsterKey:'golem',count:5});
+  assert.equal(qm.turnIn(player,'side_01_treino_guardiao',{grantReward:()=>true}),true);
+  assert.ok(player.dados.quests.completed.includes('side_01_treino_guardiao'));
+  assert.equal(qm.accept(player,'side_01_treino_guardiao'),false);
+
+  assert.equal(qm.accept(player,'daily_01_patrulha_lobos'),true);
+  qm.recordEvent(player,'kill',{monsterKey:'lobo',count:5});
+  assert.equal(qm.turnIn(player,'daily_01_patrulha_lobos',{grantReward:()=>true}),true);
+  assert.equal(player.dados.quests.completed.includes('daily_01_patrulha_lobos'),false);
+  assert.equal(player.dados.quests.lastCompletedAt.daily_01_patrulha_lobos,now);
+  assert.equal(qm.accept(player,'daily_01_patrulha_lobos'),false);
+  assert.match(sent.at(-1).msg,/disponível em/i);
+  now+=24*60*60*1000;
+  assert.equal(qm.accept(player,'daily_01_patrulha_lobos'),true);
 });
 
 test('personagem antigo já classado recebe prova concluida e libera pos-classe',()=>{

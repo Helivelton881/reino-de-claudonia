@@ -98,15 +98,21 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 - Fase 7.8: cadeia nível 48-60 nas Ruínas do Ciclope com 7 novas quests e o NPC
   regional Sentinela Oren. O modelo `npc_sentinela_oren.glb` foi criado no Blender
   e integrado pelo carregador GLTF dos NPCs regionais.
-- Progressão principal da Fase 7 agora cobre do nível 1 ao 60.
-- Catálogo atual: 50 quests (46 de história + 4 provas) e 10 NPCs funcionais.
-- QA atual: 62 testes automatizados passando.
+- Fase 7.9: camada de conteúdo paralelo com 4 side quests e 4 missões diárias
+  repetíveis. As diárias usam cooldown server-authoritative de 24 horas, estado
+  persistido em `quests.lastCompletedAt`, aba própria no diário e contador de
+  disponibilidade no NPC. Nesta subfase foram reutilizados NPCs já existentes,
+  portanto nenhum asset 3D novo foi necessário.
+- Progressão principal da Fase 7 cobre do nível 1 ao 60.
+- Catálogo atual: 58 quests (46 de história + 4 side + 4 diárias + 4 provas) e
+  10 NPCs funcionais.
+- QA atual: 64 testes automatizados passando.
 
 ## Limites conhecidos (próximos passos)
-- A cadeia principal 1-60 está coberta, mas a Fase 7 ainda não atingiu a densidade
-  de NPCs prevista no roadmap nem possui uma camada completa de side/daily quests.
-- Próxima subfase planejada: Fase 7.9, fechamento do Quest & NPC Engine com
-  side quests, daily quests e expansão de NPCs úteis pelo mundo aberto.
+- A meta de volume de quests do roadmap já está atendida, mas a densidade de NPCs
+  ainda está abaixo da referência de 25-30 NPCs: atualmente são 10 funcionais.
+- Próxima subfase planejada: Fase 7.10, expansão de NPCs funcionais/serviços pelo
+  mundo aberto antes de encerrar formalmente a Fase 7.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
   3D de skill continua passando pelo Blender aberto no PC antes de entrar no jogo.
 - Fases seguintes do plano mestre: Skill Tree, itemização/sets, Giants/Bosses,

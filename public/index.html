@@ -670,7 +670,7 @@ const maxLevel = () => ch.cls === 'aprendiz' ? 15 : 60;
    ESTADO DO PERSONAGEM (salvo no navegador)
    ========================================================= */
 function freshChar(){
-  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[]},
+  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[],lastCompletedAt:{}},
     inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],
     eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null, voo:null}, equp:{}, hp:null, fp:null, mp:null};
 }
@@ -679,16 +679,26 @@ let dirty = false;
 const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
 // Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
 let party = {leader:null, members:[], skills:{}}, trade = null, myGuild = null, guildList = null, guildAsked = false, myShop = null;
-let questCatalog = {}, questState = {active:[], completed:[]}, npcCatalog = [];
+let questCatalog = {}, questState = {active:[], completed:[], lastCompletedAt:{}}, npcCatalog = [];
 const questsForNpc = npcId => Object.values(questCatalog).filter(q=>q.npcId===npcId);
 const activeQuestState = questId => (questState.active||[]).find(q=>q.id===questId) || null;
 function applyQuestSync(catalog,state,legacy){
   if(Array.isArray(catalog)) questCatalog=Object.fromEntries(catalog.map(q=>[q.id,q]));
-  if(state&&Array.isArray(state.active)&&Array.isArray(state.completed)) questState=state;
+  if(state&&Array.isArray(state.active)&&Array.isArray(state.completed)) questState={...state,lastCompletedAt:state.lastCompletedAt&&typeof state.lastCompletedAt==='object'?state.lastCompletedAt:{}};
   if(legacy!==undefined) ch.quest=legacy;
 }
 const questReadyState = q => !!q && Array.isArray(q.objectives) && q.objectives.length>0 && q.objectives.every(o=>o.current>=o.required);
 const questCompleted = id => (questState.completed||[]).includes(id);
+const questCooldownMs = q => Math.max(1,Number(q&&q.cooldownHours)||24)*60*60*1000;
+const questRepeatableReady = q => {
+  if(!q||!q.repeatable) return true;
+  const last=Number(questState.lastCompletedAt&&questState.lastCompletedAt[q.id])||0;
+  return !last||Date.now()>=last+questCooldownMs(q);
+};
+const questRepeatableWait = q => {
+  const last=Number(questState.lastCompletedAt&&questState.lastCompletedAt[q&&q.id])||0;
+  return !last?0:Math.max(0,last+questCooldownMs(q)-Date.now());
+};
 function questRequirementsMet(q){
   const req=q&&q.requirements||{};
   if(req.level&&ch.L<req.level) return false;
@@ -705,7 +715,7 @@ function questRequirementsMet(q){
   return true;
 }
 function questAvailable(q){
-  if(!q||questCompleted(q.id)||activeQuestState(q.id)||!questRequirementsMet(q)) return false;
+  if(!q||(questCompleted(q.id)&&!q.repeatable)||activeQuestState(q.id)||!questRequirementsMet(q)||!questRepeatableReady(q)) return false;
   if(q.exclusiveGroup){
     const conflict=(questState.active||[]).some(a=>a.id!==q.id&&questCatalog[a.id]&&questCatalog[a.id].exclusiveGroup===q.exclusiveGroup);
     if(conflict) return false;
@@ -2416,13 +2426,25 @@ function questRewardLabel(q){
   if(r.classId&&CLASSES[r.classId]) parts.push(`Classe: ${CLASSES[r.classId].name}`);
   return parts.join(' · ');
 }
+function questCategoryLabel(q){
+  if(!q)return'';
+  if(q.category==='daily')return'Missão diária';
+  if(q.category==='side')return'Missão secundária';
+  if(q.category==='class-trial')return'Prova de classe';
+  return'Missão de história';
+}
+function questWaitLabel(q){
+  const ms=questRepeatableWait(q);if(ms<=0)return'Disponível agora';
+  const mins=Math.ceil(ms/60000),h=Math.floor(mins/60),m=mins%60;
+  return `Disponível em ${h?h+'h ':''}${m}min`;
+}
 function questNpcHTML(npcId){
   let html='';
   for(const q of questsForNpc(npcId)){
     const active=activeQuestState(q.id);
     if(active){
       const ready=questReadyState(active);
-      html+=`<div class="quest-card ${ready?'ready':''}"><h3>${q.title}</h3>`;
+      html+=`<div class="quest-card ${ready?'ready':''}"><h3>${q.title}</h3><div class="qstate">${questCategoryLabel(q)}</div>`;
       if(q.description) html+=`<p>${q.description}</p>`;
       (active.objectives||[]).forEach((o,i)=>{
         const def=q.objectives&&q.objectives[i]||{},pct=Math.max(0,Math.min(100,o.current/Math.max(1,o.required)*100));
@@ -2436,11 +2458,13 @@ function questNpcHTML(npcId){
       if(q.abandonable!==false) html+=`<button class="btn ghost" type="button" data-qact="abandon" data-qid="${q.id}">Abandonar</button>`;
       html+='</div></div>';
     }else if(questAvailable(q)){
-      html+=`<div class="quest-card"><h3>! ${q.title}</h3>`;
+      html+=`<div class="quest-card"><h3>! ${q.title}</h3><div class="qstate">${questCategoryLabel(q)}${q.repeatable?' · a cada '+q.cooldownHours+'h':''}</div>`;
       if(q.description) html+=`<p>${q.description}</p>`;
       for(const o of (q.objectives||[])) html+=`<p><b>Objetivo:</b> ${o.label}${o.count>1?' ('+o.count+')':''}</p>${o.hint?'<p class="note">'+o.hint+'</p>':''}`;
       const reward=questRewardLabel(q); if(reward) html+=`<p><b>Recompensa:</b> ${reward}</p>`;
       html+=`<div class="quest-actions"><button class="btn" type="button" data-qact="accept" data-qid="${q.id}">Aceitar missão</button></div></div>`;
+    }else if(q.repeatable&&questRequirementsMet(q)&&questRepeatableWait(q)>0){
+      html+=`<div class="quest-card"><h3>${q.title}</h3><div class="qstate">${questCategoryLabel(q)} · ${questWaitLabel(q)}</div><p class="note">Esta missão poderá ser repetida quando o intervalo terminar.</p></div>`;
     }
   }
   return html;
@@ -2690,8 +2714,8 @@ function refreshQuestBadge(){
 }
 function renderQuestJournal(){
   const body=$('questBody'); if(!body) return;
-  const active=questState.active||[], completed=questState.completed||[];
-  let html=`<div class="tabs"><button type="button" data-qtab="active" class="${questTab==='active'?'on':''}">Ativas (${active.length})</button><button type="button" data-qtab="done" class="${questTab==='done'?'on':''}">Concluídas (${completed.length})</button></div>`;
+  const active=questState.active||[], completed=questState.completed||[], daily=Object.values(questCatalog).filter(q=>q.category==='daily');
+  let html=`<div class="tabs"><button type="button" data-qtab="active" class="${questTab==='active'?'on':''}">Ativas (${active.length})</button><button type="button" data-qtab="done" class="${questTab==='done'?'on':''}">Concluídas (${completed.length})</button><button type="button" data-qtab="daily" class="${questTab==='daily'?'on':''}">Diárias (${daily.length})</button></div>`;
   if(questTab==='active'){
     if(!active.length) html+='<p class="note">Nenhuma missão ativa. Procure NPCs com <b>!</b> sobre a cabeça.</p>';
     active.forEach(state=>{
@@ -2710,11 +2734,21 @@ function renderQuestJournal(){
       if(q.abandonable!==false) html+=`<button class="btn ghost" type="button" data-qabandon="${q.id}">Abandonar</button>`;
       html+='</div></div>';
     });
-  } else {
-    if(!completed.length) html+='<p class="note">Você ainda não concluiu nenhuma missão.</p>';
+  } else if(questTab==='done'){
+    if(!completed.length) html+='<p class="note">Você ainda não concluiu nenhuma missão única.</p>';
     completed.forEach(id=>{
       const q=questCatalog[id]; if(!q) return;
-      html+=`<div class="quest-card ready"><h3>${q.title}</h3><div class="qstate ready">✓ Concluída</div><p>${questNpcName(q.npcId)}</p></div>`;
+      html+=`<div class="quest-card ready"><h3>${q.title}</h3><div class="qstate ready">✓ Concluída · ${questCategoryLabel(q)}</div><p>${questNpcName(q.npcId)}</p></div>`;
+    });
+  } else {
+    if(!daily.length) html+='<p class="note">Nenhuma missão diária disponível no catálogo.</p>';
+    daily.forEach(q=>{
+      const activeState=activeQuestState(q.id), available=questAvailable(q), wait=questRepeatableWait(q);
+      const status=activeState?(questReadyState(activeState)?'Pronta para entregar':'Em andamento'):available?'Disponível':wait>0?questWaitLabel(q):'Bloqueada por requisito';
+      html+=`<div class="quest-card ${activeState&&questReadyState(activeState)?'ready':''}"><h3>${q.title}</h3><div class="qstate">${status} · ${questNpcName(q.npcId)}</div>`;
+      if(q.description) html+=`<p>${q.description}</p>`;
+      const reward=questRewardLabel(q); if(reward) html+=`<p><b>Recompensa:</b> ${reward}</p>`;
+      html+=`<div class="quest-actions"><button class="btn ghost" type="button" data-qnpc="${q.npcId}">Localizar NPC</button></div></div>`;
     });
   }
   body.innerHTML=html;
@@ -3649,7 +3683,7 @@ function handle(m){
     else if(m.event==='completed'){if(trackedQuestId===m.questId)trackedQuestId=null;const q=questCatalog[m.questId];if(q)log(`${q.title} concluída!`,'gold');}
     refreshUI(); if(npcOpen)renderNpc();
   }
-  else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[]};trackedQuestId=null;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
+  else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[],lastCompletedAt:{}};trackedQuestId=null;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
   else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}
