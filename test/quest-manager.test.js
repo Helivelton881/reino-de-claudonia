@@ -25,20 +25,21 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui 39 quests de historia, quatro provas e nove NPCs',()=>{
+test('catalogo possui 46 quests de historia, quatro provas e dez NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
-  assert.equal(catalog.length,43);
-  assert.equal(catalog.filter(q=>q.category==='story').length,39);
+  assert.equal(catalog.length,50);
+  assert.equal(catalog.filter(q=>q.category==='story').length,46);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
   for(const type of ['talk','kill','explore','delivery','collect']) assert.ok(types.has(type));
   assert.ok(catalog.filter(q=>q.category==='class-trial').every(q=>q.exclusiveGroup==='class-trial'));
-  assert.equal(NPCS.length,9);
+  assert.equal(NPCS.length,10);
   assert.ok(NPCS.some(n=>n.service==='forge'));
   assert.ok(NPCS.some(n=>n.service==='flight-shop'));
   assert.ok(NPCS.some(n=>n.id==='vigia_lobos'&&n.service==='quest-giver'));
   assert.ok(NPCS.some(n=>n.id==='batedora_teias'&&n.service==='quest-giver'));
   assert.ok(NPCS.some(n=>n.id==='guardia_lago'&&n.service==='quest-giver'));
+  assert.ok(NPCS.some(n=>n.id==='sentinela_ruinas'&&n.service==='quest-giver'));
 });
 
 test('cadeia inicial exige conclusao da quest anterior',()=>{
@@ -211,6 +212,22 @@ test('cadeia 38-47 usa o Lago Espelhado e a guardiã regional',()=>{
   const guardia=NPCS.find(n=>n.id==='guardia_lago');
   assert.ok(guardia);
   assert.ok(Math.hypot(guardia.x-ZONES.espirito.x,guardia.z-ZONES.espirito.z)>ZONES.espirito.radius);
+});
+
+test('cadeia 48-60 usa as Ruínas do Ciclope e o sentinela regional',()=>{
+  const {player,sent}=makePlayer({L:60,dados:{L:60,cls:'guerreiro',quests:{active:{},completed:['prova_guerreiro','jornada_39_silencio_profundo']}}}),qm=manager(sent);
+  assert.equal(qm.accept(player,'jornada_40_ruinas_ciclope'),true);
+  const catalog=qm.publicCatalog();
+  const ids=['jornada_40_ruinas_ciclope','jornada_41_guardioes_pedra','jornada_42_nucleos_lava','jornada_43_coracao_ruinas','jornada_44_gigantes_despertos','jornada_45_reserva_nucleos','jornada_46_ultimo_guardiao'];
+  assert.ok(ids.every(id=>catalog.some(q=>q.id===id)));
+  assert.deepEqual(ids.map(id=>catalog.find(q=>q.id===id).requirements.level),[48,48,50,52,54,57,60]);
+  assert.equal(catalog.find(q=>q.id==='jornada_41_guardioes_pedra').objectives[0].monsterKey,'ciclope');
+  assert.equal(catalog.find(q=>q.id==='jornada_42_nucleos_lava').objectives[0].itemId,'nucleo');
+  assert.equal(catalog.find(q=>q.id==='jornada_43_coracao_ruinas').objectives[0].areaId,'ciclope');
+  assert.equal(catalog.find(q=>q.id==='jornada_46_ultimo_guardiao').reward.gold,1200);
+  const sentinela=NPCS.find(n=>n.id==='sentinela_ruinas');
+  assert.ok(sentinela);
+  assert.ok(Math.hypot(sentinela.x-ZONES.ciclope.x,sentinela.z-ZONES.ciclope.z)>ZONES.ciclope.radius);
 });
 
 test('personagem antigo já classado recebe prova concluida e libera pos-classe',()=>{

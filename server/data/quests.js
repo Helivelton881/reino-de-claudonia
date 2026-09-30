@@ -267,6 +267,51 @@ const MIRROR_LAKE = Object.freeze({
   }
 });
 
+const CYCLOPS_RUINS = Object.freeze({
+  jornada_40_ruinas_ciclope:{
+    id:'jornada_40_ruinas_ciclope',title:'Rumo às Ruínas',npcId:'guardia_lago',category:'story',abandonable:true,
+    description:'Neris recebeu sinais de atividade crescente nas ruínas do nordeste e pede que você procure o sentinela responsável pelo posto avançado.',
+    requirements:{level:48,clsNot:'aprendiz',completedQuest:'jornada_39_silencio_profundo'},
+    objectives:[{type:'talk',npcId:'sentinela_ruinas',count:1,label:'Fale com o Sentinela Oren',hint:'Siga pela estrada nordeste até o posto antes das Ruínas do Ciclope.'}],reward:{exp:2600,gold:340}
+  },
+  jornada_41_guardioes_pedra:{
+    id:'jornada_41_guardioes_pedra',title:'Guardiões de Pedra',npcId:'sentinela_ruinas',category:'story',abandonable:true,
+    description:'Oren precisa aliviar a pressão dos ciclopes sobre a entrada das ruínas antes que o posto seja cercado.',
+    requirements:{level:48,clsNot:'aprendiz',completedQuest:'jornada_40_ruinas_ciclope'},
+    objectives:[{type:'kill',monsterKey:'ciclope',count:7,label:'Derrote Ciclopes das Ruínas',hint:'Os ciclopes dominam as Ruínas do Ciclope a nordeste do posto.'}],reward:{exp:5000,gold:440}
+  },
+  jornada_42_nucleos_lava:{
+    id:'jornada_42_nucleos_lava',title:'Núcleos de Lava',npcId:'sentinela_ruinas',category:'story',abandonable:true,
+    description:'O sentinela quer estudar a energia que mantém os ciclopes ativos e precisa de núcleos recuperados em combate.',
+    requirements:{level:50,clsNot:'aprendiz',completedQuest:'jornada_41_guardioes_pedra'},
+    objectives:[{type:'delivery',itemId:'nucleo',count:6,label:'Entregue Núcleos de Lava',hint:'Ciclopes das Ruínas podem deixar Núcleo de Lava.'}],reward:{exp:6500,gold:520}
+  },
+  jornada_43_coracao_ruinas:{
+    id:'jornada_43_coracao_ruinas',title:'Coração das Ruínas',npcId:'sentinela_ruinas',category:'story',abandonable:true,
+    description:'Oren precisa que você reconheça o centro das ruínas antes de organizar a próxima ofensiva.',
+    requirements:{level:52,clsNot:'aprendiz',completedQuest:'jornada_42_nucleos_lava'},
+    objectives:[{type:'explore',areaId:'ciclope',count:1,label:'Explore as Ruínas do Ciclope',hint:'Avance até o centro do território dos ciclopes.'}],reward:{exp:5800,gold:500}
+  },
+  jornada_44_gigantes_despertos:{
+    id:'jornada_44_gigantes_despertos',title:'Gigantes Despertos',npcId:'sentinela_ruinas',category:'story',abandonable:true,
+    description:'A atividade nas ruínas aumentou e Oren ordena uma patrulha profunda para impedir que os gigantes avancem.',
+    requirements:{level:54,clsNot:'aprendiz',completedQuest:'jornada_43_coracao_ruinas'},
+    objectives:[{type:'kill',monsterKey:'ciclope',count:9,label:'Derrote Ciclopes das Ruínas',hint:'Patrulhe as Ruínas do Ciclope e enfrente os gigantes mais agressivos.'}],reward:{exp:9800,gold:760}
+  },
+  jornada_45_reserva_nucleos:{
+    id:'jornada_45_reserva_nucleos',title:'Reserva de Núcleos',npcId:'sentinela_ruinas',category:'story',abandonable:true,
+    description:'O posto precisa de uma reserva de núcleos para estudar a energia das ruínas e reforçar suas defesas.',
+    requirements:{level:57,clsNot:'aprendiz',completedQuest:'jornada_44_gigantes_despertos'},
+    objectives:[{type:'delivery',itemId:'nucleo',count:8,label:'Entregue Núcleos de Lava',hint:'Continue derrotando ciclopes até reunir os núcleos necessários.'}],reward:{exp:12500,gold:920}
+  },
+  jornada_46_ultimo_guardiao:{
+    id:'jornada_46_ultimo_guardiao',title:'Último Guardião',npcId:'sentinela_ruinas',category:'story',abandonable:true,
+    description:'A última patrulha decidirá se as Ruínas do Ciclope podem ser consideradas controladas e encerra a jornada até o nível 60.',
+    requirements:{level:60,clsNot:'aprendiz',completedQuest:'jornada_45_reserva_nucleos'},
+    objectives:[{type:'kill',monsterKey:'ciclope',count:12,label:'Derrote Ciclopes das Ruínas',hint:'Complete a patrulha final nas Ruínas do Ciclope.'}],reward:{exp:17000,gold:1200}
+  }
+});
+
 const CLASS_TRIALS = Object.freeze({
   prova_guerreiro:{
     id:'prova_guerreiro',title:'Prova do Guerreiro',npcId:'guerreiro',category:'class-trial',exclusiveGroup:'class-trial',abandonable:true,
@@ -294,4 +339,4 @@ const CLASS_TRIALS = Object.freeze({
   }
 });
 
-module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...WEB_FOREST,...MIRROR_LAKE,...CLASS_TRIALS});
+module.exports=Object.freeze({...STORY,...POST_CLASS,...WOLF_TRAIL,...WEB_FOREST,...MIRROR_LAKE,...CYCLOPS_RUINS,...CLASS_TRIALS});

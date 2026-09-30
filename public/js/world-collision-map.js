@@ -29,7 +29,8 @@
     {id:'ferreiro',x:6,z:9.5,r:.6,kind:'npc'},
     {id:'vigia_lobos',x:82,z:30,r:.6,kind:'npc'},
     {id:'batedora_teias',x:-82,z:-60,r:.6,kind:'npc'},
-    {id:'guardia_lago',x:-60,z:78,r:.6,kind:'npc'}
+    {id:'guardia_lago',x:-60,z:78,r:.6,kind:'npc'},
+    {id:'sentinela_ruinas',x:30,z:104,r:.6,kind:'npc'}
   ];
   const COTTAGES=[];
   for(let i=0;i<11;i++){

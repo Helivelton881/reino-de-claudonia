@@ -95,17 +95,20 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 - Fase 7.7: cadeia nível 38-47 no Lago Espelhado com 7 novas quests e a NPC
   regional Guardiã Neris. O modelo `npc_guardia_neris.glb` foi criado no Blender
   e integrado pelo mesmo carregador GLTF dos NPCs regionais.
-- Catálogo atual: 43 quests (39 de história + 4 provas) e 9 NPCs funcionais.
-- QA atual: 61 testes automatizados passando.
+- Fase 7.8: cadeia nível 48-60 nas Ruínas do Ciclope com 7 novas quests e o NPC
+  regional Sentinela Oren. O modelo `npc_sentinela_oren.glb` foi criado no Blender
+  e integrado pelo carregador GLTF dos NPCs regionais.
+- Progressão principal da Fase 7 agora cobre do nível 1 ao 60.
+- Catálogo atual: 50 quests (46 de história + 4 provas) e 10 NPCs funcionais.
+- QA atual: 62 testes automatizados passando.
 
 ## Limites conhecidos (próximos passos)
-- A Fase 7 ainda precisa preencher a progressão 48-60 e ampliar o elenco atual
-  de 9 NPCs em direção à meta do roadmap (25-30 NPCs e 40-60 quests).
-- Próxima subfase planejada: Fase 7.8, cobrindo níveis 48-60 nas Ruínas do Ciclope
-  com o Ciclope de Lava, mantendo o continente contínuo e sem portais artificiais.
-- Antes da 7.8, auditar dados/NPCs/assets existentes. Qualquer novo NPC, monstro,
-  boss, arma, armadura, pet, montaria, prop ou objeto 3D de skill passa pelo
-  Blender aberto no PC antes de entrar no jogo.
+- A cadeia principal 1-60 está coberta, mas a Fase 7 ainda não atingiu a densidade
+  de NPCs prevista no roadmap nem possui uma camada completa de side/daily quests.
+- Próxima subfase planejada: Fase 7.9, fechamento do Quest & NPC Engine com
+  side quests, daily quests e expansão de NPCs úteis pelo mundo aberto.
+- Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
+  3D de skill continua passando pelo Blender aberto no PC antes de entrar no jogo.
 - Fases seguintes do plano mestre: Skill Tree, itemização/sets, Giants/Bosses,
   dungeons, pets/social, expansão 60-100, PvP/guild, lifestyle e Live Ops.
 
