@@ -304,6 +304,7 @@ wss.on('connection', ws => {
       case 'skillTree': {
         let changed=false;
         if(m.action==='learn') changed=skillManager.learn(p,m.skillId);
+        else if(m.action==='learnMax') changed=skillManager.learnMax(p,m.skillId);
         else if(m.action==='respec') changed=skillManager.respec(p,m.npcId);
         else if(m.action==='specialize') changed=skillManager.chooseSpecialization(p,m.specialization,m.npcId);
         else skillManager.fail(p,'Ação de árvore inválida.');

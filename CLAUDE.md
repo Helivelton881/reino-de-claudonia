@@ -150,7 +150,7 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   4 capas. O maior arquivo fica abaixo de 256 KB. Armas, off-hands e capacetes usam
   metadados de `modelScale`/posição/quaternion validados no personagem GLB para não
   entrar gigantes, atravessados ou desalinhados no gameplay.
-- QA atual: 109 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
+- QA atual: 115 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
   raridades/fontes/slots, affixes, set bonus, requisito nível/classe, mochila cheia,
   lock/favorito, banco, sockets, compra NPC, drop com metadata/UID, upgrade
   lendário/pity/quebra, assets e UI. Antes da Fase 10, o inventário recebeu rework
@@ -161,12 +161,20 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 - Produção da Fase 9 foi validada no Render: catálogo 165, 12 sets, 5 raridades,
   `itemState` sincronizado, personagem GLB ativo, WebGL íntegro e 20/20 famílias
   visuais carregadas no gameplay online sem erro JS ou request falho.
+- Fase 9.1: rework da janela de Habilidades com referência Canva
+  `DAHWrUd5IMQ` (`Reino de Claudonia — Habilidades UI Reference`). A UI agora usa
+  progressão visual por classe/especialização, árvore data-driven horizontal,
+  detalhes de rank atual/próximo, PdH/custo/nível, barra de combo, Finalizar,
+  Resetar e controles + / máx. O `máx.` envia somente a intenção `learnMax` e o
+  servidor calcula quantos ranks podem ser aplicados; respec continua exigindo
+  proximidade do mestre. Desktop, portrait e landscape baixo possuem layouts
+  dedicados. Nenhum asset 3D novo foi necessário nesta subfase.
 
 ## Limites conhecidos (próximos passos)
 - As Fases 7, 8 e 9 estão formalmente fechadas e publicadas.
-- Pré-Fase 10 UI: referência editável de inventário criada no Canva sob o design
-  `DAHWrK1NTLE` (`Reino de Claudonia — Inventário UI Reference`). A implementação
-  runtime permanece HTML/CSS/Three.js para usar o personagem real, não uma imagem estática.
+- Pré-Fase 10 UI: inventário e Habilidades foram concluídos. Referências editáveis
+  Canva: inventário `DAHWrK1NTLE` e Habilidades `DAHWrUd5IMQ`. A implementação
+  runtime continua própria do Reino de Claudonia e usa dados/regras atuais do jogo.
 - Próxima fase planejada: Fase 10 — ecossistema de
   monstros, variantes rare/Giant e World Bosses.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto

@@ -15,7 +15,7 @@ test('fase 8.1 expõe janela e atalho de árvore de skills',()=>{
 
 test('investimento envia apenas intenção ao servidor e exige confirmação visual',()=>{
   assert.match(html,/data-skill-learn/);
-  assert.match(html,/Confirmar investimento/);
+  assert.match(html,/learn\.dataset\.confirm/);
   assert.match(html,/t:'skillTree',action:'learn'/);
   assert.match(html,/m\.t==='skillTreeState'/);
 });
@@ -27,7 +27,7 @@ test('respec é solicitado ao mestre de classe e hotbar usa skills aprendidas',(
   assert.match(html,/SKILLS\[k\]\.cls === ch\.cls && skillKnown\(k\)/);
 });
 test('fase 8 completa mostra especializações, comparação de ranks e barra configurável',()=>{
-  assert.match(html,/Especializações/);
+  assert.match(html,/function specializationForClass/);
   assert.match(html,/data-specialize/);
   assert.match(html,/Confirmar especialização/);
   assert.match(html,/data-skill-bar/);

@@ -69,3 +69,14 @@ test('duas builds da mesma classe terminam com papéis e bônus diferentes',()=>
   assert.ok(gb.hp>db.hp);assert.ok(db.attackSpeed>gb.attackSpeed);assert.equal(g.mgr.snapshot(g.player).role,'Tank');assert.equal(d.mgr.snapshot(d.player).role,'Melee DPS');
   assert.equal(g.mgr.resolved(g.player,'laminas_gemeas'),null);assert.equal(d.mgr.resolved(d.player,'fortaleza'),null);
 });
+test('learnMax investe apenas pontos permitidos e nunca passa do rank máximo',()=>{
+  const {player,mgr}=make({L:30,state:{version:2,ranks:{investida:2},legacyUnlocks:[],specialization:null,respecs:0}});
+  const before=mgr.snapshot(player);
+  assert.ok(before.available>0);
+  assert.equal(mgr.learnMax(player,'investida'),true);
+  const after=mgr.snapshot(player);
+  assert.equal(after.ranks.investida,5);
+  assert.equal(after.spent,before.spent+3);
+  assert.ok(after.available>=0);
+  assert.equal(mgr.learnMax(player,'investida'),false);
+});

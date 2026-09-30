@@ -23,7 +23,7 @@ test('paper doll do inventario renderiza o personagem real em viewport Three sep
 });
 
 test('inventario grande abre centralizado e possui adaptacao responsiva',()=>{
-  assert.ok(html.includes("large=w.id==='winInv'"));
+  assert.ok(html.includes("large=['winInv','winSkills'].includes(w.id)"));
   assert.ok(html.includes('@media(max-width:860px)'));
   assert.ok(html.includes('#winInv .inv-grid{grid-template-columns:repeat(8'));
 });

@@ -130,6 +130,17 @@ class SkillManager{
     if(this.availablePoints(player)<1)return this.fail(player,'Você não possui pontos de habilidade disponíveis.');
     state.ranks[id]=next;player.dirty=true;this.sync(player,{event:'learned',skillId:id});return true;
   }
+  learnMax(player,id){
+    const sk=SKILLS[id],state=this.ensureState(player);
+    if(!sk||sk.cls!==this.classOf(player))return this.fail(player,'Habilidade incompatível com sua classe.');
+    if(sk.specialization&&state.specialization!==sk.specialization)return this.fail(player,'Essa habilidade pertence a outra especialização.');
+    if(sk.type==='passive'&&sk.autoRank1)return this.fail(player,'Passiva automática.');
+    if(this.levelOf(player)<sk.req)return this.fail(player,'Requer nível '+sk.req+'.');
+    if(!this.prerequisitesMet(player,sk))return this.fail(player,'Pré-requisitos da árvore ainda não foram cumpridos.');
+    const current=this.rank(player,id),max=sk.maxRank||1,available=this.availablePoints(player),gain=Math.min(max-current,available);
+    if(gain<1)return this.fail(player,current>=max?'Habilidade já está no rank máximo.':'Você não possui pontos de habilidade disponíveis.');
+    state.ranks[id]=current+gain;player.dirty=true;this.sync(player,{event:'learned-max',skillId:id,levels:gain});return true;
+  }
 
   trainerFor(player,npcId){
     const expected=TRAINERS[this.classOf(player)];if(!expected||npcId!==expected)return null;
