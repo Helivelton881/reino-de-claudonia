@@ -1699,6 +1699,17 @@ if (charSys && charSys.enabled){
   });
   charSys.load().then(ok=>{ if (!ok) console.info(`[Character] fallback active (personagem procedural). Coloque o modelo em public/${CHAR_CFG.model}`); });
 }
+// Ajustes de encaixe autorados junto com o item. Aplicados antes do EquipmentManager
+// compensar a escala do osso, para manter proporção e orientação iguais local/remoto.
+function prepareEquipmentModel(obj,item){
+  if(!obj||!item)return obj;
+  const s=item.modelScale;
+  if(Array.isArray(s)&&s.length===3)obj.scale.multiply(new THREE.Vector3(Number(s[0])||1,Number(s[1])||1,Number(s[2])||1));
+  else if(Number.isFinite(Number(s))&&Number(s)>0)obj.scale.multiplyScalar(Number(s));
+  if(Array.isArray(item.modelPosition)&&item.modelPosition.length===3)obj.position.fromArray(item.modelPosition);
+  if(Array.isArray(item.modelQuaternion)&&item.modelQuaternion.length===4)obj.quaternion.fromArray(item.modelQuaternion).normalize();
+  obj.userData.itemId=item.id;obj.userData.fitted=true;return obj;
+}
 // Diagnóstico: só com ?debug=1 no endereço (para testar sem alterar estado persistido).
 async function qaPreviewItem(id){
   const item=ITEMS[id],slotMap={arma:'weapon',offhand:'offhand',capacete:'head',peitoral:'chestRigid',capa:'cape'};
@@ -1707,10 +1718,10 @@ async function qaPreviewItem(id){
   const eq=charSys.equipment;
   for(const s of ['weapon','back','offhand','head','chestRigid','cape'])eq.equip(hero.view,s,null);
   const gltf=await eq.loadAsset(item.model);if(!gltf)return{ok:false,id,reason:'falha ao carregar GLB'};
-  const obj=eq.instance(gltf);obj.visible=true;eq.equip(hero.view,slot,obj);hero.root.updateMatrixWorld(true);
+  const obj=prepareEquipmentModel(eq.instance(gltf),item);obj.visible=true;eq.equip(hero.view,slot,obj);hero.root.updateMatrixWorld(true);
   return{ok:true,id,slot,model:item.model};
 }
-if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, get props(){ return [...PROPS_AT.entries()].flatMap(([name,items])=>items.map(it=>Object.assign({name},it))); }, get npcs(){ return npcObjs; }, get camera(){ return camera; }, qaGoToNpc(id){ const n=npcObjs.find(n=>n.id===id); if(n) goToNpc(n); return !!n; }, qaAttackMonster(id){ const m=monsters.find(m=>m.id===id); if(!m) return false; selectTarget(m); return startAttack(); }, qaPreviewItem, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
+if (/[?&]debug=1/.test(location.search)) window.__claudonia = {hero, charSys, renderer, worldAssets, pathfinder, setMoveRoute, clearMoveRoute, navLineClear, get colliders(){ return colliders; }, get props(){ return [...PROPS_AT.entries()].flatMap(([name,items])=>items.map(it=>Object.assign({name},it))); }, get npcs(){ return npcObjs; }, get camera(){ return camera; }, qaGoToNpc(id){ const n=npcObjs.find(n=>n.id===id); if(n) goToNpc(n); return !!n; }, qaAttackMonster(id){ const m=monsters.find(m=>m.id===id); if(!m) return false; selectTarget(m); return startAttack(); }, qaPreviewItem, qaApplyItemCatalog:applyItemCatalog, setCam(a,b,c){ yaw = a; if (b != null) pitch = b; if (c != null) dist = c; }, get monsters(){ return monsters; }, get player(){ return player; }, get route(){ return player.movePath.slice(player.movePathIndex); }, get others(){ return others; }, animateRemoteGLB, animateLocalGLB};
 // Estado de animação do seu personagem (chamado todo quadro)
 function animateLocalGLB(h, moving, speed){
   const a = h.anim;
@@ -2408,11 +2419,11 @@ function syncHeroEquipment(h,gear,cls){
   const eq=charSys.equipment,load=(id,slot,done)=>{
     const item=id&&ITEMS[id],url=item&&item.model;
     if(!url){charSys.equip(h.view,slot,null);return;}
-    eq.loadAsset(url).then(g=>{if(!g||h.gearToken!==token||h.gearState[item.slot]!==id)return;const obj=eq.instance(g);charSys.equip(h.view,slot,obj);if(done)done(obj);});
+    eq.loadAsset(url).then(g=>{if(!g||h.gearToken!==token||h.gearState[item.slot]!==id)return;const obj=prepareEquipmentModel(eq.instance(g),item);charSys.equip(h.view,slot,obj);if(done)done(obj);});
   };
   const wid=h.gearState.arma,witem=wid&&ITEMS[wid];
   if(witem&&witem.model){
-    eq.loadAsset(witem.model).then(g=>{if(!g||h.gearToken!==token||h.gearState.arma!==wid)return;const hand=eq.instance(g),back=eq.instance(g);hand.visible=h.hand?h.hand.visible:false;back.visible=h.back?h.back.visible:true;charSys.equip(h.view,'weapon',hand);charSys.equip(h.view,'back',back);h.hand=hand;h.back=back;});
+    eq.loadAsset(witem.model).then(g=>{if(!g||h.gearToken!==token||h.gearState.arma!==wid)return;const hand=prepareEquipmentModel(eq.instance(g),witem),back=prepareEquipmentModel(eq.instance(g),witem);hand.visible=h.hand?h.hand.visible:false;back.visible=h.back?h.back.visible:true;charSys.equip(h.view,'weapon',hand);charSys.equip(h.view,'back',back);h.hand=hand;h.back=back;});
   }else setHeroWeapon(h,cls||'aprendiz');
   load(h.gearState.offhand,'offhand');
   load(h.gearState.capacete,'head');

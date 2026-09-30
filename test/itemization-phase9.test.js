@@ -199,3 +199,25 @@ test('drop server-side gera equipamento com raridade e afixos e preserva uid no 
   assert.ok(row&&row.uid,'pickup de gear precisa criar uid persistente');
   assert.deepEqual(row.affixes,gear.affixes);
 });
+
+
+test('encaixes visuais da fase 9 carregam escala orientacao e offset profissionais',()=>{
+  for(const cls of ['guerreiro','druida','mago','arqueiro']){
+    const weapon=EQUIPMENT[cls+'_arma_60'];
+    assert.ok(weapon.modelScale>0&&weapon.modelScale<=.60);
+    assert.equal(weapon.modelQuaternion.length,4);
+    const off=EQUIPMENT[cls+'_offhand_60'];
+    assert.ok(off.modelScale>0&&off.modelScale<=.75);
+    assert.equal(off.modelQuaternion.length,4);
+    const helmet=EQUIPMENT[cls+'_soberano_capacete'];
+    assert.equal(helmet.modelScale,.90);
+    assert.deepEqual(helmet.modelPosition,[0,.18,.10]);
+  }
+  const catalog=new ItemManager({send:()=>{}}).catalog();
+  const sword=catalog.equipment.find(x=>x.id==='guerreiro_arma_60');
+  assert.equal(sword.modelScale,.58);
+  assert.deepEqual(sword.modelQuaternion,[0,0,-0.70710678,0.70710678]);
+  const html=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
+  assert.ok(html.includes('prepareEquipmentModel'));
+  assert.ok(html.includes('qaApplyItemCatalog:applyItemCatalog'));
+});

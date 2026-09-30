@@ -8,6 +8,9 @@ const add=(id,data)=>{
   E[id]=Object.freeze({id,name:data.name||id,slot:data.slot,req:data.req||1,cls:data.cls||null,atk:data.atk||null,def:data.def||0,
     rarity,source:data.source||'npc',tier:data.tier||Math.max(1,Math.ceil((data.req||1)/10)),setId:data.setId||null,
     socketCount:Number.isInteger(data.socketCount)?data.socketCount:R.sockets,model:data.model||null,visualSlot:data.visualSlot||null,
+    modelScale:Array.isArray(data.modelScale)?Object.freeze([...data.modelScale]):(Number.isFinite(data.modelScale)?data.modelScale:null),
+    modelPosition:Array.isArray(data.modelPosition)?Object.freeze([...data.modelPosition]):null,
+    modelQuaternion:Array.isArray(data.modelQuaternion)?Object.freeze([...data.modelQuaternion]):null,
     affixBias:Array.isArray(data.affixBias)?Object.freeze([...data.affixBias]):Object.freeze([]),price:data.price||null,
     fly:data.fly||null,spd:data.spd||null,color:data.color||null});
 };
@@ -64,13 +67,18 @@ const CLASS_VISUAL={
 const asset=n=>`assets/equipment/phase9/${n}`;
 const className={guerreiro:'Guerreiro',druida:'Druida',mago:'Mago',arqueiro:'Arqueiro'};
 const weaponNoun={guerreiro:'Lâmina',druida:'Cajado',mago:'Cetro',arqueiro:'Arco'};
+const WEAPON_SCALE={guerreiro:.58,druida:.58,mago:.60,arqueiro:.60};
+const OFFHAND_SCALE={guerreiro:.75,druida:.72,mago:.72,arqueiro:.68};
+const Q_WEAPON=Object.freeze([0,0,-0.70710678,0.70710678]);
+const Q_OFFHAND=Object.freeze([.5,.5,.5,-.5]);
+const HELMET_SCALE=.90,HELMET_POSITION=Object.freeze([0,.18,.10]);
 const weaponLevels=[8,16,24,32,40,48,56,60];
 const weaponTier=['Bruma','Ferro Vivo','Vigília','Orbe','Astral','Fenda','Regente','Soberano'];
 const sourceAt={8:'npc',16:'common',24:'giant',32:'dungeon',40:'giant',48:'dungeon',56:'boss',60:'boss'};
 for(const cls of Object.keys(CLASS_VISUAL)){
   for(let i=0;i<weaponLevels.length;i++){
     const req=weaponLevels[i],source=sourceAt[req],rarity=SOURCE_RARITY[source],R=RARITIES[rarity],base=req*(cls==='mago'?1.2:cls==='druida'?1.08:1.15)*R.statMult;
-    add(`${cls}_arma_${req}`,{name:`${weaponNoun[cls]} ${weaponTier[i]} do ${className[cls]}`,slot:'arma',req,cls,atk:[Math.round(base*.86),Math.round(base*1.18)],source,rarity,tier:i+1,model:asset(CLASS_VISUAL[cls].weapon),visualSlot:'weapon',affixBias:cls==='guerreiro'?['str','sta']:cls==='druida'?['int','healing']:cls==='mago'?['int','atkPct']:['dex','crit']});
+    add(`${cls}_arma_${req}`,{name:`${weaponNoun[cls]} ${weaponTier[i]} do ${className[cls]}`,slot:'arma',req,cls,atk:[Math.round(base*.86),Math.round(base*1.18)],source,rarity,tier:i+1,model:asset(CLASS_VISUAL[cls].weapon),visualSlot:'weapon',modelScale:WEAPON_SCALE[cls],modelQuaternion:Q_WEAPON,affixBias:cls==='guerreiro'?['str','sta']:cls==='druida'?['int','healing']:cls==='mago'?['int','atkPct']:['dex','crit']});
   }
 }
 
@@ -92,7 +100,7 @@ for(const cls of Object.keys(CLASS_VISUAL)){
     const R=RARITIES[tier.rarity],setId=`${cls}_${tier.key}`;
     for(const piece of pieces){
       const model=piece.model?asset(CLASS_VISUAL[cls][piece.model]):null;
-      add(`${setId}_${piece.slot}`,{name:`${piece.label} ${setFamily[cls]} ${tier.label}`,slot:piece.slot,req:tier.req,cls,def:Math.max(1,Math.round(tier.req*piece.def*R.statMult)),source:tier.source,rarity:tier.rarity,setId,model,visualSlot:piece.visualSlot,affixBias:cls==='guerreiro'?['sta','defPct']:cls==='druida'?['int','healing']:cls==='mago'?['int','mpPct']:['dex','crit']});
+      add(`${setId}_${piece.slot}`,{name:`${piece.label} ${setFamily[cls]} ${tier.label}`,slot:piece.slot,req:tier.req,cls,def:Math.max(1,Math.round(tier.req*piece.def*R.statMult)),source:tier.source,rarity:tier.rarity,setId,model,visualSlot:piece.visualSlot,modelScale:piece.slot==='capacete'?HELMET_SCALE:null,modelPosition:piece.slot==='capacete'?HELMET_POSITION:null,affixBias:cls==='guerreiro'?['sta','defPct']:cls==='druida'?['int','healing']:cls==='mago'?['int','mpPct']:['dex','crit']});
     }
   }
 }
@@ -100,7 +108,7 @@ for(const cls of Object.keys(CLASS_VISUAL)){
 const offhandName={guerreiro:'Escudo Bastião',druida:'Totem Verdejante',mago:'Grimório Arcano',arqueiro:'Aljava Horizonte'};
 for(const cls of Object.keys(CLASS_VISUAL)){
   for(const tier of setTiers){
-    add(`${cls}_offhand_${tier.req}`,{name:`${offhandName[cls]} ${tier.label}`,slot:'offhand',req:tier.req,cls,def:Math.round(tier.req*(cls==='guerreiro'?.28:.12)*RARITIES[tier.rarity].statMult),source:tier.source,rarity:tier.rarity,tier:tier.req/20,model:asset(CLASS_VISUAL[cls].offhand),visualSlot:'offhand',affixBias:cls==='guerreiro'?['sta','defPct']:cls==='druida'?['healing','mpPct']:cls==='mago'?['int','crit']:['dex','attackSpeed']});
+    add(`${cls}_offhand_${tier.req}`,{name:`${offhandName[cls]} ${tier.label}`,slot:'offhand',req:tier.req,cls,def:Math.round(tier.req*(cls==='guerreiro'?.28:.12)*RARITIES[tier.rarity].statMult),source:tier.source,rarity:tier.rarity,tier:tier.req/20,model:asset(CLASS_VISUAL[cls].offhand),visualSlot:'offhand',modelScale:OFFHAND_SCALE[cls],modelQuaternion:Q_OFFHAND,affixBias:cls==='guerreiro'?['sta','defPct']:cls==='druida'?['healing','mpPct']:cls==='mago'?['int','crit']:['dex','attackSpeed']});
   }
 }
 

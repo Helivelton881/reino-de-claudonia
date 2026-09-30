@@ -147,8 +147,10 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   sincronizado para outros jogadores e usa GLBs pelo `EquipmentManager`.
 - Blender/MCP produziu 20 famílias visuais originais e leves para a Fase 9 em
   `public/assets/equipment/phase9/`: 4 armas, 4 off-hands, 4 capacetes, 4 peitorais e
-  4 capas. O maior arquivo fica abaixo de 256 KB.
-- QA atual: 104 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
+  4 capas. O maior arquivo fica abaixo de 256 KB. Armas, off-hands e capacetes usam
+  metadados de `modelScale`/posição/quaternion validados no personagem GLB para não
+  entrar gigantes, atravessados ou desalinhados no gameplay.
+- QA atual: 105 testes automatizados passando. A suíte da Fase 9 cobre catálogo,
   raridades/fontes/slots, affixes, set bonus, requisito nível/classe, mochila cheia,
   lock/favorito, banco, sockets, compra NPC, drop com metadata/UID, upgrade
   lendário/pity/quebra, assets e UI.
