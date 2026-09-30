@@ -17,6 +17,7 @@ class QuestManager {
   initializePlayer(player) {
     const state=this.ensureState(player);
     this.migrateLegacy(player,state);
+    this.migrateHistoricalClass(player,state);
     this.syncLegacy(player,state);
     return state;
   }
@@ -40,6 +41,17 @@ class QuestManager {
     state.active[questId]={startedAt:this.now(),progress:{}};
     player.dirty=true;
     return true;
+  }
+
+  migrateHistoricalClass(player,state=this.ensureState(player)) {
+    const cls=player.dados&&player.dados.cls;
+    const questId=cls&&CLASS_QUEST_BY_CLASS[cls];
+    if(!questId||cls==='aprendiz') return false;
+    let changed=false;
+    if(state.active[questId]){delete state.active[questId];changed=true;}
+    if(!state.completed.includes(questId)){state.completed.push(questId);changed=true;}
+    if(changed)player.dirty=true;
+    return changed;
   }
 
   syncLegacy(player,state=this.ensureState(player)) {
@@ -84,10 +96,15 @@ class QuestManager {
     const cls=player.dados&&player.dados.cls||'aprendiz';
     if(req.level&&level<req.level) return `Requer nível ${req.level}.`;
     if(req.cls&&cls!==req.cls) return 'Sua classe atual não pode iniciar esta missão.';
+    if(req.clsNot&&cls===req.clsNot) return 'Sua classe atual não pode iniciar esta missão.';
+    const state=this.ensureState(player);
     if(req.completedQuest){
-      const state=this.ensureState(player);
       const list=Array.isArray(req.completedQuest)?req.completedQuest:[req.completedQuest];
       if(list.some(id=>!state.completed.includes(id))) return 'Pré-requisito de missão não concluído.';
+    }
+    if(req.completedAny){
+      const list=Array.isArray(req.completedAny)?req.completedAny:[req.completedAny];
+      if(!list.some(id=>state.completed.includes(id))) return 'Pré-requisito de missão não concluído.';
     }
     return null;
   }

@@ -87,6 +87,51 @@ const STORY = Object.freeze({
   }
 });
 
+const POST_CLASS = Object.freeze({
+  jornada_13_novo_caminho:{
+    id:'jornada_13_novo_caminho',title:'Um Novo Caminho',npcId:'ferreiro',category:'story',abandonable:true,
+    description:'Brunna quer garantir que sua nova classe esteja pronta para enfrentar o Planalto do Musgo.',
+    requirements:{level:15,clsNot:'aprendiz',completedAny:['prova_guerreiro','prova_druida','prova_mago','prova_arqueiro']},
+    objectives:[{type:'talk',npcId:'voo',count:1,label:'Fale com o Piloto Tito',hint:'Tito conhece as rotas para o Planalto do Musgo.'}],
+    reward:{exp:800,gold:150}
+  },
+  jornada_14_planalto:{
+    id:'jornada_14_planalto',title:'Rumo ao Planalto',npcId:'voo',category:'story',abandonable:true,
+    description:'Tito quer que você reconheça o terreno antes de enfrentar os Golems Rúnicos.',
+    requirements:{level:15,clsNot:'aprendiz',completedQuest:'jornada_13_novo_caminho'},
+    objectives:[{type:'explore',areaId:'golem',count:1,label:'Explore o Planalto do Musgo',hint:'Siga para o sul até o território dos Golems Rúnicos.'}],
+    reward:{exp:1200,gold:150}
+  },
+  jornada_15_golems:{
+    id:'jornada_15_golems',title:'Pedra que Anda',npcId:'guerreiro',category:'story',abandonable:true,
+    description:'Borin quer medir sua força contra os guardiões do Planalto.',
+    requirements:{level:16,clsNot:'aprendiz',completedQuest:'jornada_14_planalto'},
+    objectives:[{type:'kill',monsterKey:'golem',count:5,label:'Derrote Golems Rúnicos',hint:'Os Golems Rúnicos ocupam o Planalto do Musgo.'}],
+    reward:{exp:2200,gold:200}
+  },
+  jornada_16_musgo:{
+    id:'jornada_16_musgo',title:'Musgo Rúnico',npcId:'ferreiro',category:'story',abandonable:true,
+    description:'Brunna precisa de musgo impregnado de energia rúnica para reforçar equipamentos.',
+    requirements:{level:17,clsNot:'aprendiz',completedQuest:'jornada_15_golems'},
+    objectives:[{type:'delivery',itemId:'musgo',count:4,label:'Entregue Musgos Rúnicos',hint:'Golems Rúnicos podem deixar Musgo Rúnico.'}],
+    reward:{exp:2500,gold:250}
+  },
+  jornada_17_guardioes:{
+    id:'jornada_17_guardioes',title:'Guardiões do Planalto',npcId:'mago',category:'story',abandonable:true,
+    description:'Eldran detectou uma concentração de energia nos Golems e quer que você reduza sua atividade.',
+    requirements:{level:18,clsNot:'aprendiz',completedQuest:'jornada_16_musgo'},
+    objectives:[{type:'kill',monsterKey:'golem',count:7,label:'Derrote Golems Rúnicos',hint:'Continue no Planalto do Musgo e enfrente os guardiões.'}],
+    reward:{exp:3000,gold:300}
+  },
+  jornada_18_licenca_voo:{
+    id:'jornada_18_licenca_voo',title:'Primeiro Voo',npcId:'voo',category:'story',abandonable:true,
+    description:'Tito considera você pronto para voar, mas quer que Brunna confira seu equipamento antes da primeira decolagem.',
+    requirements:{level:19,clsNot:'aprendiz',completedQuest:'jornada_17_guardioes'},
+    objectives:[{type:'talk',npcId:'ferreiro',count:1,label:'Peça a Brunna uma inspeção de voo',hint:'Fale com Ferreira Brunna e depois volte ao Piloto Tito.'}],
+    reward:{exp:2500,gold:500}
+  }
+});
+
 const CLASS_TRIALS = Object.freeze({
   prova_guerreiro:{
     id:'prova_guerreiro',title:'Prova do Guerreiro',npcId:'guerreiro',category:'class-trial',exclusiveGroup:'class-trial',abandonable:true,
@@ -114,4 +159,4 @@ const CLASS_TRIALS = Object.freeze({
   }
 });
 
-module.exports=Object.freeze({...STORY,...CLASS_TRIALS});
+module.exports=Object.freeze({...STORY,...POST_CLASS,...CLASS_TRIALS});

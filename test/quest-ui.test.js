@@ -39,3 +39,22 @@ test('fase 7.3 usa multiplas quests, npcTalk autoritativo e recompensa sincroniz
   assert.match(html,/m\.t==='questReward'/);
   assert.match(html,/data-qact="turnIn"/);
 });
+test('fase 7.4 possui rastreador HUD, alvo no minimapa e beacon 3D',()=>{
+  assert.match(html,/id="questTrack"/);
+  assert.match(html,/id="qtLocate"/);
+  assert.match(html,/function questTargetFor\(/);
+  assert.match(html,/function renderQuestTracker\(/);
+  assert.match(html,/function navigateTrackedQuest\(/);
+  assert.match(html,/const questBeacon=new THREE\.Group\(\)/);
+  assert.match(html,/updateQuestBeacon\(t\)/);
+  assert.match(html,/const qt=questTargetFor\(trackedQuestState\(\)\)/);
+  assert.match(html,/data-qtrack=/);
+});
+
+test('rastreador conhece a origem dos materiais ate o Planalto do Musgo',()=>{
+  assert.match(html,/musgo:'golem'/);
+  assert.match(html,/def\.type==='delivery'\|\|def\.type==='collect'/);
+  assert.match(html,/def\.type==='kill'/);
+  assert.match(html,/def\.type==='explore'/);
+  assert.match(html,/def\.type==='talk'/);
+});

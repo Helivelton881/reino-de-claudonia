@@ -130,6 +130,19 @@ button{font-family:inherit;color:inherit}
 .quest-progress{height:8px;border-radius:4px;background:#1B0F06;border:1px solid #6B4520;overflow:hidden;margin:5px 0}
 .quest-progress i{display:block;height:100%;background:linear-gradient(90deg,#C99B3D,#F2D26A)}
 .quest-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.quest-tracker{position:fixed;left:calc(env(safe-area-inset-left,0px) + 8px);top:calc(env(safe-area-inset-top,0px) + 148px);
+  z-index:5;width:min(310px,72vw);padding:8px 10px;border:1px solid rgba(224,180,92,.8);border-radius:9px;
+  background:rgba(28,18,9,.86);box-shadow:0 3px 10px rgba(0,0,0,.45);pointer-events:auto}
+.quest-tracker[hidden]{display:none}
+.quest-tracker .qt-head{display:flex;align-items:center;gap:6px}
+.quest-tracker .qt-head b{flex:1;color:#FFE7A3;font-size:14px}
+.quest-tracker .qt-head button{width:25px;height:25px;border-radius:50%;padding:0}
+.quest-tracker .qt-obj{font-size:12.5px;line-height:1.25;margin-top:3px}
+.quest-tracker .qt-foot{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:11.5px;color:var(--ink-soft)}
+.quest-tracker .qt-foot span{flex:1}
+.quest-tracker .qt-foot button{padding:3px 8px;font-size:11px}
+.quest-tracker.ready{border-color:#8FE39D;box-shadow:0 0 0 1px rgba(143,227,157,.18),0 3px 10px rgba(0,0,0,.45)}
+@media(max-width:760px){.quest-tracker{top:calc(env(safe-area-inset-top,0px) + 118px);width:min(255px,70vw);padding:6px 8px}.quest-tracker .qt-head b{font-size:12.5px}.quest-tracker .qt-obj{font-size:11.5px}}
 
 /* HUD inferior */
 .bottom{position:fixed;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;z-index:5;
@@ -370,6 +383,12 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   <div class="chips txt"><span>✨ Buff <em id="buffCount">x0</em></span><span>🤝 Grupo <em id="partyCount">x0</em></span></div>
   <div class="buffs txt" id="buffs"></div>
   <div class="party" id="partyHud"></div>
+</div>
+
+<div class="quest-tracker txt" id="questTrack" hidden>
+  <div class="qt-head"><b id="qtTitle">Missão</b><button class="btn ghost" id="qtCycle" type="button" title="Alternar missão">↻</button></div>
+  <div class="qt-obj" id="qtObjective"></div>
+  <div class="qt-foot"><span id="qtDistance"></span><button class="btn" id="qtLocate" type="button">Ir</button></div>
 </div>
 
 <div class="target" id="target" hidden>
@@ -674,9 +693,14 @@ function questRequirementsMet(q){
   const req=q&&q.requirements||{};
   if(req.level&&ch.L<req.level) return false;
   if(req.cls&&ch.cls!==req.cls) return false;
+  if(req.clsNot&&ch.cls===req.clsNot) return false;
   if(req.completedQuest){
     const need=Array.isArray(req.completedQuest)?req.completedQuest:[req.completedQuest];
     if(need.some(id=>!questCompleted(id))) return false;
+  }
+  if(req.completedAny){
+    const need=Array.isArray(req.completedAny)?req.completedAny:[req.completedAny];
+    if(!need.some(id=>questCompleted(id))) return false;
   }
   return true;
 }
@@ -713,6 +737,69 @@ function npcMarkerState(n){
   if(n.id==='voo'&&ch.L>=20&&!ch.eq.voo&&!ch.inv.some(s=>ITEMS[s.id]&&ITEMS[s.id].slot==='voo')) return 'available';
   return null;
 }
+let trackedQuestId=null;
+const QUEST_ITEM_ZONE={gosma:'bolota',pelo:'coelhorn',chapeu:'cogumelo',presa:'javali',musgo:'golem',pele_lobo:'lobo',seda:'aranha',essencia:'espirito',nucleo:'ciclope'};
+function trackedQuestState(){
+  let a=trackedQuestId&&activeQuestState(trackedQuestId);
+  if(!a){a=(questState.active||[])[0]||null;trackedQuestId=a?a.id:null;}
+  return a;
+}
+function questNpcPoint(id){
+  const n=npcCatalog.find(x=>x.id===id);
+  return n?{x:n.x,z:n.z,label:n.name||id,kind:'npc',npcId:id}:null;
+}
+function questZonePoint(key){
+  const z=ZONES.find(x=>x.key===key);
+  return z?{x:z.x,z:z.z,label:z.name||key,kind:'zone',zoneId:key}:null;
+}
+function questTargetFor(state){
+  if(!state)return null;
+  const q=questCatalog[state.id];if(!q)return null;
+  if(questReadyState(state))return questNpcPoint(q.npcId);
+  const idx=(state.objectives||[]).findIndex(o=>o.current<o.required);
+  const def=idx>=0&&q.objectives?q.objectives[idx]:null;
+  if(!def)return questNpcPoint(q.npcId);
+  if(def.type==='talk')return questNpcPoint(def.npcId);
+  if(def.type==='explore')return questZonePoint(def.areaId);
+  if(def.type==='kill')return questZonePoint(def.monsterKey);
+  if(def.type==='delivery'||def.type==='collect')return questZonePoint(def.zoneId||QUEST_ITEM_ZONE[def.itemId])||questNpcPoint(q.npcId);
+  return questNpcPoint(q.npcId);
+}
+function setTrackedQuest(id){
+  if(id&&activeQuestState(id))trackedQuestId=id;
+  else if(!id)trackedQuestId=null;
+  renderQuestTracker();
+  if(!$('winQuest').hidden)renderQuestJournal();
+}
+function cycleTrackedQuest(){
+  const list=questState.active||[];if(!list.length){setTrackedQuest(null);return;}
+  const i=Math.max(-1,list.findIndex(q=>q.id===trackedQuestId));
+  setTrackedQuest(list[(i+1)%list.length].id);
+}
+function renderQuestTracker(){
+  const box=$('questTrack'),state=trackedQuestState();
+  if(!box||!state){if(box)box.hidden=true;return;}
+  const q=questCatalog[state.id];if(!q){box.hidden=true;return;}
+  const ready=questReadyState(state),idx=(state.objectives||[]).findIndex(o=>o.current<o.required);
+  const prog=idx>=0?state.objectives[idx]:null;
+  const target=questTargetFor(state);
+  $('qtTitle').textContent=q.title;
+  $('qtObjective').textContent=ready?'Pronta para entregar':prog?`${prog.label}: ${prog.current}/${prog.required}`:'Objetivo concluído';
+  if(target&&typeof player!=='undefined'){
+    const d=Math.hypot(target.x-player.x,target.z-player.z);
+    $('qtDistance').textContent=`${target.label} · ${Math.round(d)} m`;
+    $('qtLocate').disabled=false;
+  }else{$('qtDistance').textContent='Destino indisponível';$('qtLocate').disabled=true;}
+  box.classList.toggle('ready',ready);box.hidden=false;
+}
+function navigateTrackedQuest(){
+  const state=trackedQuestState(),target=questTargetFor(state);if(!target)return;
+  if(target.kind==='npc'){
+    const n=npcObjs.find(x=>x.id===target.npcId);if(n){goToNpc(n);return;}
+  }
+  if(!setMoveRoute(target.x,target.z,false))log('Não foi possível traçar rota até o objetivo.','bad');
+}
+
 // Habilidades de grupo ativas (o servidor manda quantos segundos faltam)
 const partySkill = id => party.members.length > 1 && party.skills && party.skills[id] > Date.now();
 function partyChainBonus(){
@@ -808,6 +895,11 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, isTouch?1.5:2));
 renderer.setClearColor(0xF1D2A6, 1);
 renderer.shadowMap.enabled = HQ; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
+const questBeacon=new THREE.Group();questBeacon.visible=false;
+const questRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.09,8,40),new THREE.MeshBasicMaterial({color:0xF6C85A,transparent:true,opacity:.9,depthWrite:false}));
+questRing.rotation.x=Math.PI/2;questBeacon.add(questRing);
+const questBeam=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,4.5,8),new THREE.MeshBasicMaterial({color:0xF6C85A,transparent:true,opacity:.32,depthWrite:false}));
+questBeam.position.y=2.25;questBeacon.add(questBeam);scene.add(questBeacon);
 scene.fog = new THREE.Fog(0xEBCFA6, 60, 240);
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 460);
 scene.add(new THREE.HemisphereLight(0xFFF1DC, 0x6B5A3C, 0.72));
@@ -2602,7 +2694,7 @@ function renderQuestJournal(){
       const talkTarget=(q.objectives||[]).find((def,i)=>def.type==='talk'&&def.npcId&&state.objectives&&state.objectives[i]&&state.objectives[i].current<state.objectives[i].required);
       const locateNpc=ready?q.npcId:(talkTarget&&talkTarget.npcId)||q.npcId;
       const locateLabel=ready?'Ir entregar':talkTarget?`Falar com ${questNpcName(locateNpc)}`:'Localizar NPC';
-      html+=`<div class="quest-actions"><button class="btn" type="button" data-qnpc="${locateNpc}">${locateLabel}</button>`;
+      html+=`<div class="quest-actions"><button class="btn" type="button" data-qnpc="${locateNpc}">${locateLabel}</button><button class="btn ghost" type="button" data-qtrack="${q.id}">${trackedQuestId===q.id?'Rastreando':'Rastrear'}</button>`;
       if(q.abandonable!==false) html+=`<button class="btn ghost" type="button" data-qabandon="${q.id}">Abandonar</button>`;
       html+='</div></div>';
     });
@@ -2618,15 +2710,18 @@ function renderQuestJournal(){
 }
 $('bQuest').addEventListener('click',()=>{ openWin($('winQuest'),1); if(!$('winQuest').hidden) renderQuestJournal(); });
 $('winQuest').addEventListener('click',e=>{
-  const tab=e.target.closest('[data-qtab]'); if(tab){ questTab=tab.dataset.qtab; renderQuestJournal(); return; }
+  const tab=e.target.closest('[data-qtab]'); if(tab){questTab=tab.dataset.qtab;renderQuestJournal();return;}
+  const track=e.target.closest('[data-qtrack]'); if(track){setTrackedQuest(track.dataset.qtrack);return;}
   const loc=e.target.closest('[data-qnpc]'); if(loc){
-    const n=npcObjs.find(x=>x.id===loc.dataset.qnpc); if(n) goToNpc(n); else log('NPC não encontrado no mundo.','bad'); return;
+    const n=npcObjs.find(x=>x.id===loc.dataset.qnpc); if(n)goToNpc(n);else log('NPC não encontrado no mundo.','bad');return;
   }
   const abandon=e.target.closest('[data-qabandon]'); if(abandon){
-    if(abandon.dataset.confirm==='1'){ sendWs({t:'quest',action:'abandon',questId:abandon.dataset.qabandon}); }
-    else { abandon.dataset.confirm='1'; abandon.textContent='Confirmar abandono'; }
+    if(abandon.dataset.confirm==='1')sendWs({t:'quest',action:'abandon',questId:abandon.dataset.qabandon});
+    else{abandon.dataset.confirm='1';abandon.textContent='Confirmar abandono';}
   }
 });
+$('qtCycle').addEventListener('click',cycleTrackedQuest);
+$('qtLocate').addEventListener('click',navigateTrackedQuest);
 
 /* =========================================================
    INTERFACE: BARRA DE ATALHOS, STATUS, JANELAS
@@ -2806,7 +2901,7 @@ $('bChar').addEventListener('click', ()=> openWin($('winChar'), -1));
 
 buildHotbar();
 function refreshUI(){
-  refreshStatus(); refreshHotbar(); refreshTarget(); refreshQuestBadge();
+  refreshStatus(); refreshHotbar(); refreshTarget(); refreshQuestBadge(); renderQuestTracker();
   if (!$('winNpc').hidden) renderNpc();
   if (!$('winInv').hidden) renderInv();
   if (!$('winChar').hidden) renderChar();
@@ -2993,6 +3088,12 @@ function drawMini(){
     });
   }
   const lim = MC - 8, edge = (x,y) => { const dx = x-MC, dy = y-MC, d = Math.hypot(dx,dy); return d > lim ? [MC+dx/d*lim, MC+dy/d*lim] : [x,y]; };
+  const qt=questTargetFor(trackedQuestState());
+  if(qt){
+    const [qx,qy]=edge(...P(qt.x,qt.z));
+    mctx.beginPath();mctx.arc(qx,qy,8,0,Math.PI*2);mctx.fillStyle='#F6C85A';mctx.fill();mctx.lineWidth=2.5;mctx.strokeStyle='#FFF1B8';mctx.stroke();
+    mctx.font='bold 13px "Baloo 2",sans-serif';mctx.textAlign='center';mctx.textBaseline='middle';mctx.fillStyle='#3A2206';mctx.fillText('◆',qx,qy+.5);
+  }
   others.forEach(o=>{ const [x,y] = edge(...P(o.x, o.z)); mctx.fillStyle = o.party ? '#8FE35A' : '#6EC1FF'; mctx.beginPath(); mctx.arc(x, y, 5, 0, Math.PI*2); mctx.fill(); });
   mctx.translate(MC, MC); mctx.rotate(Math.PI - player.face);
   mctx.beginPath(); mctx.moveTo(0,-11); mctx.lineTo(7,8); mctx.lineTo(0,4); mctx.lineTo(-7,8); mctx.closePath();
@@ -3018,6 +3119,16 @@ function surfaceAt(x, z){
   return null;
 }
 function surfaceY(x, z){ const s = surfaceAt(x,z); return s ? s.h : 0; }
+function updateQuestBeacon(t){
+  const target=questTargetFor(trackedQuestState());
+  if(!target){questBeacon.visible=false;return;}
+  const dist=Math.hypot(target.x-player.x,target.z-player.z);
+  questBeacon.visible=dist<190;
+  if(!questBeacon.visible)return;
+  questBeacon.position.set(target.x,surfaceY(target.x,target.z)+.12,target.z);
+  const pulse=1+Math.sin(t*4)*.12;questRing.scale.setScalar(pulse);questRing.rotation.z=t*.8;
+  questBeam.material.opacity=.24+.12*(.5+.5*Math.sin(t*3));
+}
 function pushOut(nx, nz, rad, isle){
   if (isle === undefined || isle === -1){
     for (const c of colAt(nx, nz)){
@@ -3307,6 +3418,7 @@ function frame(){
   clouds.forEach(c=>{ c.a += c.v*dt; c.g.position.set(Math.cos(c.a)*c.r, c.y, Math.sin(c.a)*c.r); });
   isles.forEach(i=>{ i.g.position.y = i.y + Math.sin(t*0.5 + i.ph)*0.8; });
   skyDome.position.copy(camera.position);
+  updateQuestBeacon(t);
   if (HQ){ sun.position.set(player.x - 60, player.y + 70, player.z + 40); sun.target.position.set(player.x, player.y, player.z); }
 
   renderer.render(scene, camera);
@@ -3315,7 +3427,7 @@ function frame(){
   refreshCooldowns();
 
   uiT += dt; if (uiT > 0.15){
-    uiT = 0; refreshStatus(); if (target) refreshTarget();
+    uiT = 0; refreshStatus(); renderQuestTracker(); if (target) refreshTarget();
     const an = areaName(player.x, player.z);
     if (an !== lastArea){ const first = !lastArea; lastArea = an; $('area').textContent = an; if (!first && !helpOpen) banner(an, 'Reino De Claudonia'); }
   }
@@ -3520,12 +3632,12 @@ function handle(m){
     applyQuestSync(null,m.state,m.legacy);
     if(Array.isArray(m.inventory)) ch.inv=m.inventory;
     if(m.ok===false&&m.msg) log(m.msg,'bad');
-    else if(m.event==='accepted'){const q=questCatalog[m.questId];log(q?`${q.title} aceita.`:'Missão aceita.','gold');}
-    else if(m.event==='abandoned'){const q=questCatalog[m.questId];log(q?`${q.title} abandonada.`:'Missão abandonada.');}
-    else if(m.event==='completed'){const q=questCatalog[m.questId];if(q)log(`${q.title} concluída!`,'gold');}
+    else if(m.event==='accepted'){trackedQuestId=m.questId;const q=questCatalog[m.questId];log(q?`${q.title} aceita.`:'Missão aceita.','gold');}
+    else if(m.event==='abandoned'){if(trackedQuestId===m.questId)trackedQuestId=null;const q=questCatalog[m.questId];log(q?`${q.title} abandonada.`:'Missão abandonada.');}
+    else if(m.event==='completed'){if(trackedQuestId===m.questId)trackedQuestId=null;const q=questCatalog[m.questId];if(q)log(`${q.title} concluída!`,'gold');}
     refreshUI(); if(npcOpen)renderNpc();
   }
-  else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[]};derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
+  else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[]};trackedQuestId=null;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
   else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}

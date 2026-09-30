@@ -25,10 +25,10 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui 12 quests de historia, quatro provas e seis NPCs',()=>{
+test('catalogo possui 18 quests de historia, quatro provas e seis NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
-  assert.equal(catalog.length,16);
-  assert.equal(catalog.filter(q=>q.category==='story').length,12);
+  assert.equal(catalog.length,22);
+  assert.equal(catalog.filter(q=>q.category==='story').length,18);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
   for(const type of ['talk','kill','explore','delivery','collect']) assert.ok(types.has(type));
@@ -145,4 +145,31 @@ test('prova legada ativa migra e pode continuar sem refazer a jornada',()=>{
   assert.equal(player.dados.quest.id,'prova_arqueiro');
   assert.equal(qm.ready(player,'prova_arqueiro'),true);
   assert.equal(player.dirty,true);
+});
+test('cadeia 15-20 libera para qualquer classe concluida e bloqueia aprendiz',()=>{
+  const sent1=[],a=makePlayer({L:15,dados:{L:15,cls:'guerreiro',quests:{active:{},completed:['prova_guerreiro']}}}),qm1=manager(sent1);
+  assert.equal(qm1.accept(a.player,'jornada_13_novo_caminho'),true);
+
+  const sent2=[],b=makePlayer({L:15,dados:{L:15,cls:'aprendiz',quests:{active:{},completed:['prova_guerreiro']}}}),qm2=manager(sent2);
+  assert.equal(qm2.accept(b.player,'jornada_13_novo_caminho'),false);
+
+  const sent3=[],c=makePlayer({L:15,dados:{L:15,cls:'mago',quests:{active:{},completed:['prova_mago']}}}),qm3=manager(sent3);
+  assert.equal(qm3.accept(c.player,'jornada_13_novo_caminho'),true);
+});
+
+test('cadeia pos-classe respeita ordem e termina com missao de voo',()=>{
+  const {player,sent}=makePlayer({L:20,dados:{L:20,cls:'arqueiro',quests:{active:{},completed:['prova_arqueiro','jornada_13_novo_caminho','jornada_14_planalto','jornada_15_golems','jornada_16_musgo','jornada_17_guardioes']}}}),qm=manager(sent);
+  assert.equal(qm.accept(player,'jornada_18_licenca_voo'),true);
+  const q=qm.publicCatalog().find(x=>x.id==='jornada_18_licenca_voo');
+  assert.equal(q.reward.gold,500);
+  assert.equal(q.objectives[0].type,'talk');
+  assert.equal(q.objectives[0].npcId,'ferreiro');
+});
+test('personagem antigo já classado recebe prova concluida e libera pos-classe',()=>{
+  const {player,sent}=makePlayer({L:16,dados:{L:16,cls:'druida',quest:null,quests:null}}),qm=manager(sent);
+  const state=qm.initializePlayer(player);
+  assert.ok(state.completed.includes('prova_druida'));
+  assert.equal(state.active.prova_druida,undefined);
+  assert.equal(player.dados.quest,null);
+  assert.equal(qm.accept(player,'jornada_13_novo_caminho'),true);
 });
