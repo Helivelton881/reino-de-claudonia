@@ -411,6 +411,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   <button id="bInv" type="button" title="Mochila (I)">🎒<small>Mochila</small></button>
   <button id="bChar" type="button" title="Personagem (C)">🛡️<small>Herói</small></button>
   <button id="bSocial" type="button" title="Grupo e guilda (G)">🤝<small>Grupo</small></button>
+  <button id="bSkills" type="button" title="Árvore de habilidades (K)">🌟<small>Skills</small></button>
   <button id="bQuest" type="button" title="Diário de missões (J)">📜<small>Missões</small><span class="badge" id="questBadge"></span></button>
   <button id="bShop" type="button" title="Loja pessoal (L)">🏪<small>Loja</small></button>
   <button id="bChat" type="button" title="Conversar (Enter)">💬<small>Chat</small></button>
@@ -457,6 +458,11 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <section class="win" id="winQuest" hidden aria-label="Diário de missões">
   <header><b>Diário de Missões</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
   <div class="wbody" id="questBody"></div>
+</section>
+
+<section class="win" id="winSkills" hidden aria-label="Árvore de habilidades">
+  <header><b>Árvore de Habilidades</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+  <div class="wbody" id="skillsBody"></div>
 </section>
 
 <section class="win" id="winPlayer" hidden aria-label="Jogador">
@@ -670,7 +676,7 @@ const maxLevel = () => ch.cls === 'aprendiz' ? 15 : 60;
    ESTADO DO PERSONAGEM (salvo no navegador)
    ========================================================= */
 function freshChar(){
-  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[],lastCompletedAt:{}},
+  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[],lastCompletedAt:{}}, skillTree:{version:1,ranks:{},specialization:null,respecs:0},
     inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],
     eq:{arma:'espada_treino', capacete:null, peitoral:null, botas:null, voo:null}, equp:{}, hp:null, fp:null, mp:null};
 }
@@ -680,6 +686,13 @@ const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
 // Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
 let party = {leader:null, members:[], skills:{}}, trade = null, myGuild = null, guildList = null, guildAsked = false, myShop = null;
 let questCatalog = {}, questState = {active:[], completed:[], lastCompletedAt:{}}, npcCatalog = [];
+let skillCatalog = {}, skillTreeState = {version:1,cls:'aprendiz',level:1,total:0,spent:0,available:0,ranks:{},specialization:null,respecs:0};
+function applySkillSync(catalog,state){
+  if(Array.isArray(catalog)) skillCatalog=Object.fromEntries(catalog.map(s=>[s.id,s]));
+  if(state&&state.ranks) skillTreeState={...skillTreeState,...state,ranks:{...state.ranks}};
+}
+const skillRank=id=>Math.max(0,Math.floor(skillTreeState.ranks&&skillTreeState.ranks[id]||0));
+const skillKnown=id=>skillRank(id)>0||(!Object.keys(skillCatalog).length&&SKILLS[id]&&SKILLS[id].cls===ch.cls&&SKILLS[id].req<=ch.L);
 const questsForNpc = npcId => Object.values(questCatalog).filter(q=>q.npcId===npcId);
 const activeQuestState = questId => (questState.active||[]).find(q=>q.id===questId) || null;
 function applyQuestSync(catalog,state,legacy){
@@ -2258,6 +2271,7 @@ function aoeAt(x, z, sk){
 }
 function useSkill(id){
   const sk = SKILLS[id];
+  if(!sk||!skillKnown(id)){log('Habilidade ainda não aprendida.','bad');return;}
   if (!sk || sk.cls !== ch.cls) return;
   if (sk.req > ch.L){ log(`${sk.name} libera no nível ${sk.req}.`); return; }
   if ((cds[id]||0) > 0) return;
@@ -2603,8 +2617,10 @@ function renderNpc(){
   const C=CLASSES[n.id];
   if(C){
     html+=`<p>${C.desc}</p>`;
-    if(ch.cls===n.id) html+=`<p>Bom te ver de novo. Continue treinando: novas habilidades chegam nos níveis 17 e 20.</p>`;
-    else if(ch.cls!=='aprendiz') html+=`<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
+    if(ch.cls===n.id){
+      html+=`<p>Bom te ver de novo. Sua árvore define como as habilidades evoluem em combate.</p>`;
+      html+=`<div class="actions"><button class="btn" type="button" data-open-skills="1">Abrir árvore</button><button class="btn ghost" type="button" data-skill-respec="1">Redefinir ranks</button></div>`;
+    }else if(ch.cls!=='aprendiz') html+=`<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
   }
   html+=questNpcHTML(n.id);
   html+=npcServiceHTML(n,meta);
@@ -2724,6 +2740,8 @@ function sellMats(){
   ch.gold+=total;log(`Vendeu materiais por ${total} ouro.`,'gold');dirty=true;save();refreshUI();
 }
 $('winNpc').addEventListener('click', e=>{
+  const openSkills=e.target.closest('[data-open-skills]');if(openSkills){openWin($('winSkills'),1);return;}
+  const respec=e.target.closest('[data-skill-respec]');if(respec&&npcOpen){sendWs({t:'skillTree',action:'respec',npcId:npcOpen.id});return;}
   const service=e.target.closest('[data-service]');if(service&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:service.dataset.service});return;}
   const serviceBuy=e.target.closest('[data-service-buy]');if(serviceBuy&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:'buy',itemId:serviceBuy.dataset.serviceBuy});return;}
   const guide=e.target.closest('[data-guide-zone]');if(guide){const z=ZONES.find(x=>x.key===guide.dataset.guideZone);if(z){clearMoveRoute();if(!setMoveRoute(z.x,z.z,false))log('Não foi possível traçar a rota indicada.','bad');else log(`Rota marcada: ${z.name}.`,'gold');}return;}
@@ -2815,7 +2833,7 @@ $('qtLocate').addEventListener('click',navigateTrackedQuest);
 const hotbarEl = $('hotbar');
 let HOTBAR = [];
 function buildHotbar(){
-  const sk = Object.keys(SKILLS).filter(k=> SKILLS[k].cls === ch.cls);
+  const sk = Object.keys(SKILLS).filter(k=> SKILLS[k].cls === ch.cls && skillKnown(k));
   HOTBAR = [{kind:'attack'}, sk[0] ? {kind:'skill', id:sk[0]} : null, sk[1] ? {kind:'skill', id:sk[1]} : null, sk[2] ? {kind:'skill', id:sk[2]} : null,
     {kind:'item', id:'pocao_vida'}, {kind:'item', id:'pocao_mana'}, {kind:'item', id:'pocao_energia'}, {kind:'fly'}, {kind:'item', id:'combustivel'}];
   hotbarEl.innerHTML = '';
@@ -2961,6 +2979,39 @@ $('winChar').addEventListener('click', e=>{
   }
 });
 
+function skillRankText(s,rank){
+  const r=s&&s.ranks&&s.ranks[Math.max(0,rank-1)];if(!r)return'Não aprendido';
+  const out=[];
+  if(r.multiplier)out.push(`${Math.round(r.multiplier*100)}% dano`);
+  if(r.healPower)out.push(`${Math.round(r.healPower*100)}% cura`);
+  if(r.buff){if(r.buff.atk)out.push(`+${Math.round(r.buff.atk*100)}% ataque`);if(r.buff.def)out.push(`+${Math.round(r.buff.def*100)}% defesa`);if(r.buff.crit)out.push(`+${Math.round(r.buff.crit*100)}% crítico`);if(r.buff.seconds)out.push(`${r.buff.seconds}s`);}
+  if(r.radius)out.push(`raio ${r.radius}m`);if(r.slow)out.push(`slow ${r.slow}s`);if(r.critAdd)out.push(`+${Math.round(r.critAdd*100)}% crítico`);
+  return out.join(' · ')||`Rank ${rank}`;
+}
+function skillPrereqsMetClient(s){return (s.requires||[]).every(r=>skillRank(r.id)>=r.rank);}
+function renderSkills(){
+  const body=$('skillsBody');if(!body)return;
+  const list=Object.values(skillCatalog).filter(s=>s.cls===ch.cls).sort((a,b)=>(a.tree?.row||0)-(b.tree?.row||0));
+  let html=`<div class="pts">${CLASSES[ch.cls]?.name||ch.cls} · Pontos de habilidade <b>${skillTreeState.available||0}</b> / ${skillTreeState.total||0} <span class="note">(gastos ${skillTreeState.spent||0})</span></div>`;
+  if(!list.length){body.innerHTML=html+'<p class="note">Árvore ainda não sincronizada com o servidor.</p>';return;}
+  for(const s of list){
+    const rank=skillRank(s.id),max=s.maxRank||1,next=rank+1,levelOk=ch.L>=s.req,preOk=skillPrereqsMetClient(s),points=(skillTreeState.available||0)>0,can=next<=max&&levelOk&&preOk&&points;
+    const prereq=(s.requires||[]).map(r=>`${skillCatalog[r.id]?.name||r.id} rank ${r.rank}`).join(', ');
+    html+=`<div class="quest-card ${rank?'ready':''}"><h3>${s.icon||'✦'} ${s.name} <span class="qstate">Rank ${rank}/${max}</span></h3><p>${s.description||''}</p>`;
+    html+=`<p><b>Atual:</b> ${skillRankText(s,rank)}${next<=max?`<br><b>Próximo:</b> ${skillRankText(s,next)}`:''}</p>`;
+    html+=`<p class="note">Nível ${s.req}${prereq?' · Requer '+prereq:''} · ${s.fp?s.fp+' FP':s.mp?s.mp+' MP':'sem custo'} · ${s.cooldown}s recarga</p>`;
+    if(next<=max)html+=`<div class="quest-actions"><button class="btn" type="button" data-skill-learn="${s.id}" ${can?'':'disabled'}>Investir 1 ponto</button></div>`;
+    html+='</div>';
+  }
+  if(ch.cls!=='aprendiz')html+='<p class="note">Para redefinir os ranks, fale com o mestre da sua classe. A redefinição é validada pelo servidor.</p>';
+  body.innerHTML=html;
+}
+$('winSkills').addEventListener('click',e=>{
+  const b=e.target.closest('[data-skill-learn]');if(!b)return;
+  if(!b.dataset.confirm){b.dataset.confirm='1';b.textContent='Confirmar investimento';return;}
+  sendWs({t:'skillTree',action:'learn',skillId:b.dataset.skillLearn});
+});
+
 let zTop = 20;
 function openWin(w, side){
   if (!w.hidden){ w.hidden = true; return; }
@@ -2984,6 +3035,7 @@ document.querySelectorAll('.win').forEach(w=>{
 });
 $('bInv').addEventListener('click', ()=> openWin($('winInv'), 1));
 $('bChar').addEventListener('click', ()=> openWin($('winChar'), -1));
+$('bSkills').addEventListener('click', ()=> openWin($('winSkills'), 1));
 
 buildHotbar();
 function refreshUI(){
@@ -2991,6 +3043,7 @@ function refreshUI(){
   if (!$('winNpc').hidden) renderNpc();
   if (!$('winInv').hidden) renderInv();
   if (!$('winChar').hidden) renderChar();
+  if (!$('winSkills').hidden) renderSkills();
   if (!$('winQuest').hidden) renderQuestJournal();
   if (!$('winSocial').hidden) renderSocial();
   if (!$('winPlayer').hidden) renderPlayer();
@@ -3016,6 +3069,7 @@ addEventListener('keydown', e=>{
   if (k==='i' && !e.repeat) openWin($('winInv'), 1);
   if (k==='c' && !e.repeat) openWin($('winChar'), -1);
   if (k==='g' && !e.repeat) openSocial();
+  if (k==='k' && !e.repeat) $('bSkills').click();
   if (k==='j' && !e.repeat) $('bQuest').click();
   if (k==='l' && !e.repeat) $('bShop').click();
   if (k==='tab'){ e.preventDefault(); const n = nearestCycle(); if (n) selectTarget(n); }
@@ -3672,6 +3726,7 @@ function handle(m){
     m.others.forEach(addOther); countOnline();
     myGuild = m.guild || null; guildList = null; guildAsked = false;
     applyQuestSync(m.questCatalog,m.questState,m.questLegacy); npcCatalog = Array.isArray(m.npcCatalog) ? m.npcCatalog : [];
+    applySkillSync(m.skillCatalog,m.skillState); buildHotbar();
     authoritativeCombat=!!m.authoritativeCombat;
     if(authoritativeCombat){
       clearMonsters();(m.monsters||[]).forEach(netMonster);
@@ -3714,6 +3769,7 @@ function handle(m){
   else if(m.t==='equipmentState'){ch.inv=m.inv;ch.eq=m.eq;ch.equp=m.equp;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
   else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();setHeroWeapon(hero,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
+  else if(m.t==='skillTreeState'){if(m.state)applySkillSync(null,m.state);if(m.ok===false&&m.msg)log(m.msg,'bad');else if(m.event==='learned')log('Rank de habilidade aumentado.','gold');else if(m.event==='respec')log('Árvore de habilidades redefinida.','gold');buildHotbar();refreshUI();}
   else if(m.t==='npcServiceState'){if(m.msg)log(m.msg,m.ok===false?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='questState'){
     applyQuestSync(null,m.state,m.legacy);
@@ -3724,7 +3780,7 @@ function handle(m){
     else if(m.event==='completed'){if(trackedQuestId===m.questId)trackedQuestId=null;const q=questCatalog[m.questId];if(q)log(`${q.title} concluída!`,'gold');}
     refreshUI(); if(npcOpen)renderNpc();
   }
-  else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[],lastCompletedAt:{}};trackedQuestId=null;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
+  else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[],lastCompletedAt:{}};skillTreeState={version:1,cls:'aprendiz',level:1,total:0,spent:0,available:0,ranks:{},specialization:null,respecs:0};trackedQuestId=null;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
   else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}

@@ -7,9 +7,10 @@ const { derivePlayer, playerDamage, monsterDamage } = require('./damage-calculat
 class CombatManager {
   constructor({ players, send, now=Date.now, rng=Math.random, awardExperience, onMonsterDeath }) {
     this.players=players; this.send=send; this.now=now; this.rng=rng; this.awardExperience=awardExperience; this.onMonsterDeath=onMonsterDeath;
-    this.monsters=null;
+    this.monsters=null; this.skillManager=null;
   }
   setMonsterManager(manager){ this.monsters=manager; }
+  setSkillManager(manager){ this.skillManager=manager; }
   initializePlayer(player){
     const s=derivePlayer(player.dados); player.stats=s;
     for(const key of ['hp','mp','fp']) {
@@ -33,8 +34,9 @@ class CombatManager {
   }
   skill(player,message={}) {
     if (!this.canFight(player)) return this.fail(player,'Você não pode usar habilidade agora.');
-    const skill=SKILLS[message.skillId], stats=this.refresh(player);
-    if(!skill||skill.cls!==stats.cls||stats.level<skill.req)return this.fail(player,'Habilidade inválida.');
+    const raw=SKILLS[message.skillId], stats=this.refresh(player);
+    const skill=this.skillManager?this.skillManager.resolved(player,message.skillId):(raw&&raw.cls===stats.cls&&stats.level>=raw.req?{...raw,...(raw.ranks&&raw.ranks[0]||{}),rank:1}:null);
+    if(!skill)return this.fail(player,'Habilidade inválida ou não aprendida.');
     const now=this.now(), ready=player.cooldowns.get(message.skillId)||0;
     if(now<ready)return this.fail(player,'Habilidade em recarga.');
     if((skill.fp&&player.fp<skill.fp)||(skill.mp&&player.mp<skill.mp))return this.fail(player,'Recurso insuficiente.');
@@ -47,7 +49,7 @@ class CombatManager {
     }
     player.fp-=skill.fp||0; player.mp-=skill.mp||0; player.dados.fp=player.fp; player.dados.mp=player.mp; player.cooldowns.set(message.skillId,now+skill.cooldown*1000); player.dirty=true;
     if(skill.type==='buff'){player.buffs.set(skill.buff.id,{...skill.buff,until:now+skill.buff.seconds*1000});this.sync(player);return true;}
-    if(skill.type==='heal'){const got=Math.min(Math.round(20+stats.int*2.2+stats.level*3),stats.maxHp-player.hp);player.hp+=got;player.dados.hp=player.hp;this.sync(player,{heal:got});this.syncPartyHp(player);return true;}
+    if(skill.type==='heal'){const power=Number(skill.healPower)||1;const got=Math.min(Math.round((20+stats.int*2.2+stats.level*3)*power),stats.maxHp-player.hp);player.hp+=got;player.dados.hp=player.hp;this.sync(player,{heal:got,skillRank:skill.rank});this.syncPartyHp(player);return true;}
     const options={multiplier:skill.multiplier,magic:skill.magic,stat:skill.stat,critAdd:skill.critAdd};
     if(skill.type==='aoe'){
       const center=skill.around==='self'?player:target; let result=false;
@@ -93,7 +95,7 @@ class CombatManager {
     player.dirty=true;this.refresh(player);this.send(player.ws,{t:'equipmentState',inv,eq,equp:upgrades,combat:{hp:player.hp,maxHp:player.stats.maxHp,mp:player.mp,maxMp:player.stats.maxMp,fp:player.fp,maxFp:player.stats.maxFp}});return true;
   }
   addAttribute(player,message={}){const key=message.stat;if(!['str','sta','dex','int'].includes(key)||Math.floor(player.dados.pts||0)<1)return this.fail(player,'Ponto de atributo inválido.');player.dados[key]=Math.floor(player.dados[key]||15)+1;player.dados.pts--;player.dirty=true;this.refresh(player);this.send(player.ws,{t:'attributeState',stat:key,value:player.dados[key],pts:player.dados.pts});return true;}
-  resetPlayer(player){player.dados={L:1,exp:0,str:15,sta:15,dex:15,int:15,pts:0,gold:0,cls:'aprendiz',quest:null,quests:{active:{},completed:[]},inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],eq:{arma:'espada_treino',capacete:null,peitoral:null,botas:null,voo:null},equp:{}};player.L=1;player.x=0;player.z=5;this.initializePlayer(player);player.dirty=player.posDirty=true;this.send(player.ws,{t:'resetState',dados:player.dados});return true;}
+  resetPlayer(player){player.dados={L:1,exp:0,str:15,sta:15,dex:15,int:15,pts:0,gold:0,cls:'aprendiz',quest:null,quests:{active:{},completed:[]},skillTree:{version:1,ranks:{},specialization:null,respecs:0},inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}],eq:{arma:'espada_treino',capacete:null,peitoral:null,botas:null,voo:null},equp:{}};player.L=1;player.x=0;player.z=5;this.initializePlayer(player);player.dirty=player.posDirty=true;this.send(player.ws,{t:'resetState',dados:player.dados});if(this.skillManager)this.skillManager.sync(player,{event:'reset'});return true;}
   changeClassFromQuest(player,cls){
     const rules={guerreiro:{item:'presa',n:6,weapon:'espada_soldado'},druida:{item:'chapeu',n:8,weapon:'cajado_carvalho'},mago:{item:'gosma',n:12,weapon:'varinha_arcana'},arqueiro:{item:'pelo',n:10,weapon:'arco_curto'}},rule=rules[cls];
     if(!rule||player.dados.cls!=='aprendiz'||player.L<15)return this.fail(player,'Troca de classe inválida.');const inv=player.dados.inv||[],mat=inv.find(x=>x&&x.id===rule.item&&x.n>=rule.n);if(!mat)return this.fail(player,'Materiais insuficientes.');

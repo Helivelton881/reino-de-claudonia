@@ -113,14 +113,21 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 - Progressão principal da Fase 7 cobre do nível 1 ao 60.
 - Catálogo atual: 60 quests (46 de história + 6 side + 4 diárias + 4 provas) e
   25 NPCs funcionais.
-- QA atual: 69 testes automatizados passando.
+- Fase 8.1: fundação da Skill Tree iniciada. `server/data/skills.js` agora possui
+  nomes, target, ranks, requisitos e dependências de árvore; `SkillManager`
+  server-authoritative controla pontos separados, ranks, migração, investimento e
+  respec somente próximo ao mestre da própria classe. O combate resolve o rank no
+  servidor e o cliente ganhou janela de Skill Tree com comparação de ranks,
+  confirmação de investimento e atalho K. Não houve asset 3D novo nesta subfase.
+- QA atual: 78 testes automatizados passando.
 
 ## Limites conhecidos (próximos passos)
 - A Fase 7 está formalmente fechada: cadeia 1-60, quests paralelas e diárias,
   25 NPCs funcionais, diálogos/serviços data-driven, objetivos variados,
   progresso de grupo em combate e serviços críticos validados no servidor.
-- Próxima fase planejada: Skill Tree, seguida de itemização/sets, Giants/Bosses,
-  dungeons, pets/social, expansão 60-100, PvP/guild, lifestyle e Live Ops.
+- A Fase 8 está em andamento. Próximas subfases: passivas/debuff/DOT/controle,
+  duas especializações originais por classe no nível 60, sinergia de party e
+  polimento visual/VFX da árvore antes do fechamento da fase.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
   3D de skill continua passando pelo Blender aberto no PC antes de entrar no jogo.
 

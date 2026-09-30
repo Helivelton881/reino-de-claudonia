@@ -17,6 +17,7 @@ const CombatManager = require('./server/combat/combat-manager');
 const LootManager = require('./server/loot/loot-manager');
 const EconomyManager = require('./server/economy/economy-manager');
 const QuestManager = require('./server/quests/quest-manager');
+const SkillManager = require('./server/skills/skill-manager');
 const NpcServiceManager = require('./server/npcs/npc-service-manager');
 const NPCS = require('./server/data/npcs');
 
@@ -73,6 +74,7 @@ const erro = (p, msg) => send(p.ws, { t: 'erro', msg });
 const spawnManager = new SpawnManager(ZONES);
 const worldNavigation = new WorldNavigation();
 const questManager = new QuestManager({send});
+const skillManager = new SkillManager({send});
 const emitirPerto = (point, msg) => { for (const p of players.values()) if (perto(point, p, 110)) send(p.ws, msg); };
 let lootManager;
 const combatManager = new CombatManager({
@@ -94,7 +96,7 @@ const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, sp
 lootManager = new LootManager({ players, send, emitNearby:emitirPerto });
 const economyManager = new EconomyManager({send});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
-combatManager.setMonsterManager(monsterManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
+combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
 
 async function salvar(p) {
   if (!p.dirty && !p.posDirty) return;
@@ -182,6 +184,7 @@ wss.on('connection', ws => {
         };
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         questManager.initializePlayer(novo);
+        skillManager.initializePlayer(novo);
         await carregarGuilda(novo);
         if (ws.readyState !== 1) return;
         p = novo;
@@ -198,6 +201,8 @@ wss.on('connection', ws => {
           questCatalog: questManager.publicCatalog(),
           questState: questManager.snapshot(p),
           questLegacy: p.dados.quest || null,
+          skillCatalog: skillManager.publicCatalog(),
+          skillState: skillManager.snapshot(p),
           npcCatalog: NPCS
         });
         broadcast({ t: 'join', ...resumo(p) }, p);
@@ -246,7 +251,7 @@ wss.on('connection', ws => {
         if (!m.dados || typeof m.dados !== 'object' || Array.isArray(m.dados)) return;
         if (JSON.stringify(m.dados).length > 20000) return;
         if (COMBATE_AUTORITATIVO) {
-          const protectedKeys=new Set(['L','exp','gold','inv','hp','mp','fp','eq','equp','str','sta','dex','int','pts','cls','upPity','quest','quests']);
+          const protectedKeys=new Set(['L','exp','gold','inv','hp','mp','fp','eq','equp','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree']);
           for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
           Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
         } else {
@@ -277,7 +282,8 @@ wss.on('connection', ws => {
       case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
       case 'npcTalk': questManager.talk(p,m.npcId); break;
       case 'npcService': if (COMBATE_AUTORITATIVO) npcServiceManager.act(p,m); break;
-      case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>combatManager.changeClassFromQuest(player,cls),grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
+      case 'skillTree': if(m.action==='learn') skillManager.learn(p,m.skillId); else if(m.action==='respec') skillManager.respec(p,m.npcId); else skillManager.fail(p,'Ação de árvore inválida.'); break;
+      case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>{const ok=combatManager.changeClassFromQuest(player,cls);if(ok)skillManager.onClassChange(player);return ok;},grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
       case 'resetCharacter': if (COMBATE_AUTORITATIVO) combatManager.resetPlayer(p); break;
       case 'economy': if (COMBATE_AUTORITATIVO) economyManager.act(p,m); break;
       case 'combatRespawn': if (COMBATE_AUTORITATIVO) combatManager.respawn(p,0,5); break;
@@ -463,7 +469,7 @@ function grantPlayerExp(p,amount,meta={}){
   let leveled=false;p.dados.exp=Math.max(0,Math.floor(p.dados.exp||0))+amount;
   while(p.L<cap&&p.dados.exp>=expNeed(p.L)){p.dados.exp-=expNeed(p.L);p.L++;p.dados.L=p.L;p.dados.pts=Math.max(0,Math.floor(p.dados.pts||0))+2;leveled=true;}
   if(p.L>=cap)p.dados.exp=0;
-  if(leveled){combatManager.refresh(p);p.hp=p.stats.maxHp;p.mp=p.stats.maxMp;p.fp=p.stats.maxFp;Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});broadcast({t:'info',id:p.id,L:p.L});if(p.party)enviarGrupo(p.party);}
+  if(leveled){combatManager.refresh(p);p.hp=p.stats.maxHp;p.mp=p.stats.maxMp;p.fp=p.stats.maxFp;Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});skillManager.sync(p,{event:'level-up'});broadcast({t:'info',id:p.id,L:p.L});if(p.party)enviarGrupo(p.party);}
   p.dirty=true;send(p.ws,{t:'expGain',amount,source:meta.source||'unknown',monsterLevel:meta.monsterLevel||null,L:p.L,exp:p.dados.exp,pts:p.dados.pts,leveled,combat:{hp:p.hp,maxHp:p.stats.maxHp,mp:p.mp,maxMp:p.stats.maxMp,fp:p.fp,maxFp:p.stats.maxFp}});
   return amount;
 }
