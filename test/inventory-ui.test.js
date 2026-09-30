@@ -34,3 +34,30 @@ test('inventario preserva proporcao em landscape baixo como iPhone deitado',()=>
   assert.ok(html.includes('#winInv .inv-preview-frame{min-height:0;flex:1}'));
   assert.ok(html.includes('#winInv .inv-grid{grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-rows:minmax(39px,1fr)'));
 });
+
+test('inventario abre modal central de detalhes no lugar do painel sob o personagem',()=>{
+  for(const marker of ['id="invItemModal"','id="invItemIcon"','id="invItemTitle"','id="invItemDetails"','id="invItemActions"','function openInvInventoryItem','function renderInvItemModal']){
+    assert.ok(html.includes(marker),'modal de item ausente: '+marker);
+  }
+  assert.ok(!html.includes('id="invDetail"'),'painel antigo invDetail ainda presente');
+  assert.ok(html.includes('Mostrar no Chat'));
+  assert.ok(html.includes('data-inv-modal-close'));
+  assert.ok(html.includes('data-act="use"'));
+  assert.ok(html.includes('data-act="equip"'));
+  assert.ok(html.includes('data-act="favorite"'));
+  assert.ok(html.includes('data-act="lock"'));
+  assert.ok(html.includes('data-act="drop"'));
+});
+
+test('paper doll mostra apenas equipamento realmente equipado e deixa slots vazios cinza',()=>{
+  assert.ok(html.includes("icon=it?iconHTML(id):''"));
+  assert.ok(html.includes('#winInv .inv-eqslot.empty{cursor:default'));
+  assert.ok(html.includes('filter:grayscale(1)'));
+  assert.ok(html.includes("if(!ch.eq?.[slot])return;"));
+});
+
+test('modal de item possui responsividade desktop mobile e landscape',()=>{
+  assert.ok(html.includes('#winInv .inv-item-overlay{position:absolute'));
+  assert.ok(html.includes('@media(max-width:860px)'));
+  assert.ok(html.includes('#winInv .inv-item-card{width:min(690px,88%);max-height:94%'));
+});

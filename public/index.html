@@ -269,8 +269,8 @@ button{font-family:inherit;color:inherit}
 #winInv .inv-titlebar .x{position:absolute;right:12px;top:9px;width:40px;height:40px;background:radial-gradient(circle at 35% 30%,#ffb33b,#df651f 62%,#8a3215 100%);box-shadow:0 0 0 2px #6b321c,0 0 0 4px #d6a35f;color:#5b2413;font-size:28px;font-weight:900}
 #winInv .inv-help{position:absolute;right:62px;top:12px;width:34px;height:34px;border-radius:50%;border:2px solid #8b542c;background:radial-gradient(circle,#f8ca62,#d28a2f);color:#5d341b;font-weight:900;font-size:20px;z-index:4;box-shadow:0 0 0 2px #e7bd72}
 #winInv .inv-body{position:relative;display:grid;grid-template-columns:390px minmax(0,1fr);grid-template-rows:minmax(0,1fr) 36px;gap:14px 16px;padding:14px 16px 10px;background:linear-gradient(180deg,#f1dfb3 0%,#e8d2a1 100%);overflow:hidden}
-#winInv .inv-paperdoll{min-width:0;display:flex;flex-direction:column;gap:8px}
-#winInv .inv-preview-frame{position:relative;min-height:505px;border-radius:10px;border:2px solid #b37643;background:radial-gradient(ellipse at 50% 72%,rgba(155,116,66,.19),transparent 36%),linear-gradient(180deg,#f2e1b7,#e9d4a5);box-shadow:inset 0 0 0 2px #f8edcc,inset 0 0 32px rgba(105,69,31,.12);overflow:hidden}
+#winInv .inv-paperdoll{min-width:0;display:flex;flex-direction:column;gap:0}
+#winInv .inv-preview-frame{position:relative;flex:1;min-height:505px;border-radius:10px;border:2px solid #b37643;background:radial-gradient(ellipse at 50% 72%,rgba(155,116,66,.19),transparent 36%),linear-gradient(180deg,#f2e1b7,#e9d4a5);box-shadow:inset 0 0 0 2px #f8edcc,inset 0 0 32px rgba(105,69,31,.12);overflow:hidden}
 #winInv .inv-preview-frame:after{content:"";position:absolute;left:24%;right:24%;bottom:58px;height:18px;border-radius:50%;background:rgba(84,61,32,.16);filter:blur(3px);pointer-events:none}
 #invCharacter{position:absolute;inset:24px 50px 48px;width:calc(100% - 100px);height:calc(100% - 72px);z-index:1;cursor:grab;touch-action:none}
 #invCharacter:active{cursor:grabbing}
@@ -280,12 +280,11 @@ button{font-family:inherit;color:inherit}
 #winInv .inv-bottom{left:128px;right:128px;bottom:10px;grid-template-columns:repeat(2,56px);justify-content:center}
 #winInv .inv-eqslot{width:56px;height:56px;border-radius:8px;border:2px solid #9b6038;background:linear-gradient(180deg,#3b322b,#201b18);box-shadow:inset 0 0 0 2px #5d4637,0 2px 3px rgba(0,0,0,.22);display:grid;place-items:center;position:relative;color:#f3d390;font-size:25px;cursor:pointer}
 #winInv .inv-bottom .inv-eqslot{width:auto}
-#winInv .inv-eqslot.empty{color:#9d8a75;font-size:21px}
+#winInv .inv-eqslot.empty{cursor:default;color:#6f6962;border-color:#8a8178;background:linear-gradient(180deg,#66615d,#44403d);box-shadow:inset 0 0 0 2px #77716b;filter:grayscale(1);opacity:.68}
+#winInv .inv-eqslot.empty small{color:#c7c2bc;text-shadow:none;opacity:.72}
 #winInv .inv-eqslot small{position:absolute;left:2px;right:2px;bottom:1px;font-size:8.5px;line-height:1;color:#d5c3a6;text-align:center;text-shadow:0 1px 2px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #winInv .inv-eqslot.sel{border-color:#ffcf58;box-shadow:inset 0 0 0 2px #916321,0 0 0 2px #f6c64a}
 #winInv .inv-eqslot .up{position:absolute;left:3px;top:2px;font-size:10px;color:#ffd65a;font-weight:900}
-#winInv .inv-detail{min-height:96px;margin:0;padding:8px 10px;border:1px solid #b5814c;border-radius:8px;background:#f7e7bf;color:#4a3422;overflow:auto;box-shadow:inset 0 0 0 1px #fff0cf}
-#winInv .inv-detail b{color:#60351c}
 #winInv .inv-bag{min-width:0;display:flex;flex-direction:column;gap:8px}
 #winInv .inv-search{display:grid;grid-template-columns:26px auto minmax(180px,1fr);align-items:center;gap:7px;color:#4c321e;font-weight:700}
 #winInv .inv-search-icon{width:23px;height:23px;border-radius:6px;display:grid;place-items:center;background:linear-gradient(180deg,#ffd35c,#e9a92e);border:1px solid #9e6b2e;color:#fff8de;font-size:22px;line-height:1}
@@ -302,6 +301,48 @@ button{font-family:inherit;color:inherit}
 #winInv .inv-footer .inv-coin{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#f7c83c;color:#8c5a0d;border:2px solid #a86a15;font-weight:900}
 #winInv .inv-footer #gold{font-size:16px;color:#fff2c5}
 #winInv .inv-capacity{margin-left:auto;font-size:12.5px;color:#dcccb2}
+#winInv .inv-item-overlay{position:absolute;inset:0;z-index:80;display:grid;place-items:center;padding:28px;background:rgba(8,6,4,.52);backdrop-filter:blur(1.5px)}
+#winInv .inv-item-overlay[hidden]{display:none}
+#winInv .inv-item-card{position:relative;width:min(760px,92%);max-height:min(430px,84%);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:18px 18px 16px;border:2px solid #d7a66a;border-radius:8px;background:linear-gradient(180deg,rgba(24,20,17,.98),rgba(14,12,10,.98));box-shadow:0 16px 44px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,229,180,.16);color:#f3e7d3}
+#winInv .inv-item-card:before{content:"";position:absolute;inset:5px;border:1px solid rgba(222,173,111,.22);border-radius:5px;pointer-events:none}
+#winInv .inv-item-close{position:absolute;right:-15px;top:-18px;z-index:3;width:48px;height:48px;border-radius:50%;border:3px solid #7a3f1b;background:radial-gradient(circle at 35% 30%,#ffb644,#ec6f21 62%,#9d3b15);box-shadow:0 0 0 3px #e2b261;color:#672312;font-size:31px;font-weight:900;cursor:pointer}
+#winInv .inv-item-head{display:grid;grid-template-columns:74px minmax(0,1fr);gap:12px;align-items:center;padding-right:36px}
+#winInv .inv-item-icon{width:70px;height:70px;border-radius:8px;border:2px solid #9b6942;background:linear-gradient(145deg,#453b34,#211c18);box-shadow:inset 0 0 0 2px #685447;display:grid;place-items:center;font-size:36px;overflow:hidden}
+#winInv .inv-item-title{font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:900;color:#7fd3ff;text-shadow:0 1px 2px #000}
+#winInv .inv-item-sub{margin-top:3px;font-size:12px;color:#d6c2a6}
+#winInv .inv-item-details{min-height:96px;overflow:auto;padding:10px 12px;border-top:1px solid rgba(230,183,122,.55);border-bottom:1px solid rgba(230,183,122,.55);font-size:14px;line-height:1.28;color:#f2e8dc}
+#winInv .inv-item-details .note{color:#bfb5aa}
+#winInv .inv-item-details .sub{color:#f3c987}
+#winInv .inv-item-details .good{color:#8ee29e}
+#winInv .inv-item-actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+#winInv .inv-item-actions button{min-width:120px;height:44px;padding:0 18px;border-radius:18px;border:3px solid #837b72;box-shadow:inset 0 0 0 2px rgba(255,255,255,.32),0 3px 5px rgba(0,0,0,.35);font-family:inherit;font-size:13px;font-weight:900;color:#241d17;cursor:pointer}
+#winInv .inv-item-actions .primary{background:linear-gradient(180deg,#bfe967,#68bd37)}
+#winInv .inv-item-actions .secondary{background:linear-gradient(180deg,#eef08a,#8ccc45)}
+#winInv .inv-item-actions .neutral{background:linear-gradient(180deg,#f4e2b8,#bf975c)}
+#winInv .inv-item-actions .danger{background:linear-gradient(180deg,#ff9747,#e33d24);color:#fff4e8;border-color:#a93522;text-shadow:0 1px 2px #6a1d14}
+#winInv .inv-item-actions button:disabled{filter:grayscale(1);opacity:.48;cursor:default}
+@media(max-width:860px){
+  #winInv .inv-item-overlay{padding:16px}
+  #winInv .inv-item-card{width:min(680px,96%);max-height:88%;padding:14px 12px 12px;gap:9px}
+  #winInv .inv-item-head{grid-template-columns:58px minmax(0,1fr);gap:9px}
+  #winInv .inv-item-icon{width:54px;height:54px;font-size:29px}
+  #winInv .inv-item-title{font-size:18px}
+  #winInv .inv-item-details{font-size:12px;min-height:80px}
+  #winInv .inv-item-actions{gap:6px}
+  #winInv .inv-item-actions button{min-width:100px;height:38px;padding:0 12px;font-size:11px}
+}
+@media (orientation:landscape) and (max-height:560px){
+  #winInv .inv-item-overlay{padding:8px 18px}
+  #winInv .inv-item-card{width:min(690px,88%);max-height:94%;grid-template-rows:auto minmax(62px,1fr) auto;gap:6px;padding:9px 10px 8px}
+  #winInv .inv-item-close{right:-11px;top:-10px;width:34px;height:34px;font-size:22px;border-width:2px}
+  #winInv .inv-item-head{grid-template-columns:48px minmax(0,1fr);gap:7px;padding-right:28px}
+  #winInv .inv-item-icon{width:44px;height:44px;font-size:24px}
+  #winInv .inv-item-title{font-size:16px}
+  #winInv .inv-item-sub{font-size:9px}
+  #winInv .inv-item-details{min-height:58px;padding:6px 8px;font-size:9px;line-height:1.16}
+  #winInv .inv-item-actions{gap:5px}
+  #winInv .inv-item-actions button{min-width:88px;height:30px;padding:0 8px;border-width:2px;font-size:9px}
+}
 @media(max-width:860px){
   #winInv.inv-window{width:96vw;max-height:92vh}
   #winInv .inv-body{grid-template-columns:1fr;grid-template-rows:auto auto 36px;overflow:auto}
@@ -325,7 +366,6 @@ button{font-family:inherit;color:inherit}
   #winInv .inv-paperdoll{order:1;min-height:0;gap:5px;overflow:hidden}
   #winInv .inv-preview-frame{min-height:0;flex:1}
   #invCharacter{inset:4px 42px 34px;width:calc(100% - 84px);height:calc(100% - 38px)}
-  #winInv .inv-detail{min-height:0;height:54px;padding:5px 7px;font-size:10px;line-height:1.15}
   #winInv .inv-bag{order:2;min-height:0;gap:5px;overflow:hidden}
   #winInv .inv-search{grid-template-columns:22px auto minmax(120px,1fr);gap:5px;font-size:11px}
   #winInv .inv-search-icon{width:19px;height:19px;font-size:17px}
@@ -663,7 +703,6 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
         <div class="inv-equip inv-right" id="invEquipRight"></div>
         <div class="inv-equip inv-bottom" id="invEquipBottom"></div>
       </div>
-      <div class="detail inv-detail" id="invDetail"></div>
     </aside>
     <main class="inv-bag">
       <div class="inv-search">
@@ -685,6 +724,20 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
       <b id="gold">0</b>
       <span class="inv-capacity" id="invCapacity">0 / 32</span>
     </footer>
+    <div class="inv-item-overlay" id="invItemModal" hidden>
+      <section class="inv-item-card" role="dialog" aria-modal="true" aria-labelledby="invItemTitle">
+        <button class="inv-item-close" type="button" data-inv-modal-close aria-label="Fechar detalhes do item">×</button>
+        <div class="inv-item-head">
+          <div class="inv-item-icon" id="invItemIcon"></div>
+          <div>
+            <div class="inv-item-title" id="invItemTitle">Item</div>
+            <div class="inv-item-sub" id="invItemSub"></div>
+          </div>
+        </div>
+        <div class="inv-item-details" id="invItemDetails"></div>
+        <div class="inv-item-actions" id="invItemActions"></div>
+      </section>
+    </div>
   </div>
 </section>
 
@@ -3292,15 +3345,15 @@ function refreshTarget(){
   ring.material.color.set(target.giant ? 0xF2C14E : (target.type.agg ? 0xFF6B6B : 0xF2C14E));
 }
 
-let selInv=-1,selEq=null,invFilter='all',invQuery='';
+let selInv=-1,selEq=null,invFilter='all',invQuery='',invModalState=null;
 function iconHTML(id){const it=ITEMS[id];if(!it)return'◆';return it.tint?`<span class="ico ${it.tint}">${it.icon}</span>`:it.icon;}
 const rarityInfo=it=>itemCatalog.rarities[it&&it.rarity]||{id:'comum',name:'Comum',rank:0,color:'#B9C0C8'};
 const sourceLabel=s=>({npc:'NPC',common:'Monstro comum',giant:'Giant',dungeon:'Dungeon',boss:'Boss'})[s]||s||'Mundo';
 function affixText(a){if(!a)return'';const flat=['str','sta','dex','int','range'].includes(a.stat);return `${a.name||a.stat} +${flat?a.value:(a.value*100).toFixed(1)+'%'}`;}
 function setPieceCount(setId){return Object.values(ch.eq||{}).filter(id=>id&&ITEMS[id]?.setId===setId).length;}
-function itemInfo(id,up,entry=null){
+function itemInfo(id,up,entry=null,showTitle=true){
   const it=ITEMS[id];if(!it)return'<b>Item desconhecido</b>';
-  const R=rarityInfo(it);let s=`<b style="color:${R.color}">${itemName(id,up)}</b> <span class="qstate">${R.name}</span><br>`;
+  const R=rarityInfo(it);let s=showTitle?`<b style="color:${R.color}">${itemName(id,up)}</b> <span class="qstate">${R.name}</span><br>`:'';
   if(it.kind==='eq'){
     const wm=1+UP_ATK[up||0]/100,am=1+UP_DEF[up||0]/100;
     if(it.slot==='voo')s+=`${it.fly==='board'?'Prancha':'Vassoura'} voadora. Velocidade ${it.spd}.`;
@@ -3329,13 +3382,78 @@ function invVisible(s){
 }
 const INV_LEFT_SLOTS=['arma','offhand','capa','voo'],INV_RIGHT_SLOTS=['capacete','peitoral','luvas','botas'],INV_BOTTOM_SLOTS=['acessorio1','acessorio2'];
 function invEqButton(sl){
-  const id=ch.eq?.[sl],it=id&&ITEMS[id],up=id?(ch.equp?.[sl]||0):0,R=it?rarityInfo(it):null,icon=it?iconHTML(id):(SLOT_ICONS[sl]||'◇');
+  const id=ch.eq?.[sl],it=id&&ITEMS[id],up=id?(ch.equp?.[sl]||0):0,R=it?rarityInfo(it):null,icon=it?iconHTML(id):'';
   return `<button class="inv-eqslot ${id?'':'empty'} ${selEq===sl?'sel':''}" type="button" data-inv-eqslot="${sl}" style="${R?'border-color:'+R.color:''}" title="${esc(id?itemName(id,up):SLOT_NAMES[sl])}">${icon}${up?`<span class="up">+${up}</span>`:''}<small>${SLOT_NAMES[sl]}</small></button>`;
 }
 function renderInvEquipment(){
   $('invEquipLeft').innerHTML=INV_LEFT_SLOTS.map(invEqButton).join('');
   $('invEquipRight').innerHTML=INV_RIGHT_SLOTS.map(invEqButton).join('');
   $('invEquipBottom').innerHTML=INV_BOTTOM_SLOTS.map(invEqButton).join('');
+}
+function invModalData(){
+  if(invModalState?.kind==='inventory'){
+    const index=Number(invModalState.index),entry=ch.inv[index];
+    if(!entry||!ITEMS[entry.id])return null;
+    return {kind:'inventory',index,entry,id:entry.id,up:entry.up||0,it:ITEMS[entry.id]};
+  }
+  if(invModalState?.kind==='equipped'){
+    const slot=invModalState.slot,id=ch.eq?.[slot];
+    if(!id||!ITEMS[id])return null;
+    const up=ch.equp?.[slot]||0,entry={...(ch.eqMeta?.[slot]||{}),id,up};
+    return {kind:'equipped',slot,entry,id,up,it:ITEMS[id]};
+  }
+  return null;
+}
+function closeInvItemModal(){
+  invModalState=null;selInv=-1;selEq=null;
+  const modal=$('invItemModal');if(modal)modal.hidden=true;
+  renderInvEquipment();
+  $('invGrid')?.querySelectorAll('[data-inv].sel').forEach(x=>x.classList.remove('sel'));
+}
+function openInvInventoryItem(index){
+  const entry=ch.inv[index];if(!entry||!ITEMS[entry.id])return;
+  selInv=index;selEq=null;invModalState={kind:'inventory',index};renderInv();
+}
+function openInvEquippedItem(slot){
+  if(!ch.eq?.[slot])return;
+  selEq=slot;selInv=-1;invModalState={kind:'equipped',slot};renderInv();
+}
+function renderInvItemModal(){
+  const modal=$('invItemModal');if(!modal)return;
+  const d=invModalData();
+  if(!d){modal.hidden=true;invModalState=null;return;}
+  const R=rarityInfo(d.it),qty=d.kind==='inventory'?Math.max(1,Number(d.entry.n)||1):1;
+  $('invItemIcon').innerHTML=iconHTML(d.id);
+  $('invItemTitle').textContent=itemName(d.id,d.up);
+  $('invItemTitle').style.color=R.color;
+  const where=d.kind==='equipped'?`Equipado · ${SLOT_NAMES[d.slot]||d.slot}`:(d.it.kind==='eq'?(SLOT_NAMES[d.it.slot]||'Equipamento'):'Item');
+  $('invItemSub').textContent=`${R.name} · ${where}${qty>1?' · x'+qty:''}`;
+  $('invItemDetails').innerHTML=itemInfo(d.id,d.up,d.entry,false);
+  let actions=`<button class="secondary" type="button" data-inv-chat>Mostrar no Chat</button>`;
+  if(d.kind==='equipped'){
+    actions=`<button class="primary" type="button" data-inv-unequip="${d.slot}">Tirar equipamento</button>`+actions;
+  }else{
+    const s=d.entry,it=d.it,locked=!!s.locked;
+    if(it.kind==='use')actions=`<button class="primary" data-act="use" type="button">Usar</button>`+actions;
+    if(it.kind==='eq'){
+      const disabled=it.req>ch.L||(it.cls&&it.cls!==ch.cls);
+      actions=`<button class="primary" data-act="equip" type="button" ${disabled?'disabled':''}>Equipar</button>`+actions;
+    }
+    actions+=`<button class="secondary" data-act="favorite" type="button">${s.favorite?'★ Remover favorito':'☆ Favoritar'}</button>`;
+    actions+=`<button class="neutral" data-act="lock" type="button">${locked?'🔓 Desbloquear':'🔒 Bloquear'}</button>`;
+    if(it.kind==='eq'&&(s.socketed||[]).length<(it.socketCount||0)){
+      for(const c of Object.values(itemCatalog.cards))if(countItem(c.id)>0)actions+=`<button class="neutral" data-socket="${c.id}" type="button">Inserir ${esc(c.name)}</button>`;
+    }
+    actions+=`<button class="danger" data-act="drop" type="button" ${locked?'disabled':''}>Descartar</button>`;
+  }
+  $('invItemActions').innerHTML=actions;
+  modal.hidden=false;
+}
+function shareInvItemToChat(){
+  const d=invModalData();if(!d)return;
+  const R=rarityInfo(d.it),text=`[Item] ${itemName(d.id,d.up)} · ${R.name}`;
+  if(sendWs({t:'chat',text}))log(`Compartilhado no chat: ${itemName(d.id,d.up)}.`,'good');
+  else log('Sem conexão com o servidor.','bad');
 }
 function renderInv(){
   $('gold').textContent=(ch.gold||0).toLocaleString('pt-BR');
@@ -3348,34 +3466,27 @@ function renderInv(){
   for(let i=shown;i<INV_SIZE;i++)html+='<div class="cell" aria-hidden="true"></div>';
   for(let i=INV_SIZE;i<40;i++)html+='<div class="cell locked" title="Espaço bloqueado" aria-hidden="true">🔒</div>';
   $('invGrid').innerHTML=html;
-  const det=$('invDetail');
-  if(selInv>=0&&ch.inv[selInv]){
-    const s=ch.inv[selInv],it=ITEMS[s.id];let act='';
-    if(it.kind==='use')act='<button class="btn" data-act="use" type="button">Usar</button>';
-    if(it.kind==='eq')act=`<button class="btn" data-act="equip" type="button" ${it.req>ch.L||(it.cls&&it.cls!==ch.cls)?'disabled':''}>Equipar</button><button class="btn ghost" data-act="favorite" type="button">${s.favorite?'★ Remover favorito':'☆ Favoritar'}</button><button class="btn ghost" data-act="lock" type="button">${s.locked?'🔓 Desbloquear':'🔒 Bloquear'}</button>`;
-    let socketButtons='';if(it.kind==='eq'&&(s.socketed||[]).length<(it.socketCount||0)){for(const c of Object.values(itemCatalog.cards)){if(countItem(c.id)>0)socketButtons+=`<button class="btn ghost" data-socket="${c.id}" type="button">Inserir ${esc(c.name)}</button>`;}}
-    det.innerHTML=itemInfo(s.id,s.up,s)+(trade||myShop?`<p class="note">${trade?'Durante a troca, use a janela Troca para oferecer itens.':'Feche a loja pessoal para mexer na mochila.'}</p>`:`<div class="actions">${act}${socketButtons}<button class="btn ghost" data-act="drop" type="button" ${s.locked?'disabled':''}>Descartar</button></div>`);
-  }else if(selEq&&ch.eq?.[selEq]){
-    const id=ch.eq[selEq],up=ch.equp?.[selEq]||0,meta={...(ch.eqMeta?.[selEq]||{}),id,up};
-    det.innerHTML=itemInfo(id,up,meta)+`<div class="actions"><button class="btn ghost" data-inv-unequip="${selEq}" type="button">Tirar equipamento</button></div>`;
-  }else det.innerHTML='<b>Equipamento e mochila</b><br><span class="note">Selecione um slot ou item. Arraste o personagem para girá-lo.</span>';
+  renderInvItemModal();
   initInventoryPreview();syncInventoryPreviewGear();
 }
-$('invFilters').addEventListener('click',e=>{const b=e.target.closest('[data-ifilter]');if(!b)return;invFilter=b.dataset.ifilter;selInv=-1;renderInv();});
-$('invSearch').addEventListener('input',e=>{invQuery=e.target.value||'';selInv=-1;renderInv();});
+$('invFilters').addEventListener('click',e=>{const b=e.target.closest('[data-ifilter]');if(!b)return;invFilter=b.dataset.ifilter;invModalState=null;selInv=-1;selEq=null;renderInv();});
+$('invSearch').addEventListener('input',e=>{invQuery=e.target.value||'';invModalState=null;selInv=-1;selEq=null;renderInv();});
 $('winInv').addEventListener('click',e=>{
-  const eqs=e.target.closest('[data-inv-eqslot]');if(eqs){selEq=eqs.dataset.invEqslot;selInv=-1;renderInv();return;}
-  const uneq=e.target.closest('[data-inv-unequip]');if(uneq){sendWs({t:'equipment',action:'unequip',slot:uneq.dataset.invUnequip});return;}
-  const c=e.target.closest('[data-inv]');if(c){selInv=+c.dataset.inv;selEq=null;renderInv();return;}
+  const modal=$('invItemModal');
+  if(e.target===modal||e.target.closest('[data-inv-modal-close]')){closeInvItemModal();return;}
+  if(e.target.closest('[data-inv-chat]')){shareInvItemToChat();return;}
+  const eqs=e.target.closest('[data-inv-eqslot]');if(eqs){openInvEquippedItem(eqs.dataset.invEqslot);return;}
+  const uneq=e.target.closest('[data-inv-unequip]');if(uneq){const slot=uneq.dataset.invUnequip;closeInvItemModal();sendWs({t:'equipment',action:'unequip',slot});return;}
+  const c=e.target.closest('[data-inv]');if(c){openInvInventoryItem(+c.dataset.inv);return;}
   const sock=e.target.closest('[data-socket]');if(sock&&selInv>=0){sendWs({t:'item',action:'socket',where:'inventory',ref:selInv,cardId:sock.dataset.socket});return;}
-  if(e.target.closest('.inv-help')){log('Inventário: use a busca e filtros; selecione itens para equipar. Arraste o personagem para girar a prévia 3D.','gold');return;}
+  if(e.target.closest('.inv-help')){log('Inventário: toque em um item para abrir os detalhes e ações. Slots cinza estão vazios; arraste o personagem para girar a prévia 3D.','gold');return;}
   const a=e.target.closest('[data-act]');if(!a||selInv<0||!ch.inv[selInv]||trade||myShop)return;
-  const s=ch.inv[selInv];
-  if(a.dataset.act==='use'){useItem(s.id);return;}
-  if(a.dataset.act==='equip'){equip(selInv);return;}
-  if(a.dataset.act==='favorite'){sendWs({t:'item',action:'flag',index:selInv,key:'favorite',value:!s.favorite});return;}
-  if(a.dataset.act==='lock'){sendWs({t:'item',action:'flag',index:selInv,key:'locked',value:!s.locked});return;}
-  if(a.dataset.act==='drop'){if(!a.dataset.confirm){a.dataset.confirm='1';a.textContent='Confirmar descarte';return;}sendWs({t:'item',action:'discard',index:selInv});selInv=-1;}
+  const s=ch.inv[selInv],index=selInv;
+  if(a.dataset.act==='use'){closeInvItemModal();useItem(s.id);return;}
+  if(a.dataset.act==='equip'){closeInvItemModal();equip(index);return;}
+  if(a.dataset.act==='favorite'){sendWs({t:'item',action:'flag',index,key:'favorite',value:!s.favorite});return;}
+  if(a.dataset.act==='lock'){sendWs({t:'item',action:'flag',index,key:'locked',value:!s.locked});return;}
+  if(a.dataset.act==='drop'){if(!a.dataset.confirm){a.dataset.confirm='1';a.textContent='Confirmar descarte';return;}sendWs({t:'item',action:'discard',index});closeInvItemModal();}
 });
 
 function renderBank(){
@@ -3567,7 +3678,7 @@ $('winSkills').addEventListener('click',e=>{
 
 let zTop = 20;
 function openWin(w, side){
-  if(!w.hidden){w.hidden=true;return;}
+  if(!w.hidden){if(w.id==='winInv')closeInvItemModal();w.hidden=true;return;}
   w.hidden=false;w.style.zIndex=++zTop;
   const narrow=innerWidth<760,large=['winInv','winSkills'].includes(w.id);
   refreshUI();
@@ -3578,7 +3689,7 @@ function openWin(w, side){
   }
 }
 document.querySelectorAll('.win').forEach(w=>{
-  w.querySelector('[data-close]').addEventListener('click', ()=>{ w.hidden = true; });
+  w.querySelector('[data-close]').addEventListener('click', ()=>{ if(w.id==='winInv')closeInvItemModal(); w.hidden = true; });
   w.addEventListener('pointerdown', ()=>{ w.style.zIndex = ++zTop; });
   const hd = w.querySelector('header'); let drag = null;
   hd.addEventListener('pointerdown', e=>{ if (e.target.closest('button')) return; drag = {x:e.clientX - w.offsetLeft, y:e.clientY - w.offsetTop}; hd.setPointerCapture(e.pointerId); });
@@ -4331,7 +4442,7 @@ function handle(m){
   else if(m.t==='combatState'){ch.hp=m.hp;ch.mp=m.mp;ch.fp=m.fp;if(m.inv)ch.inv=m.inv;if(m.exp!==undefined)ch.exp=m.exp;if(m.expLoss)log(`Você perdeu ${m.expLoss} de experiência.`,'bad');if(m.heal)floatText(player.x,player.y+2.4,player.z,'+'+m.heal,'heal');deadOpen=false;$('dead').hidden=true;refreshUI();}
   else if(m.t==='itemEffect'){ch.inv=m.inv;if(m.itemId==='combustivel'){player.turboT=12;floatText(player.x,player.y+2.4,player.z,'Turbo!','exp');}refreshUI();}
   else if(m.t==='itemState'){if(m.state)applyItemCatalog(null,m.state);if(m.ok===false&&m.msg)log(m.msg,'bad');derive();syncHeroEquipment(hero,ch.eq,ch.cls);refreshUI();}
-  else if(m.t==='equipmentState'){applyItemCatalog(null,m);if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();syncHeroEquipment(hero,ch.eq,ch.cls);selInv=-1;selEq=null;refreshUI();}
+  else if(m.t==='equipmentState'){applyItemCatalog(null,m);if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();syncHeroEquipment(hero,ch.eq,ch.cls);invModalState=null;selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
   else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();syncHeroEquipment(hero,ch.eq,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
   else if(m.t==='skillTreeState'){if(m.state)applySkillSync(null,m.state);if(m.ok===false&&m.msg)log(m.msg,'bad');else if(m.event==='learned')log('Rank de habilidade aumentado.','gold');else if(m.event==='respec')log('Árvore de habilidades redefinida.','gold');else if(m.event==='specialization'){banner(`${m.state?.specializationName||'Especialização'}!`,m.state?.role||'Novo caminho de classe');log(`Especialização escolhida: ${m.state?.specializationName||m.specialization}.`,'gold');}buildHotbar();refreshUI();if(npcOpen)renderNpc();}
