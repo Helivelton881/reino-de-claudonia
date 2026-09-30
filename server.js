@@ -218,6 +218,7 @@ wss.on('connection', ws => {
         p.a = move.action===6&&!p.shop ? 0 : move.action;
         p.fallingFromFlight = !!move.fallingFromFlight;
         p.moved = true; p.posDirty = true;
+        questManager.recordPosition(p,p.x,p.z);
         break;
       }
       case 'chat': {
@@ -269,7 +270,8 @@ wss.on('connection', ws => {
       case 'itemUse': if (COMBATE_AUTORITATIVO) combatManager.useItem(p,m); break;
       case 'equipment': if (COMBATE_AUTORITATIVO) combatManager.equipment(p,m); break;
       case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
-      case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>combatManager.changeClassFromQuest(player,cls)}); break;
+      case 'npcTalk': questManager.talk(p,m.npcId); break;
+      case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>combatManager.changeClassFromQuest(player,cls),grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
       case 'resetCharacter': if (COMBATE_AUTORITATIVO) combatManager.resetPlayer(p); break;
       case 'economy': if (COMBATE_AUTORITATIVO) economyManager.act(p,m); break;
       case 'combatRespawn': if (COMBATE_AUTORITATIVO) combatManager.respawn(p,0,5); break;
@@ -448,6 +450,27 @@ function monstroDoGrupo(p, m){
   }
 }
 
+function expNeed(level){ return Math.round(28*Math.pow(level,1.65)+22); }
+function grantPlayerExp(p,amount,meta={}){
+  amount=Math.max(0,Math.round(Number(amount)||0));
+  const cls=p.dados.cls||'aprendiz',cap=cls==='aprendiz'?15:60;
+  let leveled=false;p.dados.exp=Math.max(0,Math.floor(p.dados.exp||0))+amount;
+  while(p.L<cap&&p.dados.exp>=expNeed(p.L)){p.dados.exp-=expNeed(p.L);p.L++;p.dados.L=p.L;p.dados.pts=Math.max(0,Math.floor(p.dados.pts||0))+2;leveled=true;}
+  if(p.L>=cap)p.dados.exp=0;
+  if(leveled){combatManager.refresh(p);p.hp=p.stats.maxHp;p.mp=p.stats.maxMp;p.fp=p.stats.maxFp;Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});broadcast({t:'info',id:p.id,L:p.L});if(p.party)enviarGrupo(p.party);}
+  p.dirty=true;send(p.ws,{t:'expGain',amount,source:meta.source||'unknown',monsterLevel:meta.monsterLevel||null,L:p.L,exp:p.dados.exp,pts:p.dados.pts,leveled,combat:{hp:p.hp,maxHp:p.stats.maxHp,mp:p.mp,maxMp:p.stats.maxMp,fp:p.fp,maxFp:p.stats.maxFp}});
+  return amount;
+}
+function premiarQuest(p,reward={}){
+  if(Array.isArray(reward.items)&&reward.items.length) return false;
+  const exp=Math.max(0,Math.min(100000,Math.floor(Number(reward.exp)||0)));
+  const gold=Math.max(0,Math.min(1000000,Math.floor(Number(reward.gold)||0)));
+  if(gold)p.dados.gold=Math.max(0,Math.floor(p.dados.gold||0))+gold;
+  if(exp)grantPlayerExp(p,exp,{source:'quest'});
+  p.dirty=true;send(p.ws,{t:'questReward',exp,gold,totalGold:p.dados.gold||0});
+  return true;
+}
+
 // Versão autoritativa: nível e experiência vêm do monstro do servidor e o resultado
 // é aplicado ao personagem antes de ser enviado ao cliente.
 function premiarMonstro(killer, monster){
@@ -471,12 +494,7 @@ function premiarMonstro(killer, monster){
     if(monster.level-p.L>=16)amount=0;else if(diff>=10)amount*=.1;else if(diff>=5)amount*=.4;
     if(p.guild)amount*=1+Math.min(10,p.guild.nivel||1)/100;
     amount=Math.max(0,Math.round(amount));
-    const cls=p.dados.cls||'aprendiz',cap=cls==='aprendiz'?15:60;
-    let leveled=false;p.dados.exp=Math.max(0,Math.floor(p.dados.exp||0))+amount;
-    while(p.L<cap&&p.dados.exp>=Math.round(28*Math.pow(p.L,1.65)+22)){p.dados.exp-=Math.round(28*Math.pow(p.L,1.65)+22);p.L++;p.dados.L=p.L;p.dados.pts=Math.max(0,Math.floor(p.dados.pts||0))+2;leveled=true;}
-    if(p.L>=cap)p.dados.exp=0;
-    if(leveled){combatManager.refresh(p);p.hp=p.stats.maxHp;p.mp=p.stats.maxMp;p.fp=p.stats.maxFp;Object.assign(p.dados,{hp:p.hp,mp:p.mp,fp:p.fp});broadcast({t:'info',id:p.id,L:p.L});if(p.party)enviarGrupo(p.party);}
-    p.dirty=true;send(p.ws,{t:'expGain',amount,monsterLevel:monster.level,L:p.L,exp:p.dados.exp,pts:p.dados.pts,leveled,combat:{hp:p.hp,maxHp:p.stats.maxHp,mp:p.mp,maxMp:p.stats.maxMp,fp:p.fp,maxFp:p.stats.maxFp}});
+    grantPlayerExp(p,amount,{source:'monster',monsterLevel:monster.level});
   }
 }
 function grupoAvancado(p){
@@ -725,6 +743,8 @@ async function doarParaGuilda(p, m){
   const gold = inteiro(m.gold, 0, 1e9) ? m.gold : -1;
   const items = lerItens(m.items || [], 24);
   if (gold < 0 || !items || items.some(it => it.up !== undefined || !PONTOS_MATERIAL[it.id])) return;
+  const reserved=questManager.reservedItemIds(p);
+  if(items.some(it=>reserved.has(it.id))) return erro(p,'Um desses materiais está reservado por uma missão ativa.');
   const pontos = Math.floor(gold / 10) + items.reduce((a, it) => a + PONTOS_MATERIAL[it.id] * it.n, 0);
   if (pontos < 1) return erro(p, 'Doe pelo menos 10 de ouro ou um material de monstro.');
   const inv = tirarItens(p.dados, items, gold);

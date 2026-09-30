@@ -26,8 +26,16 @@ test('marcadores de quest usam estados disponivel ativo e pronto',()=>{
   assert.match(html,/state==='available'/);
 });
 
-test('cliente nao inicia mais prova alterando ch.quest localmente',()=>{
+test('cliente envia intencoes genericas de quest sem alterar ch.quest localmente',()=>{
   assert.doesNotMatch(html,/ch\.quest\s*=\s*\{\s*cls\s*:/);
-  assert.match(html,/sendWs\(\{t:'quest',action:'accept'/);
-  assert.match(html,/sendWs\(\{t:'quest',action:'abandon'/);
+  assert.match(html,/data-qact="accept"/);
+  assert.match(html,/data-qact="abandon"/);
+  assert.match(html,/sendWs\(\{t:'quest',action:qa\.dataset\.qact,questId:qa\.dataset\.qid\}\)/);
+});
+test('fase 7.3 usa multiplas quests, npcTalk autoritativo e recompensa sincronizada',()=>{
+  assert.match(html,/const questsForNpc/);
+  assert.match(html,/sendWs\(\{t:'npcTalk',npcId:n\.id\}\)/);
+  assert.match(html,/function questProtectedItems\(/);
+  assert.match(html,/m\.t==='questReward'/);
+  assert.match(html,/data-qact="turnIn"/);
 });

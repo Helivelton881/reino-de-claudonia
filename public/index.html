@@ -483,7 +483,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <div class="overlay" id="help" hidden>
   <div class="panel">
     <h1>Reino De Claudonia</h1>
-    <p>O continente cresceu: 9 regiões de monstros até o nível 60. Aprimore com a Ferreira Brunna, abra sua loja pessoal, forme grupo e funde uma guilda. No nível 15 escolha sua classe; no nível 20, voe.</p>
+    <p>O continente cresceu: 9 regiões de monstros até o nível 60. Siga a jornada inicial, aprimore com a Ferreira Brunna, forme grupo e funde uma guilda. Complete a jornada e, no nível 15, escolha sua classe; no nível 20, voe.</p>
     <ul id="controls"></ul>
     <button class="big" id="start" type="button">Começar</button>
   </div>
@@ -661,42 +661,57 @@ const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
 // Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
 let party = {leader:null, members:[], skills:{}}, trade = null, myGuild = null, guildList = null, guildAsked = false, myShop = null;
 let questCatalog = {}, questState = {active:[], completed:[]}, npcCatalog = [];
-const questForNpc = npcId => Object.values(questCatalog).find(q=>q.npcId===npcId) || null;
+const questsForNpc = npcId => Object.values(questCatalog).filter(q=>q.npcId===npcId);
 const activeQuestState = questId => (questState.active||[]).find(q=>q.id===questId) || null;
-const activeClassQuest = () => (questState.active||[]).find(q=>questCatalog[q.id]&&questCatalog[q.id].category==='class-trial') || null;
 function applyQuestSync(catalog,state,legacy){
   if(Array.isArray(catalog)) questCatalog=Object.fromEntries(catalog.map(q=>[q.id,q]));
   if(state&&Array.isArray(state.active)&&Array.isArray(state.completed)) questState=state;
   if(legacy!==undefined) ch.quest=legacy;
 }
 const questReadyState = q => !!q && Array.isArray(q.objectives) && q.objectives.length>0 && q.objectives.every(o=>o.current>=o.required);
+const questCompleted = id => (questState.completed||[]).includes(id);
 function questRequirementsMet(q){
   const req=q&&q.requirements||{};
   if(req.level&&ch.L<req.level) return false;
   if(req.cls&&ch.cls!==req.cls) return false;
   if(req.completedQuest){
     const need=Array.isArray(req.completedQuest)?req.completedQuest:[req.completedQuest];
-    if(need.some(id=>!(questState.completed||[]).includes(id))) return false;
+    if(need.some(id=>!questCompleted(id))) return false;
   }
   return true;
 }
-function questMarkerState(npcId){
-  const q=questForNpc(npcId); if(!q) return null;
-  if((questState.completed||[]).includes(q.id)) return null;
-  const active=activeQuestState(q.id);
-  if(active) return questReadyState(active)?'ready':'active';
-  if(!questRequirementsMet(q)) return null;
+function questAvailable(q){
+  if(!q||questCompleted(q.id)||activeQuestState(q.id)||!questRequirementsMet(q)) return false;
   if(q.exclusiveGroup){
     const conflict=(questState.active||[]).some(a=>a.id!==q.id&&questCatalog[a.id]&&questCatalog[a.id].exclusiveGroup===q.exclusiveGroup);
-    if(conflict) return null;
+    if(conflict) return false;
   }
-  return 'available';
+  return true;
+}
+function questNpcFocus(npcId){
+  const list=questsForNpc(npcId);
+  for(const q of list){const a=activeQuestState(q.id);if(a&&questReadyState(a))return{state:'ready',quest:q,active:a};}
+  for(const q of list){const a=activeQuestState(q.id);if(a)return{state:'active',quest:q,active:a};}
+  const q=list.find(questAvailable); return q?{state:'available',quest:q,active:null}:null;
+}
+function questObjectiveMarkerState(npcId){
+  for(const a of (questState.active||[])){
+    const q=questCatalog[a.id]; if(!q) continue;
+    for(let i=0;i<(q.objectives||[]).length;i++){
+      const def=q.objectives[i],prog=a.objectives&&a.objectives[i];
+      if(def.type==='talk'&&def.npcId===npcId&&prog&&prog.current<prog.required) return 'active';
+    }
+  }
+  return null;
+}
+function questMarkerState(npcId){
+  const focus=questNpcFocus(npcId); return focus?focus.state:questObjectiveMarkerState(npcId);
 }
 function npcMarkerState(n){
   if(!n) return null;
-  if(n.id==='voo') return ch.L>=20&&!ch.eq.voo&&!ch.inv.some(s=>ITEMS[s.id]&&ITEMS[s.id].slot==='voo')?'available':null;
-  if(n.id==='ferreiro') return null;
-  return questMarkerState(n.id);
+  const qState=questMarkerState(n.id); if(qState) return qState;
+  if(n.id==='voo'&&ch.L>=20&&!ch.eq.voo&&!ch.inv.some(s=>ITEMS[s.id]&&ITEMS[s.id].slot==='voo')) return 'available';
+  return null;
 }
 // Habilidades de grupo ativas (o servidor manda quantos segundos faltam)
 const partySkill = id => party.members.length > 1 && party.skills && party.skills[id] > Date.now();
@@ -745,8 +760,8 @@ derive();
    AJUDA
    ========================================================= */
 const controls = isTouch
-  ? [['Andar','Joystick à esquerda'],['Escolher alvo','Toque no monstro'],['Atacar','Toque de novo no alvo ou em ⚔️'],['Falar com NPC','Toque nele'],['Grupo, troca, loja','Toque em outro jogador'],['Voar','🛹 na barra (nível 20)'],['Subir e descer','Botões Subir e Descer'],['Conversar','Botão 💬 (/g grupo, /gu guilda)']]
-  : [['Andar','W A S D ou setas'],['Correr','Segure Shift'],['Pular','Espaço'],['Escolher alvo','Clique no monstro ou Tab'],['Atacar','Clique de novo ou tecla 1'],['Atalhos','Teclas 1 a 5'],['Mochila e herói','Teclas I e C'],['Falar com NPC','Clique nele'],['Grupo, troca, loja','Clique em outro jogador; G grupo; L loja'],['Voar','Tecla V (nível 20)'],['Subir e descer','Espaço e Q'],['Conversar','Enter (/g grupo, /gu guilda)']];
+  ? [['Andar','Joystick à esquerda'],['Escolher alvo','Toque no monstro'],['Atacar','Toque de novo no alvo ou em ⚔️'],['Falar com NPC','Toque nele'],['Missões','Botão 📜 Missões'],['Grupo, troca, loja','Toque em outro jogador'],['Voar','🛹 na barra (nível 20)'],['Subir e descer','Botões Subir e Descer'],['Conversar','Botão 💬 (/g grupo, /gu guilda)']]
+  : [['Andar','W A S D ou setas'],['Correr','Segure Shift'],['Pular','Espaço'],['Escolher alvo','Clique no monstro ou Tab'],['Atacar','Clique de novo ou tecla 1'],['Atalhos','Teclas 1 a 5'],['Mochila e herói','Teclas I e C'],['Falar com NPC','Clique nele'],['Missões','Tecla J'],['Grupo, troca, loja','Clique em outro jogador; G grupo; L loja'],['Voar','Tecla V (nível 20)'],['Subir e descer','Espaço e Q'],['Conversar','Enter (/g grupo, /gu guilda)']];
 $('controls').innerHTML = controls.map(c=>`<li><b>${c[0]}</b><span>${c[1]}</span></li>`).join('');
 let helpOpen = true, deadOpen = false, lastArea = '';
 const blocked = () => helpOpen || deadOpen;
@@ -2293,11 +2308,50 @@ function fallRespawn(){
   log('Você caiu das nuvens e acordou na vila.', 'bad');
 }
 
-/* ---------- Classe: prova e troca ---------- */
-function finishQuest(cls){
-  const q = questForNpc(cls);
-  if (!q){ log('Missão de classe indisponível.', 'bad'); return; }
-  if (!sendWs({t:'quest',action:'turnIn',questId:q.id})) log('Sem conexão com o servidor.', 'bad');
+/* ---------- Fase 7: helpers de missão ---------- */
+function questProtectedItems(){
+  const ids=new Set();
+  for(const a of (questState.active||[])){
+    const q=questCatalog[a.id]; if(!q) continue;
+    for(const o of (q.objectives||[])) if((o.type==='collect'||o.type==='delivery')&&o.itemId) ids.add(o.itemId);
+  }
+  return ids;
+}
+function questRewardLabel(q){
+  const r=q&&q.reward||{},parts=[];
+  if(r.exp) parts.push(`${r.exp.toLocaleString('pt-BR')} EXP`);
+  if(r.gold) parts.push(`${r.gold.toLocaleString('pt-BR')} ouro`);
+  if(r.classId&&CLASSES[r.classId]) parts.push(`Classe: ${CLASSES[r.classId].name}`);
+  return parts.join(' · ');
+}
+function questNpcHTML(npcId){
+  let html='';
+  for(const q of questsForNpc(npcId)){
+    const active=activeQuestState(q.id);
+    if(active){
+      const ready=questReadyState(active);
+      html+=`<div class="quest-card ${ready?'ready':''}"><h3>${q.title}</h3>`;
+      if(q.description) html+=`<p>${q.description}</p>`;
+      (active.objectives||[]).forEach((o,i)=>{
+        const def=q.objectives&&q.objectives[i]||{},pct=Math.max(0,Math.min(100,o.current/Math.max(1,o.required)*100));
+        html+=`<p>${o.label}: <b>${o.current}/${o.required}</b></p><div class="quest-progress"><i style="width:${pct}%"></i></div>`;
+        if(def.hint&&!ready) html+=`<p class="note">${def.hint}</p>`;
+      });
+      html+=`<div class="qstate ${ready?'ready':''}">${ready?'✓ Pronta para entregar':'Em andamento'}</div>`;
+      const reward=questRewardLabel(q); if(reward) html+=`<p><b>Recompensa:</b> ${reward}</p>`;
+      html+='<div class="quest-actions">';
+      if(ready) html+=`<button class="btn" type="button" data-qact="turnIn" data-qid="${q.id}">Concluir missão</button>`;
+      if(q.abandonable!==false) html+=`<button class="btn ghost" type="button" data-qact="abandon" data-qid="${q.id}">Abandonar</button>`;
+      html+='</div></div>';
+    }else if(questAvailable(q)){
+      html+=`<div class="quest-card"><h3>! ${q.title}</h3>`;
+      if(q.description) html+=`<p>${q.description}</p>`;
+      for(const o of (q.objectives||[])) html+=`<p><b>Objetivo:</b> ${o.label}${o.count>1?' ('+o.count+')':''}</p>${o.hint?'<p class="note">'+o.hint+'</p>':''}`;
+      const reward=questRewardLabel(q); if(reward) html+=`<p><b>Recompensa:</b> ${reward}</p>`;
+      html+=`<div class="quest-actions"><button class="btn" type="button" data-qact="accept" data-qid="${q.id}">Aceitar missão</button></div></div>`;
+    }
+  }
+  return html;
 }
 
 /* ---------- NPCs da vila ---------- */
@@ -2375,49 +2429,36 @@ function goToNpc(n){
 }
 let npcOpen = null;
 function openNpc(n){
-  npcOpen = n; const w = $('winNpc'); w.hidden = false; w.style.zIndex = ++zTop;
+  npcOpen = n; sendWs({t:'npcTalk',npcId:n.id});
+  const w = $('winNpc'); w.hidden = false; w.style.zIndex = ++zTop;
   $('npcTitle').textContent = n.name; renderNpc();
   w.style.left = Math.max(8, (innerWidth - w.offsetWidth)/2) + 'px'; w.style.top = (innerWidth < 760 ? 70 : 90) + 'px';
 }
 function renderNpc(){
-  const n = npcOpen; if (!n) return;
-  let html = `<p class="role">${n.role}</p>`;
-  if (n.id === 'voo'){
-    html += `<p>${ch.L >= 20 ? 'Com uma prancha ou vassoura você voa por cima da ilha e chega às ilhotas no céu. Equipe pela mochila.' : 'Voar libera no nível 20. Você pode comprar antes e guardar na mochila.'}</p>`;
-    SHOP.forEach(id=>{
-      const it = ITEMS[id], extra = it.spd ? `Velocidade ${it.spd}. Nível 20.` : it.desc;
-      html += `<div class="shoprow"><span class="si">${iconHTML(id)}</span><div><b>${it.name}</b><span>${extra}</span></div><button class="btn" type="button" data-buy="${id}" ${ch.gold < it.price ? 'disabled' : ''}>${it.price} ouro</button></div>`;
-    });
-    const active = activeClassQuest(), qDef = active && questCatalog[active.id], qItem = qDef && qDef.objectives[0] ? qDef.objectives[0].itemId : null;
-    const matValue = ch.inv.reduce((a,s)=> a + (ITEMS[s.id].sell && s.id !== qItem ? ITEMS[s.id].sell*s.n : 0), 0);
-    html += `<div class="gold" style="margin-top:10px">Seu ouro <b>${ch.gold.toLocaleString('pt-BR')}</b></div>
-      <div class="actions"><button class="btn ghost" type="button" data-npc="sell" ${matValue ? '' : 'disabled'}>Vender materiais por ${matValue} ouro</button></div>`;
-    if (qItem) html += `<p style="margin-top:8px;font-size:13px">Os materiais da sua missão de classe não entram na venda.</p>`;
-  } else if (n.id === 'ferreiro'){
-    html += forgeHTML();
-  } else {
-    const C = CLASSES[n.id], qDef = questForNpc(n.id);
-    if (!C || !qDef){
-      html += '<p>Este NPC ainda não possui uma missão configurada.</p>';
-    } else {
-      const active = activeQuestState(qDef.id), other = activeClassQuest(), objective = qDef.objectives[0];
-      const progress = active && active.objectives[0] ? active.objectives[0] : null;
-      html += `<p>${C.desc}</p>`;
-      if (ch.cls === n.id) html += `<p>Bom te ver de novo. Continue treinando: novas habilidades chegam nos níveis 17 e 20.</p>`;
-      else if (ch.cls !== 'aprendiz') html += `<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
-      else if (ch.L < (qDef.requirements.level||1)) html += `<p>Volte quando chegar ao nível ${qDef.requirements.level}. Agora você está no nível ${ch.L}.</p>`;
-      else if (!active && !other) html += `<p><b>${qDef.title}</b></p><p>Para provar seu valor, traga-me ${objective.count} ${objective.label}. ${objective.hint||''}</p><p>Ao virar ${C.name}, seus pontos de atributo voltam ao início para você distribuir de novo.</p><div class="actions"><button class="btn" type="button" data-npc="accept">Aceitar a prova</button></div>`;
-      else if (!active && other){
-        const otherDef=questCatalog[other.id];
-        html += `<p>Você já está fazendo <b>${otherDef ? otherDef.title : 'outra prova de classe'}</b>. Fale com o instrutor correspondente se quiser desistir.</p>`;
-      } else {
-        const have = progress ? progress.current : countItem(objective.itemId), need = progress ? progress.required : objective.count;
-        html += `<p><b>${qDef.title}</b></p><p>Progresso: ${Math.min(have,need)} de ${need} ${objective.label}. ${have >= need ? 'Você conseguiu!' : (objective.hint||'')}</p>
-          <div class="actions">${have >= need ? `<button class="btn" type="button" data-npc="finish">Concluir e virar ${C.name}</button>` : ''}<button class="btn ghost" type="button" data-npc="quit">Desistir da prova</button></div>`;
-      }
-    }
+  const n=npcOpen; if(!n) return;
+  let html=`<p class="role">${n.role}</p>`;
+  const C=CLASSES[n.id];
+  if(C){
+    html+=`<p>${C.desc}</p>`;
+    if(ch.cls===n.id) html+=`<p>Bom te ver de novo. Continue treinando: novas habilidades chegam nos níveis 17 e 20.</p>`;
+    else if(ch.cls!=='aprendiz') html+=`<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
   }
-  $('npcBody').innerHTML = html;
+  html+=questNpcHTML(n.id);
+  if(n.id==='voo'){
+    html+=`<p>${ch.L>=20?'Com uma prancha ou vassoura você voa por cima da ilha e chega às ilhotas no céu. Equipe pela mochila.':'Voar libera no nível 20. Você pode comprar antes e guardar na mochila.'}</p>`;
+    SHOP.forEach(id=>{
+      const it=ITEMS[id],extra=it.spd?`Velocidade ${it.spd}. Nível 20.`:it.desc;
+      html+=`<div class="shoprow"><span class="si">${iconHTML(id)}</span><div><b>${it.name}</b><span>${extra}</span></div><button class="btn" type="button" data-buy="${id}" ${ch.gold<it.price?'disabled':''}>${it.price} ouro</button></div>`;
+    });
+    const reserved=questProtectedItems();
+    const matValue=ch.inv.reduce((a,s)=>a+(ITEMS[s.id]&&ITEMS[s.id].sell&&!reserved.has(s.id)?ITEMS[s.id].sell*s.n:0),0);
+    html+=`<div class="gold" style="margin-top:10px">Seu ouro <b>${ch.gold.toLocaleString('pt-BR')}</b></div>
+      <div class="actions"><button class="btn ghost" type="button" data-npc="sell" ${matValue?'':'disabled'}>Vender materiais por ${matValue} ouro</button></div>`;
+    if(reserved.size) html+='<p style="margin-top:8px;font-size:13px">Materiais reservados por missões ativas não entram na venda.</p>';
+  }else if(n.id==='ferreiro'){
+    html+=forgeHTML();
+  }
+  $('npcBody').innerHTML=html;
 }
 function buy(id){
   if(authoritativeCombat){sendWs({t:'economy',action:'buy',itemId:id});return;}
@@ -2514,23 +2555,20 @@ function sellEq(i){
 }
 function sellMats(){
   if(authoritativeCombat){sendWs({t:'economy',action:'sellMaterials'});return;}
-  const qItem = ch.quest ? CLASSES[ch.quest.cls].quest.item : null; let total = 0;
-  ch.inv = ch.inv.filter(s=>{ const it = ITEMS[s.id]; if (it.sell && s.id !== qItem){ total += it.sell*s.n; return false; } return true; });
-  ch.gold += total; log(`Vendeu materiais por ${total} ouro.`, 'gold'); dirty = true; save(); refreshUI();
+  const reserved=questProtectedItems(); let total=0;
+  ch.inv=ch.inv.filter(s=>{const it=ITEMS[s.id];if(it&&it.sell&&!reserved.has(s.id)){total+=it.sell*s.n;return false;}return true;});
+  ch.gold+=total;log(`Vendeu materiais por ${total} ouro.`,'gold');dirty=true;save();refreshUI();
 }
 $('winNpc').addEventListener('click', e=>{
-  const b = e.target.closest('[data-buy]'); if (b){ buy(b.dataset.buy); return; }
-  const ft = e.target.closest('[data-ftab]'); if (ft){ forgeTab = ft.dataset.ftab; renderNpc(); return; }
-  const up = e.target.closest('[data-up]'); if (up){ enhance(up.dataset.up); return; }
-  const op = e.target.closest('[data-opt]'); if (op){ if (op.dataset.opt === 'prot') useProt = op.checked; else useLuck = op.checked; renderNpc(); return; }
-  const sl = e.target.closest('[data-sell]'); if (sl){ sellEq(+sl.dataset.sell); return; }
-  const a = e.target.closest('[data-npc]'); if (!a || !npcOpen) return;
-  const act = a.dataset.npc;
-  const qDef = questForNpc(npcOpen.id);
-  if (act === 'accept' && qDef) sendWs({t:'quest',action:'accept',questId:qDef.id});
-  if (act === 'quit' && qDef) sendWs({t:'quest',action:'abandon',questId:qDef.id});
-  if (act === 'finish') finishQuest(npcOpen.id);
-  if (act === 'sell') sellMats();
+  const b=e.target.closest('[data-buy]');if(b){buy(b.dataset.buy);return;}
+  const ft=e.target.closest('[data-ftab]');if(ft){forgeTab=ft.dataset.ftab;renderNpc();return;}
+  const up=e.target.closest('[data-up]');if(up){enhance(up.dataset.up);return;}
+  const op=e.target.closest('[data-opt]');if(op){if(op.dataset.opt==='prot')useProt=op.checked;else useLuck=op.checked;renderNpc();return;}
+  const sl=e.target.closest('[data-sell]');if(sl){sellEq(+sl.dataset.sell);return;}
+  const qa=e.target.closest('[data-qact][data-qid]');
+  if(qa){sendWs({t:'quest',action:qa.dataset.qact,questId:qa.dataset.qid});return;}
+  const a=e.target.closest('[data-npc]');if(!a||!npcOpen)return;
+  if(a.dataset.npc==='sell')sellMats();
   renderNpc();
 });
 
@@ -2561,7 +2599,10 @@ function renderQuestJournal(){
         html+=`<p>${o.label}: <b>${o.current}/${o.required}</b></p><div class="quest-progress"><i style="width:${pct}%"></i></div>`;
         if(def.hint&&!ready) html+=`<p class="note">${def.hint}</p>`;
       });
-      html+=`<div class="quest-actions"><button class="btn" type="button" data-qnpc="${q.npcId}">${ready?'Ir entregar':'Localizar NPC'}</button>`;
+      const talkTarget=(q.objectives||[]).find((def,i)=>def.type==='talk'&&def.npcId&&state.objectives&&state.objectives[i]&&state.objectives[i].current<state.objectives[i].required);
+      const locateNpc=ready?q.npcId:(talkTarget&&talkTarget.npcId)||q.npcId;
+      const locateLabel=ready?'Ir entregar':talkTarget?`Falar com ${questNpcName(locateNpc)}`:'Localizar NPC';
+      html+=`<div class="quest-actions"><button class="btn" type="button" data-qnpc="${locateNpc}">${locateLabel}</button>`;
       if(q.abandonable!==false) html+=`<button class="btn ghost" type="button" data-qabandon="${q.id}">Abandonar</button>`;
       html+='</div></div>';
     });
@@ -3477,6 +3518,7 @@ function handle(m){
   else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();setHeroWeapon(hero,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
   else if(m.t==='questState'){
     applyQuestSync(null,m.state,m.legacy);
+    if(Array.isArray(m.inventory)) ch.inv=m.inventory;
     if(m.ok===false&&m.msg) log(m.msg,'bad');
     else if(m.event==='accepted'){const q=questCatalog[m.questId];log(q?`${q.title} aceita.`:'Missão aceita.','gold');}
     else if(m.event==='abandoned'){const q=questCatalog[m.questId];log(q?`${q.title} abandonada.`:'Missão abandonada.');}
@@ -3488,6 +3530,7 @@ function handle(m){
   else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}
   else if(m.t==='expGain'){ch.L=m.L;ch.exp=m.exp;ch.pts=m.pts;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();floatText(player.x,player.y+2.6,player.z,`+${m.amount} EXP`,'exp');if(m.leveled)banner(`Nível ${ch.L}!`,'+2 pontos de atributo na janela Herói');refreshUI();}
+  else if(m.t==='questReward'){ch.gold=m.totalGold; if(m.gold)log(`Recompensa da missão: +${m.gold} ouro.`,'gold'); refreshUI();}
   else if(m.t==='combatReject'){if(m.msg)log(m.msg,'bad');}
   else if(m.t==='positionReject'){
     player.x=m.x;player.y=m.y;player.z=m.z;player.vy=0;online.last='';
@@ -3721,8 +3764,8 @@ function guildHTML(){
   let html = `<div class="gold">«<b>${esc(myGuild.nome)}</b>» · nível <b>${nivel}</b> · ${CARGOS[myGuild.cargo] || myGuild.cargo}</div>`;
   html += nivel >= 50 ? `<p class="note">Nível máximo.</p>` : bar2(exp, need);
   html += `<p class="note">${exp.toLocaleString('pt-BR')} de ${need.toLocaleString('pt-BR')} pontos para o nível ${nivel+1}. Membros: ${count} de ${guildMax(nivel)}. Bônus da guilda: +${Math.min(10, nivel)}% de experiência.</p>`;
-  const q = ch.quest ? CLASSES[ch.quest.cls].quest.item : null;
-  const matPts = ch.inv.reduce((a,x)=> a + (GUILD_PTS[x.id] && x.id !== q ? GUILD_PTS[x.id]*x.n : 0), 0);
+  const reservedQuestMats=questProtectedItems();
+  const matPts=ch.inv.reduce((a,x)=>a+(GUILD_PTS[x.id]&&!reservedQuestMats.has(x.id)?GUILD_PTS[x.id]*x.n:0),0);
   html += `<div class="sub">Doar para a guilda</div><p class="note">Cada 10 de ouro vale 1 ponto; materiais de monstro valem mais quanto mais forte o monstro.</p>
     <label class="note" style="display:block;margin:0">Ouro<input id="gGold" type="number" inputmode="numeric" min="10" max="${ch.gold}" placeholder="Ex.: 1000"></label>
     <div class="actions"><button class="btn" type="button" id="gDonGold">Doar ouro</button><button class="btn ghost" type="button" id="gDonMat" ${matPts ? '' : 'disabled'}>Doar materiais (${matPts} pts)</button></div>`;
@@ -3765,10 +3808,10 @@ $('winSocial').addEventListener('click', e=>{
     if (v < 10 || v > ch.gold){ log('Digite quanto ouro doar (pelo menos 10, até o que você tem).', 'bad'); return; }
     save(); sendWs({t:'gdonate', gold:v, items:[]}); $('gGold').value = ''; return;
   }
-  if (e.target.id === 'gDonMat'){
-    const q = ch.quest ? CLASSES[ch.quest.cls].quest.item : null;
-    const items = ch.inv.filter(x=> GUILD_PTS[x.id] && x.id !== q).map(x=> ({id:x.id, n:x.n}));
-    if (items.length){ save(); sendWs({t:'gdonate', gold:0, items}); } return;
+  if(e.target.id==='gDonMat'){
+    const reserved=questProtectedItems();
+    const items=ch.inv.filter(x=>GUILD_PTS[x.id]&&!reserved.has(x.id)).map(x=>({id:x.id,n:x.n}));
+    if(items.length){save();sendWs({t:'gdonate',gold:0,items});}return;
   }
   const gk = e.target.closest('[data-gkick]');
   if (gk){ if (gk.dataset.confirm){ sendWs({t:'gkick', nome:gk.dataset.gkick}); } else { gk.dataset.confirm = '1'; gk.textContent = 'Confirmar'; } return; }
