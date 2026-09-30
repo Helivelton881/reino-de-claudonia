@@ -25,18 +25,18 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui historia, side quests, diarias, quatro provas e dez NPCs',()=>{
+test('catalogo possui historia, side quests, diarias, quatro provas e 25 NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
-  assert.equal(catalog.length,58);
+  assert.equal(catalog.length,60);
   assert.equal(catalog.filter(q=>q.category==='story').length,46);
-  assert.equal(catalog.filter(q=>q.category==='side').length,4);
+  assert.equal(catalog.filter(q=>q.category==='side').length,6);
   assert.equal(catalog.filter(q=>q.category==='daily').length,4);
   assert.equal(catalog.filter(q=>q.category==='class-trial').length,4);
   assert.ok(catalog.filter(q=>q.category==='daily').every(q=>q.repeatable===true&&q.cooldownHours===24));
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
-  for(const type of ['talk','kill','explore','delivery','collect']) assert.ok(types.has(type));
+  for(const type of ['talk','kill','explore','delivery','collect','use-item','boss']) assert.ok(types.has(type));
   assert.ok(catalog.filter(q=>q.category==='class-trial').every(q=>q.exclusiveGroup==='class-trial'));
-  assert.equal(NPCS.length,10);
+  assert.equal(NPCS.length,25);
   assert.ok(NPCS.some(n=>n.service==='forge'));
   assert.ok(NPCS.some(n=>n.service==='flight-shop'));
   assert.ok(NPCS.some(n=>n.id==='vigia_lobos'&&n.service==='quest-giver'));
@@ -251,6 +251,18 @@ test('side quest conclui uma vez e diária respeita cooldown de 24h',()=>{
   assert.match(sent.at(-1).msg,/disponível em/i);
   now+=24*60*60*1000;
   assert.equal(qm.accept(player,'daily_01_patrulha_lobos'),true);
+});
+
+test('objetivos use-item e boss progridem apenas com evento compatível',()=>{
+  const {player,sent}=makePlayer({L:6,dados:{L:6,quests:{active:{},completed:['jornada_03_gosma']}}}),qm=manager(sent);
+  assert.equal(qm.accept(player,'side_05_primeiros_socorros'),true);
+  assert.equal(qm.recordEvent(player,'use-item',{itemId:'pocao_mana',count:1}),false);
+  assert.equal(qm.recordEvent(player,'use-item',{itemId:'pocao_vida',count:1}),true);
+  assert.equal(qm.ready(player,'side_05_primeiros_socorros'),true);
+  assert.equal(qm.accept(player,'side_06_gigante_campina'),true);
+  assert.equal(qm.recordEvent(player,'boss',{monsterKey:'bolota',giant:false,count:1}),false);
+  assert.equal(qm.recordEvent(player,'boss',{monsterKey:'bolota',giant:true,count:1}),true);
+  assert.equal(qm.ready(player,'side_06_gigante_campina'),true);
 });
 
 test('personagem antigo já classado recebe prova concluida e libera pos-classe',()=>{

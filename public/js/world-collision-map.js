@@ -30,7 +30,22 @@
     {id:'vigia_lobos',x:82,z:30,r:.6,kind:'npc'},
     {id:'batedora_teias',x:-82,z:-60,r:.6,kind:'npc'},
     {id:'guardia_lago',x:-60,z:78,r:.6,kind:'npc'},
-    {id:'sentinela_ruinas',x:30,z:104,r:.6,kind:'npc'}
+    {id:'sentinela_ruinas',x:30,z:104,r:.6,kind:'npc'},
+    {id:'curandeira_lysa',x:-10,z:-14,r:.6,kind:'npc'},
+    {id:'mercador_nilo',x:13,z:12,r:.6,kind:'npc'},
+    {id:'escriva_mira',x:-13,z:12,r:.6,kind:'npc'},
+    {id:'guia_toren',x:16,z:0,r:.6,kind:'npc'},
+    {id:'alquimista_sera',x:-16,z:0,r:.6,kind:'npc'},
+    {id:'equipador_joren',x:18,z:20,r:.6,kind:'npc'},
+    {id:'batedor_bran',x:60,z:22,r:.6,kind:'npc'},
+    {id:'botanica_ilyra',x:72,z:-22,r:.6,kind:'npc'},
+    {id:'guardiao_rian',x:-45,z:18,r:.6,kind:'npc'},
+    {id:'cacador_varo',x:-45,z:-15,r:.6,kind:'npc'},
+    {id:'caravaneiro_rul',x:0,z:-62,r:.6,kind:'npc'},
+    {id:'vigia_tessa',x:82,z:23,r:.6,kind:'npc'},
+    {id:'tecela_sia',x:-74,z:-52,r:.6,kind:'npc'},
+    {id:'pesquisador_iven',x:-58,z:72,r:.6,kind:'npc'},
+    {id:'arqueologa_dena',x:25,z:96,r:.6,kind:'npc'}
   ];
   const COTTAGES=[];
   for(let i=0;i<11;i++){

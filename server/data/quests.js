@@ -337,6 +337,18 @@ const SIDE_AND_DAILY = Object.freeze({
     requirements:{level:40,clsNot:'aprendiz',completedQuest:'jornada_33_lago_espelhado'},
     objectives:[{type:'delivery',itemId:'essencia',count:4,label:'Entregue Essências do Lago',hint:'Espíritos do Lago podem deixar Essência do Lago.'}],reward:{exp:4800,gold:460}
   },
+  side_05_primeiros_socorros:{
+    id:'side_05_primeiros_socorros',title:'Primeiros Socorros',npcId:'curandeira_lysa',category:'side',abandonable:true,
+    description:'Lysa quer confirmar que você sabe usar suprimentos no momento certo durante uma expedição.',
+    requirements:{level:5},
+    objectives:[{type:'use-item',itemId:'pocao_vida',count:1,label:'Use uma Poção de Vida',hint:'Use uma Poção de Vida quando seu HP não estiver cheio.'}],reward:{exp:450,gold:80}
+  },
+  side_06_gigante_campina:{
+    id:'side_06_gigante_campina',title:'O Gigante da Campina',npcId:'batedor_bran',category:'side',abandonable:true,
+    description:'Bran avistou uma Bolota Gigante e procura aventureiros capazes de derrubar a criatura sem bloquear a rota leste.',
+    requirements:{level:6,completedQuest:'jornada_03_gosma'},
+    objectives:[{type:'boss',monsterKey:'bolota',giant:true,count:1,label:'Derrote a Bolota Gigante',hint:'A Bolota Gigante surge na Campina das Bolotas.'}],reward:{exp:900,gold:140}
+  },
   daily_01_patrulha_lobos:{
     id:'daily_01_patrulha_lobos',title:'Patrulha Diária: Lobos',npcId:'vigia_lobos',category:'daily',abandonable:true,repeatable:true,cooldownHours:24,
     description:'Cael mantém uma patrulha diária para impedir que a alcateia volte a fechar a estrada.',

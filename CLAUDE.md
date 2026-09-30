@@ -103,20 +103,26 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   persistido em `quests.lastCompletedAt`, aba própria no diário e contador de
   disponibilidade no NPC. Nesta subfase foram reutilizados NPCs já existentes,
   portanto nenhum asset 3D novo foi necessário.
+- Fase 7.10: fechamento do Quest & NPC Engine com 15 novos NPCs originais
+  distribuídos pela vila e rotas regionais. Todos os 15 modelos foram criados no
+  Blender e integrados como GLB. Entraram serviços data-driven de cura,
+  suprimentos, registro social/guilda e guias de rota. Cura e compras usam
+  validação server-authoritative de proximidade e whitelist por NPC.
+- A engine também passou a cobrir objetivos `use-item` e `boss`, completando os
+  tipos previstos para a Fase 7. Duas side quests usam esses objetivos.
 - Progressão principal da Fase 7 cobre do nível 1 ao 60.
-- Catálogo atual: 58 quests (46 de história + 4 side + 4 diárias + 4 provas) e
-  10 NPCs funcionais.
-- QA atual: 64 testes automatizados passando.
+- Catálogo atual: 60 quests (46 de história + 6 side + 4 diárias + 4 provas) e
+  25 NPCs funcionais.
+- QA atual: 69 testes automatizados passando.
 
 ## Limites conhecidos (próximos passos)
-- A meta de volume de quests do roadmap já está atendida, mas a densidade de NPCs
-  ainda está abaixo da referência de 25-30 NPCs: atualmente são 10 funcionais.
-- Próxima subfase planejada: Fase 7.10, expansão de NPCs funcionais/serviços pelo
-  mundo aberto antes de encerrar formalmente a Fase 7.
+- A Fase 7 está formalmente fechada: cadeia 1-60, quests paralelas e diárias,
+  25 NPCs funcionais, diálogos/serviços data-driven, objetivos variados,
+  progresso de grupo em combate e serviços críticos validados no servidor.
+- Próxima fase planejada: Skill Tree, seguida de itemização/sets, Giants/Bosses,
+  dungeons, pets/social, expansão 60-100, PvP/guild, lifestyle e Live Ops.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
   3D de skill continua passando pelo Blender aberto no PC antes de entrar no jogo.
-- Fases seguintes do plano mestre: Skill Tree, itemização/sets, Giants/Bosses,
-  dungeons, pets/social, expansão 60-100, PvP/guild, lifestyle e Live Ops.
 
 ## Como testar antes de enviar
 - `node --check server.js` e conferir a sintaxe do script do `index.html`.

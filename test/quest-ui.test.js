@@ -69,3 +69,15 @@ test('fase 7.9 mostra side quests e diarias com cooldown na interface',()=>{
   assert.match(html,/Missão secundária/);
   assert.match(html,/Missão diária/);
 });
+
+test('fase 7.10 integra serviços de NPC e novos tipos de objetivo',()=>{
+  assert.match(html,/function npcServiceHTML\(/);
+  assert.match(html,/data-service="heal"/);
+  assert.match(html,/data-service-buy=/);
+  assert.match(html,/data-guide-zone=/);
+  assert.match(html,/data-social="1"/);
+  assert.match(html,/t:'npcService'/);
+  assert.match(html,/m\.t==='npcServiceState'/);
+  assert.match(html,/def\.type==='kill'\|\|def\.type==='boss'/);
+  assert.match(html,/def\.type==='use-item'/);
+});

@@ -29,21 +29,15 @@ test('todo modelo usado no mapa existe nos kits', () => {
   for (const n of propUsed) if (!nature.has(n)) assert.ok(props.has(n), 'objetos sem ' + n);
 });
 
-test('NPCs regionais usam GLBs otimizados', () => {
-  for (const f of ['npc_vigia_cael.glb','npc_batedora_maelis.glb','npc_guardia_neris.glb','npc_sentinela_oren.glb']) {
+test('NPCs regionais e de serviço usam GLBs otimizados', () => {
+  const files=['npc_vigia_cael.glb','npc_batedora_maelis.glb','npc_guardia_neris.glb','npc_sentinela_oren.glb','npc_curandeira_lysa.glb','npc_mercador_nilo.glb','npc_escriva_mira.glb','npc_guia_toren.glb','npc_alquimista_sera.glb','npc_equipador_joren.glb','npc_batedor_bran.glb','npc_botanica_ilyra.glb','npc_guardiao_rian.glb','npc_cacador_varo.glb','npc_caravaneiro_rul.glb','npc_vigia_tessa.glb','npc_tecela_sia.glb','npc_pesquisador_iven.glb','npc_arqueologa_dena.glb'];
+  const html = fs.readFileSync(path.join(publicDir,'index.html'),'utf8');
+  for (const f of files) {
     const p = path.join(publicDir,'assets','npcs',f);
     assert.ok(fs.existsSync(p),f+' ausente');
     assert.ok(fs.statSync(p).size < 512 * 1024,f+' passou de 512 KB');
+    assert.match(html,new RegExp(f.replace('.','\\.')));
   }
-  const html = fs.readFileSync(path.join(publicDir,'index.html'),'utf8');
-  assert.match(html,/vigia_lobos/);
-  assert.match(html,/npc_vigia_cael\.glb/);
-  assert.match(html,/batedora_teias/);
-  assert.match(html,/npc_batedora_maelis\.glb/);
-  assert.match(html,/guardia_lago/);
-  assert.match(html,/npc_guardia_neris\.glb/);
-  assert.match(html,/sentinela_ruinas/);
-  assert.match(html,/npc_sentinela_oren\.glb/);
 });
 
 test('página carrega o gerenciador e os monstros do Bestiary', () => {

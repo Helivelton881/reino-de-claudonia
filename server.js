@@ -17,6 +17,7 @@ const CombatManager = require('./server/combat/combat-manager');
 const LootManager = require('./server/loot/loot-manager');
 const EconomyManager = require('./server/economy/economy-manager');
 const QuestManager = require('./server/quests/quest-manager');
+const NpcServiceManager = require('./server/npcs/npc-service-manager');
 const NPCS = require('./server/data/npcs');
 
 const PORT = process.env.PORT || 3000;
@@ -83,12 +84,16 @@ const combatManager = new CombatManager({
     const copies = killer.party && killer.party.skills.presente > Date.now() ? 2 : 1;
     lootManager.spawn(monster, killer, { allowedIds, luck, copies });
     const recipients = allowedIds.map(id=>players.get(id)).filter(q=>q&&Math.hypot(q.x-monster.x,q.z-monster.z)<=40);
-    recipients.forEach(q=>questManager.recordEvent(q,'kill',{monsterKey:monster.key,giant:monster.giant,count:1}));
+    recipients.forEach(q=>{
+      questManager.recordEvent(q,'kill',{monsterKey:monster.key,giant:monster.giant,count:1});
+      if(monster.giant) questManager.recordEvent(q,'boss',{monsterKey:monster.key,giant:true,count:1});
+    });
   }
 });
 const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, spawnManager, players, send, navigation:worldNavigation });
 lootManager = new LootManager({ players, send, emitNearby:emitirPerto });
 const economyManager = new EconomyManager({send});
+const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
 combatManager.setMonsterManager(monsterManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
 
 async function salvar(p) {
@@ -267,10 +272,11 @@ wss.on('connection', ws => {
       case 'attack': if (COMBATE_AUTORITATIVO) combatManager.attack(p,m); break;
       case 'skill': if (COMBATE_AUTORITATIVO) combatManager.skill(p,m); break;
       case 'pickup': if (COMBATE_AUTORITATIVO && lootManager.pickup(p,m.id)) questManager.sync(p,{event:'inventory'}); break;
-      case 'itemUse': if (COMBATE_AUTORITATIVO) combatManager.useItem(p,m); break;
+      case 'itemUse': if (COMBATE_AUTORITATIVO && combatManager.useItem(p,m)) questManager.recordEvent(p,'use-item',{itemId:m.itemId,count:1}); break;
       case 'equipment': if (COMBATE_AUTORITATIVO) combatManager.equipment(p,m); break;
       case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
       case 'npcTalk': questManager.talk(p,m.npcId); break;
+      case 'npcService': if (COMBATE_AUTORITATIVO) npcServiceManager.act(p,m); break;
       case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>combatManager.changeClassFromQuest(player,cls),grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
       case 'resetCharacter': if (COMBATE_AUTORITATIVO) combatManager.resetPlayer(p); break;
       case 'economy': if (COMBATE_AUTORITATIVO) economyManager.act(p,m); break;

@@ -771,8 +771,9 @@ function questTargetFor(state){
   if(!def)return questNpcPoint(q.npcId);
   if(def.type==='talk')return questNpcPoint(def.npcId);
   if(def.type==='explore')return questZonePoint(def.areaId);
-  if(def.type==='kill')return questZonePoint(def.monsterKey);
+  if(def.type==='kill'||def.type==='boss')return questZonePoint(def.monsterKey);
   if(def.type==='delivery'||def.type==='collect')return questZonePoint(def.zoneId||QUEST_ITEM_ZONE[def.itemId])||questNpcPoint(q.npcId);
+  if(def.type==='use-item')return null;
   return questNpcPoint(q.npcId);
 }
 function setTrackedQuest(id){
@@ -2486,6 +2487,21 @@ const NPCS = [
   {id:'batedora_teias', ...npcPhysical('batedora_teias'), long:true, name:'Batedora Maelis', tag:'[Batedora da Mata] Maelis', role:'Batedora da Mata das Teias', tunic:0x5A2A68, hair:0x1E2230, model:'/assets/npcs/npc_batedora_maelis.glb'},
   {id:'guardia_lago', ...npcPhysical('guardia_lago'), long:true, name:'Guardiã Neris', tag:'[Guardiã do Lago] Neris', role:'Guardiã do Lago Espelhado', tunic:0x14545C, hair:0xD9E4EA, model:'/assets/npcs/npc_guardia_neris.glb'},
   {id:'sentinela_ruinas', ...npcPhysical('sentinela_ruinas'), name:'Sentinela Oren', tag:'[Sentinela das Ruínas] Oren', role:'Sentinela das Ruínas do Ciclope', tunic:0x4A443F, hair:0x30251F, model:'/assets/npcs/npc_sentinela_oren.glb'},
+  {id:'curandeira_lysa', ...npcPhysical('curandeira_lysa'), long:true, name:'Curandeira Lysa', tag:'[Curandeira] Lysa', role:'Curandeira da vila', tunic:0xB7D8D0, hair:0x466A5F, model:'/assets/npcs/npc_curandeira_lysa.glb'},
+  {id:'mercador_nilo', ...npcPhysical('mercador_nilo'), name:'Mercador Nilo', tag:'[Mercador] Nilo', role:'Mercador de suprimentos', tunic:0x935A29, hair:0x3A2414, model:'/assets/npcs/npc_mercador_nilo.glb'},
+  {id:'escriva_mira', ...npcPhysical('escriva_mira'), long:true, name:'Escrivã Mira', tag:'[Registro de Guildas] Mira', role:'Escrivã de guildas e grupos', tunic:0x4D5285, hair:0x2C2948, model:'/assets/npcs/npc_escriva_mira.glb'},
+  {id:'guia_toren', ...npcPhysical('guia_toren'), name:'Guia Toren', tag:'[Guia] Toren', role:'Guia da Campina das Bolotas', tunic:0x557E47, hair:0x2A3B22, model:'/assets/npcs/npc_guia_toren.glb'},
+  {id:'alquimista_sera', ...npcPhysical('alquimista_sera'), long:true, name:'Alquimista Sera', tag:'[Alquimista] Sera', role:'Alquimista da vila', tunic:0x7A478F, hair:0x38204C, model:'/assets/npcs/npc_alquimista_sera.glb'},
+  {id:'equipador_joren', ...npcPhysical('equipador_joren'), name:'Equipador Joren', tag:'[Equipador] Joren', role:'Fornecedor de viagem', tunic:0x6B6B75, hair:0x2B2B30, model:'/assets/npcs/npc_equipador_joren.glb'},
+  {id:'batedor_bran', ...npcPhysical('batedor_bran'), name:'Batedor Bran', tag:'[Batedor] Bran', role:'Batedor da rota leste', tunic:0x4A7A38, hair:0x26381D, model:'/assets/npcs/npc_batedor_bran.glb'},
+  {id:'botanica_ilyra', ...npcPhysical('botanica_ilyra'), long:true, name:'Botânica Ilyra', tag:'[Botânica] Ilyra', role:'Botânica do Morro dos Javalis', tunic:0x5B8E57, hair:0x2C4A2B, model:'/assets/npcs/npc_botanica_ilyra.glb'},
+  {id:'guardiao_rian', ...npcPhysical('guardiao_rian'), name:'Guardião Rian', tag:'[Guardião] Rian', role:'Guardião da rota oeste', tunic:0x526176, hair:0x28323D, model:'/assets/npcs/npc_guardiao_rian.glb'},
+  {id:'cacador_varo', ...npcPhysical('cacador_varo'), name:'Caçador Varo', tag:'[Caçador] Varo', role:'Caçador do Bosque', tunic:0x664D33, hair:0x332218, model:'/assets/npcs/npc_cacador_varo.glb'},
+  {id:'caravaneiro_rul', ...npcPhysical('caravaneiro_rul'), name:'Caravaneiro Rul', tag:'[Caravaneiro] Rul', role:'Caravaneiro do Planalto', tunic:0x7A5B33, hair:0x392613, model:'/assets/npcs/npc_caravaneiro_rul.glb'},
+  {id:'vigia_tessa', ...npcPhysical('vigia_tessa'), long:true, name:'Vigia Tessa', tag:'[Vigia] Tessa', role:'Vigia auxiliar da Trilha dos Lobos', tunic:0x47664C, hair:0x243A28, model:'/assets/npcs/npc_vigia_tessa.glb'},
+  {id:'tecela_sia', ...npcPhysical('tecela_sia'), long:true, name:'Tecelã Sia', tag:'[Tecelã] Sia', role:'Tecelã da Mata das Teias', tunic:0x6B3D75, hair:0x382044, model:'/assets/npcs/npc_tecela_sia.glb'},
+  {id:'pesquisador_iven', ...npcPhysical('pesquisador_iven'), name:'Pesquisador Iven', tag:'[Pesquisador] Iven', role:'Pesquisador do Lago Espelhado', tunic:0x386B85, hair:0x203848, model:'/assets/npcs/npc_pesquisador_iven.glb'},
+  {id:'arqueologa_dena', ...npcPhysical('arqueologa_dena'), long:true, name:'Arqueóloga Dena', tag:'[Arqueóloga] Dena', role:'Arqueóloga das Ruínas do Ciclope', tunic:0x805239, hair:0x3B241A, model:'/assets/npcs/npc_arqueologa_dena.glb'},
 ];
 const npcObjs = NPCS.map(n=>{
   const h = makeLegacyHero({tunic:n.tunic, hair:n.hair, long:!!n.long, eye:n.eye}), y = heightAt(n.x, n.z);
@@ -2562,9 +2578,28 @@ function openNpc(n){
   $('npcTitle').textContent = n.name; renderNpc();
   w.style.left = Math.max(8, (innerWidth - w.offsetWidth)/2) + 'px'; w.style.top = (innerWidth < 760 ? 70 : 90) + 'px';
 }
+function npcServiceHTML(n,meta){
+  if(!meta||!meta.service)return'';
+  let html='';
+  if(meta.dialogue)html+=`<p>${meta.dialogue}</p>`;
+  if(meta.service==='healer')html+='<div class="actions"><button class="btn" type="button" data-service="heal">Restaurar Vida, Mana e Energia</button></div>';
+  if(meta.service==='supply-shop'){
+    for(const id of (meta.shopItems||[])){
+      const it=ITEMS[id];if(!it)continue;
+      html+=`<div class="shoprow"><span class="si">${iconHTML(id)}</span><div><b>${it.name}</b><span>${it.desc}</span></div><button class="btn" type="button" data-service-buy="${id}" ${ch.gold<(it.price||0)?'disabled':''}>${(it.price||0).toLocaleString('pt-BR')} ouro</button></div>`;
+    }
+  }
+  if(meta.service==='guild-registrar')html+='<div class="actions"><button class="btn" type="button" data-social="1">Abrir painel de grupo e guilda</button></div>';
+  if(meta.service==='guide'&&meta.guideZone){
+    const z=ZONES.find(x=>x.key===meta.guideZone),label=z&&z.name||meta.guideZone;
+    html+=`<div class="actions"><button class="btn" type="button" data-guide-zone="${meta.guideZone}">Traçar rota: ${label}</button></div>`;
+  }
+  return html;
+}
 function renderNpc(){
   const n=npcOpen; if(!n) return;
-  let html=`<p class="role">${n.role}</p>`;
+  const meta=npcCatalog.find(x=>x.id===n.id)||n;
+  let html=`<p class="role">${meta.role||n.role}</p>`;
   const C=CLASSES[n.id];
   if(C){
     html+=`<p>${C.desc}</p>`;
@@ -2572,6 +2607,7 @@ function renderNpc(){
     else if(ch.cls!=='aprendiz') html+=`<p>Você já seguiu o caminho de ${CLASSES[ch.cls].name}. Cada aventureiro escolhe uma classe só.</p>`;
   }
   html+=questNpcHTML(n.id);
+  html+=npcServiceHTML(n,meta);
   if(n.id==='voo'){
     html+=`<p>${ch.L>=20?'Com uma prancha ou vassoura você voa por cima da ilha e chega às ilhotas no céu. Equipe pela mochila.':'Voar libera no nível 20. Você pode comprar antes e guardar na mochila.'}</p>`;
     SHOP.forEach(id=>{
@@ -2688,6 +2724,10 @@ function sellMats(){
   ch.gold+=total;log(`Vendeu materiais por ${total} ouro.`,'gold');dirty=true;save();refreshUI();
 }
 $('winNpc').addEventListener('click', e=>{
+  const service=e.target.closest('[data-service]');if(service&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:service.dataset.service});return;}
+  const serviceBuy=e.target.closest('[data-service-buy]');if(serviceBuy&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:'buy',itemId:serviceBuy.dataset.serviceBuy});return;}
+  const guide=e.target.closest('[data-guide-zone]');if(guide){const z=ZONES.find(x=>x.key===guide.dataset.guideZone);if(z){clearMoveRoute();if(!setMoveRoute(z.x,z.z,false))log('Não foi possível traçar a rota indicada.','bad');else log(`Rota marcada: ${z.name}.`,'gold');}return;}
+  const social=e.target.closest('[data-social]');if(social){$('bSocial').click();return;}
   const b=e.target.closest('[data-buy]');if(b){buy(b.dataset.buy);return;}
   const ft=e.target.closest('[data-ftab]');if(ft){forgeTab=ft.dataset.ftab;renderNpc();return;}
   const up=e.target.closest('[data-up]');if(up){enhance(up.dataset.up);return;}
@@ -3674,6 +3714,7 @@ function handle(m){
   else if(m.t==='equipmentState'){ch.inv=m.inv;ch.eq=m.eq;ch.equp=m.equp;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
   else if(m.t==='classState'){Object.assign(ch,m.dados);derive();buffs=[];buildHotbar();setHeroWeapon(hero,ch.cls);banner(`Você agora é ${CLASSES[ch.cls].name}!`,'Distribua seus pontos na janela Herói');refreshUI();}
+  else if(m.t==='npcServiceState'){if(m.msg)log(m.msg,m.ok===false?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
   else if(m.t==='questState'){
     applyQuestSync(null,m.state,m.legacy);
     if(Array.isArray(m.inventory)) ch.inv=m.inventory;
