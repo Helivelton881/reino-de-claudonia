@@ -180,7 +180,7 @@
         const factor = height / Math.max(0.001, size.y);
         object.scale.setScalar(factor); object.position.y = -box.min.y * factor;
         object.traverse(o => { if (o.isMesh){
-          o.castShadow = this.hq; o.frustumCulled = false;
+          o.castShadow = this.hq; o.frustumCulled = true;
           if (o.material && o.material.map) o.material.map.encoding = THREE.LinearEncoding;
           if (o.material && o.material.emissiveMap) o.material.emissiveMap.encoding = THREE.LinearEncoding;
         } });

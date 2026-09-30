@@ -1275,8 +1275,11 @@ addEventListener('orientationchange', ()=> setTimeout(resize, 250));
 const canvas = $('game');
 // PC: sombras de verdade e mais detalhe. Celular: mais leve.
 const HQ = !isTouch;
+const PERF = { renderFar:isTouch?68:92, monsterFar:isTouch?78:100, npcFar:isTouch?30:36, playerFar:isTouch?68:88, uiStep:isTouch?0.12:0.08, lifeStep:isTouch?1/20:1/30 };
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false, powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, isTouch?1.5:2));
+// DPR limitado: 2x quadruplica os pixels sem melhorar a jogabilidade. Mantém nitidez com custo previsível.
+const BASE_DPR=Math.min(window.devicePixelRatio||1,isTouch?1.15:1.5);
+renderer.setPixelRatio(BASE_DPR);
 renderer.setClearColor(0xF1D2A6, 1);
 renderer.shadowMap.enabled = HQ; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -1291,7 +1294,7 @@ scene.add(new THREE.HemisphereLight(0xFFF1DC, 0x6B5A3C, 0.72));
 scene.add(new THREE.AmbientLight(0xFFE8CC, 0.2));
 const sun = new THREE.DirectionalLight(0xFFE2B4, 0.95); sun.position.set(-60,70,40);
 if (HQ){
-  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   const sc = sun.shadow.camera; sc.left = -40; sc.right = 40; sc.top = 40; sc.bottom = -40; sc.near = 1; sc.far = 240;
   sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
 }
@@ -1702,7 +1705,7 @@ scatterVeg(HQ ? 500 : 220, (x,z)=>{
   return {model: 'Pebble_Round_1', s:2.2+rand()*2};
 });
 // distância em que cada tipo some (o celular desenha menos longe) e quem faz sombra
-const VEG_FAR = m => /Tree|Pine/.test(m) ? (HQ ? 180 : 85) : /Rock|Bush/.test(m) ? (HQ ? 130 : 70) : /Grass|Pebble/.test(m) ? (HQ ? 60 : 36) : (HQ ? 90 : 50);
+const VEG_FAR = m => /Tree|Pine/.test(m) ? (HQ ? 130 : 78) : /Rock|Bush/.test(m) ? (HQ ? 95 : 62) : /Grass|Pebble/.test(m) ? (HQ ? 40 : 30) : (HQ ? 55 : 42);
 const natureReady = worldAssets.loadKit(WA.nature).then(K=>{
   let total = 0;
   VEG.forEach((items, name)=>{
@@ -1806,7 +1809,7 @@ const propsReady = worldAssets.loadKit(WA.props).then(K=>{
   let total = 0;
   PROPS_AT.forEach((items, name)=>{
     const model = K.get(name); if (!model){ console.warn('[Mundo] objeto não achado:', name); return; }
-    worldAssets.instance(model, items, {far:HQ ? 120 : 80, shadow:true}); total += items.length;
+    worldAssets.instance(model, items, {far:HQ ? 90 : 65, shadow:true}); total += items.length;
   });
   console.info(`[Mundo] Vila pronta: ${total} objetos.`);
 }).catch(e=>console.warn('[Mundo] props.glb não carregou.', e));
@@ -1983,7 +1986,7 @@ function makeLegacyHero(opts){
   }
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.6,20), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:HQ ? 0.14 : 0.25, depthWrite:false}));
   shadow.rotation.x = -Math.PI/2; scene.add(shadow);
-  castAll(root);
+  // O herói procedural já usa sombra elíptica; não renderizar cada peça no shadow-map.
   scene.add(root);
   return {root, legL, legR, armL, armR, torso, shadow, back, hand};
 }
@@ -2981,7 +2984,7 @@ npcObjs.filter(n=>n.model).forEach(n=>{
   npcModelLoader.load(n.model,gltf=>{
     const model=gltf.scene||gltf.scenes&&gltf.scenes[0]; if(!model)return;
     n.h.legL.visible=n.h.legR.visible=n.h.armL.visible=n.h.armR.visible=n.h.torso.visible=false;
-    model.position.set(0,0,0); model.scale.setScalar(1); castAll(model); n.h.root.add(model); n.customModel=model;
+    model.position.set(0,0,0); model.scale.setScalar(1); model.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}}); n.h.root.add(model); n.customModel=model;
   },undefined,err=>console.warn('[NPC] modelo 3D indisponível, usando fallback',n.id,err));
 });
 
@@ -3021,6 +3024,9 @@ function updateVillagers(dt, t){
 }
 function updateNpcs(t){
   npcObjs.forEach((n,i)=>{
+    const near=Math.hypot(n.x-player.x,n.z-player.z)<=PERF.npcFar;
+    n.h.root.visible=near; n.h.shadow.visible=near;
+    if(!near)return;
     n.h.torso.position.y = 1.35 + Math.sin(t*2 + i)*0.02;
     const state=npcMarkerState(n), y=3.35 + Math.sin(t*3)*0.08;
     n.markAvailable.visible=state==='available'; n.markActive.visible=state==='active'; n.markReady.visible=state==='ready';
@@ -3953,7 +3959,7 @@ function pushOut(nx, nz, rad, isle){
 function updateMonsters(dt, t){
   if(authoritativeCombat){
     monsters.forEach(m=>{
-      const dp=Math.hypot(player.x-m.x,player.z-m.z);m.mesh.visible=!m.dead&&dp<130;if(!m.mesh.visible)return;
+      const dp=Math.hypot(player.x-m.x,player.z-m.z);m.mesh.visible=!m.dead&&dp<PERF.monsterFar;if(!m.mesh.visible)return;
       m.label.visible=dp<32;m.mesh.position.set(m.x,heightAt(m.x,m.z),m.z);
       const moving=['chase','return','wander'].includes(m.state);if(moving)m.phase+=dt*8;
       if(m.body.userData.float)m.body.position.y=.35+Math.sin(t*2+m.phase)*.25;
@@ -3971,7 +3977,7 @@ function updateMonsters(dt, t){
     }
     const T = m.type, dp = Math.hypot(player.x - m.x, player.z - m.z);
     // longe demais: não desenha nem pensa (o mundo é grande)
-    const far = dp > 125 && m.state !== 'chase' && m.state !== 'return';
+    const far = dp > PERF.monsterFar && m.state !== 'chase' && m.state !== 'return';
     if (far){ if (m.mesh.visible) m.mesh.visible = false; return; }
     if (!m.mesh.visible) m.mesh.visible = true;
     const nearLabel = dp < 32; m.label.visible = nearLabel;
@@ -4193,7 +4199,7 @@ function updateFloats(dt){
   }
 }
 
-let uiT = 0, saveT = 0;
+let uiT = 0, fastUiT = 0, lifeT = 0, saveT = 0;
 function frame(){
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   Object.keys(cds).forEach(k=> cds[k] = Math.max(0, cds[k] - dt));
@@ -4203,9 +4209,13 @@ function frame(){
   updateDrops(dt, t);
   updateOnline(dt, t);
   updateFx(dt);
-  updateNpcs(t);
-  updateLife(dt, t);
-  updateVillagers(dt, t);
+  lifeT += dt;
+  if(lifeT>=PERF.lifeStep){
+    updateNpcs(t);
+    updateLife(lifeT, t);
+    updateVillagers(lifeT, t);
+    lifeT=0;
+  }
   if (charSys) charSys.update(dt, player);
 
   // alvo
@@ -4229,8 +4239,12 @@ function frame(){
 
   renderer.render(scene, camera);
   updateFloats(dt);
-  drawMini();
-  refreshCooldowns();
+  fastUiT += dt;
+  if(fastUiT>=PERF.uiStep){
+    fastUiT=0;
+    drawMini();
+    refreshCooldowns();
+  }
 
   uiT += dt; if (uiT > 0.15){
     uiT = 0; refreshStatus(); renderQuestTracker(); if (target) refreshTarget();
@@ -5020,11 +5034,13 @@ function updateOnline(dt, t){
     o.x += (o.tx - o.x)*k; o.y += (o.ty - o.y)*k; o.z += (o.tz - o.z)*k; o.f = lerpAngle(o.f, o.tf, k);
     const sp = Math.hypot(o.x - ox, o.z - oz)/Math.max(dt, 0.001), h = o.h, g = heightAt(o.x, o.z);
     h.root.position.set(o.x, o.y, o.z); h.root.rotation.y = o.f;
-    h.shadow.position.set(o.x, g + 0.05, o.z); h.shadow.visible = Math.hypot(o.x, o.z) < R;
+    h.shadow.position.set(o.x, g + 0.05, o.z);
+    const playerDist=Math.hypot(o.x-player.x,o.z-player.z), near=playerDist<=PERF.playerFar;
+    h.root.visible=near; h.shadow.visible=near&&Math.hypot(o.x,o.z)<R;
+    o.label.visible=near&&playerDist<40;if(o.glabel)o.glabel.visible=o.label.visible;
+    if(!near)return;
     const flyT = o.a === 5 ? 'broom' : (o.a === 4 ? 'board' : null);
     if ((h.flyType || null) !== flyT) showFlyerType(h, flyT);
-    o.label.visible = Math.hypot(o.x - player.x, o.z - player.z) < 40;
-    if (o.glabel) o.glabel.visible = o.label.visible;
     const walk = sp > 0.6, inAir = o.y - g > 0.3;
     if (walk) o.phase += dt*(sp > 6.5 ? 13 : 9);
     const amp = walk && !inAir ? (sp > 6.5 ? 0.95 : 0.6) : 0, s = Math.sin(o.phase), kk = Math.min(1, dt*14);
