@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 test('QA-SETUP capturar sessão autenticada manualmente', async ({ page }) => {
+  test.setTimeout(330_000);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   console.log('QA_SETUP: faça login manualmente na janela do Chromium.');
   await expect(page.locator('#chars')).toBeVisible({ timeout: 300_000 });
