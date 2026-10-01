@@ -2502,15 +2502,18 @@ function routeLength(path){
 }
 function setApproachRoute(tx,tz,range,silent){
   if (!pathfinder || !Number.isFinite(tx) || !Number.isFinite(tz)) return setMoveRoute(tx,tz,silent,tx,tz);
-  const base = Math.atan2(player.z-tz, player.x-tx), radius = Math.max(1.25, range*0.82);
-  let best = null;
-  for (let i=0;i<8;i++){
-    const a = base + i*Math.PI/4, x = tx + Math.cos(a)*radius, z = tz + Math.sin(a)*radius;
-    if (!navWalkable(x,z)) continue;
-    const path = pathfinder.findPath({x:player.x,z:player.z},{x,z});
-    if (!path.length) continue;
-    const cost = routeLength(path);
-    if (!best || cost < best.cost) best = {x,z,path,cost};
+  const base=Math.atan2(player.z-tz,player.x-tx), maxRadius=Math.max(1.25,range*0.96);
+  const radii=[Math.max(1.25,range*0.72),Math.max(1.25,range*0.84),maxRadius];
+  let best=null;
+  for(const radius of radii){
+    for(let i=0;i<24;i++){
+      const a=base+i*Math.PI/12,x=tx+Math.cos(a)*radius,z=tz+Math.sin(a)*radius;
+      if(!navWalkable(x,z))continue;
+      const path=pathfinder.findPath({x:player.x,z:player.z},{x,z});
+      if(!path||!path.length)continue;
+      const cost=routeLength(path);
+      if(!best||cost<best.cost)best={x,z,path,cost};
+    }
   }
   if (!best){ if (!silent) log('Não há caminho até o alvo.', 'bad'); return false; }
   player.moveGoal = {x:best.x,z:best.z}; player.movePath = best.path; player.movePathIndex = 0; player.moveStuckT = 0;
