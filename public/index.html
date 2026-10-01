@@ -3063,13 +3063,32 @@ npcObjs.filter(n=>n.model).forEach(n=>{
 const FALAS = ['Que dia bonito para caçar Bolotas!', 'Dizem que o Ciclope guarda tesouros nas ruínas.', 'A Ferreira Brunna é a melhor da região.',
   'Já viu as ilhas que flutuam no céu?', 'Cuidado com as aranhas da mata!', 'O lago fica lindo no fim da tarde.',
   'Procuro alguém para formar um grupo...', 'Os javalis andam bravos hoje.', 'Minha avó dizia que o outono aqui nunca acaba.'];
+const VILLAGER_MODELS=['Mage.glb','Knight.glb','Rogue_Hooded.glb','Barbarian.glb','Barbarian.glb','Mage.glb'];
 const villagers = [['[Moradora] Clara',0xC96A8A,0x6B3A1E],['[Morador] Tobias',0x7A8A3A,0x2B2B2B],['[Moradora] Dália',0xE0A33A,0xF2D16B],
   ['[Morador] Otto',0x5A6A8A,0xDADADA],['[Vendedor] Beto',0xB5532F,0x3B2A1E],['[Moradora] Íris',0x3A8A7A,0xE07A2E]].map(([label,tunic,hair],i)=>{
   const h = makeLegacyHero({tunic, hair, long:/Morador(a)\]|Moradora/.test(label) && /a\]/.test(label), eye:[0x3A6FB8,0x2E8A5A,0x8A5A2A,0x6A4AB8,0x3A6FB8,0x2E8A8A][i]}), a = i/6*Math.PI*2, x = Math.cos(a)*12, z = Math.sin(a)*12;
   h.root.remove(h.back); h.torso.remove(h.back);
   const lab = makeLabel(label, '#E8DCC0'); lab.position.y = 2.8; h.root.add(lab);
-  return {h, x, z, gx:x, gz:z, face:a, phase:0, wait:rnd(1,5), talk:rnd(6,20), lab};
+  return {h, x, z, gx:x, gz:z, face:a, phase:0, wait:rnd(1,5), talk:rnd(6,20), lab, model:KAYKIT_NPC+VILLAGER_MODELS[i], path:[], pathIndex:0, stuckT:0, lastX:x, lastZ:z, animState:''};
 });
+let villagerIdleClip=null,villagerWalkClip=null;
+npcModelLoader.load(KAYKIT_NPC+'Rig_Medium_MovementBasic.glb',g=>{villagerWalkClip=(g.animations||[]).find(a=>a.name==='Walking_A')||(g.animations||[]).find(a=>/walk/i.test(a.name))||null;});
+function setVillagerAnim(v,moving){
+  if(!v.animMixer)return;const state=moving?'walk':'idle';if(v.animState===state)return;v.animState=state;
+  const clip=moving?villagerWalkClip:npcIdleClip;if(!clip)return;
+  if(v.animAction)v.animAction.fadeOut(.15);v.animAction=v.animMixer.clipAction(clip);v.animAction.reset().fadeIn(.15).play();
+}
+function loadVillagerModel(v){
+  npcModelLoader.load(v.model,gltf=>{const model=gltf.scene||gltf.scenes&&gltf.scenes[0];if(!model)return;
+    v.h.legL.visible=v.h.legR.visible=v.h.armL.visible=v.h.armR.visible=v.h.torso.visible=false;model.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}});v.h.root.add(model);v.customModel=model;v.animMixer=new THREE.AnimationMixer(model);setVillagerAnim(v,false);
+  },undefined,e=>console.warn('[Morador] modelo KayKit indisponível',e));
+}
+villagers.forEach(loadVillagerModel);
+function chooseVillagerRoute(v){
+  for(let tries=0;tries<12;tries++){const a=Math.random()*Math.PI*2,r=rnd(5,28),gx=Math.cos(a)*r,gz=Math.sin(a)*r;if(!navWalkable(gx,gz))continue;
+    const path=pathfinder?pathfinder.findPath({x:v.x,z:v.z},{x:gx,z:gz}):[{x:gx,z:gz}];if(path&&path.length){v.gx=gx;v.gz=gz;v.path=path;v.pathIndex=0;v.stuckT=0;return true;}}
+  v.wait=rnd(2,5);v.path=[];return false;
+}
 function updateVillagers(dt, t){
   villagers.forEach(v=>{
     const far = Math.hypot(v.x - player.x, v.z - player.z) > 90;
@@ -3077,20 +3096,29 @@ function updateVillagers(dt, t){
     let moving = false;
     if (v.wait > 0) v.wait -= dt;
     else {
-      const dx = v.gx - v.x, dz = v.gz - v.z, dd = Math.hypot(dx,dz);
-      if (dd < 0.4){ v.wait = rnd(2,7); const a = Math.random()*Math.PI*2, r = rnd(5,28); v.gx = Math.cos(a)*r; v.gz = Math.sin(a)*r; }
-      else {
-        const r = pushOut(v.x + dx/dd*1.7*dt, v.z + dz/dd*1.7*dt, 0.4, -1); v.x = r[0]; v.z = r[1];
-        v.face = lerpAngle(v.face, Math.atan2(dx,dz), Math.min(1, dt*6)); moving = true;
+      if(!v.path.length||v.pathIndex>=v.path.length) chooseVillagerRoute(v);
+      const wp=v.path[v.pathIndex];
+      if(wp){
+        const dx=wp.x-v.x,dz=wp.z-v.z,dd=Math.hypot(dx,dz);
+        if(dd<0.3){v.pathIndex++;if(v.pathIndex>=v.path.length){v.wait=rnd(2,7);v.path=[];}}
+        else{
+          const step=Math.min(dd,1.7*dt),nx=v.x+dx/dd*step,nz=v.z+dz/dd*step;
+          if(navWalkable(nx,nz)){v.x=nx;v.z=nz;v.face=lerpAngle(v.face,Math.atan2(dx,dz),Math.min(1,dt*6));moving=true;}
+          else{v.stuckT+=dt;if(v.stuckT>.25)chooseVillagerRoute(v);}
+        }
       }
     }
+    const advanced=Math.hypot(v.x-v.lastX,v.z-v.lastZ);if(moving&&advanced<0.002)v.stuckT+=dt;else if(advanced>0.01)v.stuckT=0;
+    if(v.stuckT>0.8)chooseVillagerRoute(v);v.lastX=v.x;v.lastZ=v.z;
     v.talk -= dt; if (v.talk <= 0){ v.talk = rnd(14,30); if (Math.hypot(v.x-player.x, v.z-player.z) < 25) showBubble(v.h.root, FALAS[Math.floor(Math.random()*FALAS.length)]); }
     const y = heightAt(v.x, v.z), h = v.h;
     h.root.position.set(v.x, y, v.z); h.root.rotation.y = v.face; h.shadow.position.set(v.x, y + 0.05, v.z);
-    if (moving) v.phase += dt*8;
-    const s = moving ? Math.sin(v.phase)*0.5 : 0;
-    h.legL.rotation.x = s; h.legR.rotation.x = -s; h.armL.rotation.x = -s*0.8; h.armR.rotation.x = s*0.8;
-    h.torso.position.y = 1.35 + (moving ? Math.abs(Math.sin(v.phase))*0.04 : Math.sin(t*2)*0.02);
+    if(v.animMixer){setVillagerAnim(v,moving);v.animMixer.update(dt);}
+    if(!v.customModel){
+      if (moving) v.phase += dt*8;const s=moving?Math.sin(v.phase)*0.5:0;
+      h.legL.rotation.x=s;h.legR.rotation.x=-s;h.armL.rotation.x=-s*0.8;h.armR.rotation.x=s*0.8;
+      h.torso.position.y=1.35+(moving?Math.abs(Math.sin(v.phase))*0.04:Math.sin(t*2)*0.02);
+    }
   });
 }
 let npcAnimTime=performance.now();
