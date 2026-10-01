@@ -2,6 +2,7 @@
 
 const SKILLS = require('../data/skills');
 const EQUIPMENT = require('../data/equipment');
+const {ITEMS:LIFESTYLE_ITEMS}=require('../data/lifestyle');
 const { derivePlayer, playerDamage, monsterDamage } = require('./damage-calculator');
 
 class CombatManager {
@@ -30,7 +31,7 @@ class CombatManager {
     s.crit=Math.min(.95,s.crit+(b.crit||0));s.attackSpeed*=1+(b.attackSpeed||0);s.rangeBonus=b.range||0;s.healingBonus=b.healing||0;s.dotBonus=b.dot||0;s.partyDamage=b.partyDamage||0;
     player.stats=s;player.maxHp=s.maxHp;return s;
   }
-  bonus(player,key){ let total=0; const now=this.now(); for(const [id,b] of player.buffs){if(b.until<=now)player.buffs.delete(id);else total+=b[key]||0;} return total; }
+  bonus(player,key){ let total=0; const now=this.now(); player.buffs=player.buffs||new Map(); for(const [id,b] of player.buffs){if(b.until<=now)player.buffs.delete(id);else total+=b[key]||0;} return total; }
   partyTargets(player,radius=25){
     if(!player.party)return[player];
     return [...player.party.members].map(id=>this.players.get(id)).filter(p=>p&&!p.dead&&Math.hypot(p.x-player.x,p.z-player.z)<=radius);
@@ -164,12 +165,15 @@ class CombatManager {
     return true;
   }
   useItem(player,message={}){
-    const amounts={pocao_vida:['hp',80],pocao_mana:['mp',50],pocao_energia:['fp',40]},rule=amounts[message.itemId];if(!rule&&message.itemId!=='combustivel')return this.fail(player,'Item inválido.');
-    const now=this.now();if(now<(player.nextItemAt||0))return this.fail(player,'Item em recarga.');
-    const inv=Array.isArray(player.dados.inv)?player.dados.inv:[],slot=inv.find(x=>x&&x.id===message.itemId&&x.n>0);if(!slot)return this.fail(player,'Você não possui este item.');
+    const amounts={pocao_vida:{restore:{hp:80}},pocao_mana:{restore:{mp:50}},pocao_energia:{restore:{fp:40}}},life=LIFESTYLE_ITEMS[message.itemId],effect=amounts[message.itemId]||(life&&life.effect);if(!effect&&message.itemId!=='combustivel')return this.fail(player,'Item inválido.');
+    const now=this.now();if(now<(player.nextItemAt||0))return this.fail(player,'Item em recarga.');const inv=Array.isArray(player.dados.inv)?player.dados.inv:[],slot=inv.find(x=>x&&x.id===message.itemId&&x.n>0);if(!slot)return this.fail(player,'Você não possui este item.');
     if(message.itemId==='combustivel'){slot.n--;if(slot.n<=0)inv.splice(inv.indexOf(slot),1);player.nextItemAt=now+1000;player.dirty=true;this.send(player.ws,{t:'itemEffect',itemId:message.itemId,inv});return true;}
-    const stats=this.refresh(player),key=rule[0],max=stats[`max${key[0].toUpperCase()+key.slice(1)}`];if(player[key]>=max)return this.fail(player,'O recurso já está cheio.');
-    slot.n--;if(slot.n<=0)inv.splice(inv.indexOf(slot),1);player[key]=Math.min(max,player[key]+rule[1]);player.dados[key]=player[key];player.nextItemAt=now+1000;player.dirty=true;this.sync(player,{inv});return true;
+    const stats=this.refresh(player);let changed=false;
+    for(const [key,val] of Object.entries(effect.restore||{})){const max=stats[`max${key[0].toUpperCase()+key.slice(1)}`];if(Number.isFinite(max)&&player[key]<max){player[key]=Math.min(max,player[key]+val);player.dados[key]=player[key];changed=true;}}
+    if(effect.buff){const cat=effect.buff.category||message.itemId;player.buffs.set('life:'+cat,{...effect.buff,until:now+Math.max(1,effect.buff.seconds||1)*1000});changed=true;}
+    if(effect.repair){for(const s of Object.keys(player.dados.eq||{})){if(!player.dados.eq[s])continue;player.dados.eqMeta[s]=player.dados.eqMeta[s]||{};player.dados.eqMeta[s].durability=Math.min(100,Number(player.dados.eqMeta[s].durability??100)+effect.repair);}changed=true;}
+    if(effect.title){const lifeState=player.dados.lifestyle||(player.dados.lifestyle={});lifeState.titles=Array.isArray(lifeState.titles)?lifeState.titles:[];if(!lifeState.titles.includes(effect.title))lifeState.titles.push(effect.title);changed=true;}
+    if(!changed)return this.fail(player,'O item não teria efeito agora.');slot.n--;if(slot.n<=0)inv.splice(inv.indexOf(slot),1);player.nextItemAt=now+1000;player.dirty=true;this.refresh(player);this.sync(player,{inv,itemEffect:message.itemId});return true;
   }
   equipment(player,message={}){
     if(!this.itemManager)return this.fail(player,'Sistema de itens indisponível.');

@@ -1,0 +1,5 @@
+const {test,expect}=require('@playwright/test');
+for(const cfg of [{name:'pc',w:1440,h:900},{name:'mobile',w:390,h:844}]){
+ test('fase15 lifestyle UI '+cfg.name,async({page})=>{await page.setViewportSize({width:cfg.w,height:cfg.h});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/',{waitUntil:'domcontentloaded'});await page.keyboard.press('l');await expect(page.locator('#lifestyleLaunch')).toBeVisible();await expect(page.locator('#lifestylePanel')).toBeVisible();await expect(page.locator('#lifestylePanel')).toContainText('Profissões');await expect(page.locator('#lifestylePanel')).toContainText('Receitas');expect(errors.filter(x=>/lifestyle|Cannot read properties/.test(x))).toEqual([]);});
+}
+test('fase15 assets respondem localmente',async({request})=>{for(const f of ['Rock_1_A_Color1.gltf','Tree_1_A_Color1.gltf','Bush_1_A_Color1.gltf','Fish.gltf','Workbench.gltf','Anvil.gltf']){const r=await request.get('/assets/lifestyle/'+f);expect(r.ok(),f).toBeTruthy();}});

@@ -28,6 +28,9 @@ const DungeonManager = require('./server/dungeons/dungeon-manager');
 const PetManager = require('./server/pets/pet-manager');
 const SocialManager = require('./server/social/social-manager');
 const PvpManager = require('./server/pvp/pvp-manager');
+const GatherManager = require('./server/lifestyle/gather-manager');
+const CraftManager = require('./server/lifestyle/craft-manager');
+const {DUNGEON_MATERIALS}=require('./server/data/lifestyle');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -102,13 +105,15 @@ const combatManager = new CombatManager({
     const recipients = allowedIds.map(id=>players.get(id)).filter(q=>q&&Math.hypot(q.x-monster.x,q.z-monster.z)<=40);
     recipients.forEach(q=>{
       questManager.recordEvent(q,'kill',{monsterKey:monster.key,giant:monster.giant,count:1});
-      if(monster.giant) questManager.recordEvent(q,'boss',{monsterKey:monster.key,giant:true,count:1});
+      if(monster.giant){questManager.recordEvent(q,'boss',{monsterKey:monster.key,giant:true,count:1});itemManager.addItem(q,{id:'fragmento_gigante',n:monster.worldBoss?2:1});q.dirty=true;itemManager.sync(q,{event:'giant-material'});}
     });
   }
 });
 const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, spawnManager, players, send, navigation:worldNavigation });
 lootManager = new LootManager({ players, send, emitNearby:emitirPerto, itemManager });
 const economyManager = new EconomyManager({send,itemManager});
+const gatherManager = new GatherManager({send,itemManager});
+const craftManager = new CraftManager({send,itemManager});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
 const petManager = new PetManager({send,itemManager,lootManager});
 const socialManager = new SocialManager({players,send,itemManager,save:salvar});
@@ -242,6 +247,9 @@ wss.on('connection', ws => {
           classCatalog: skillManager.classCatalog(),
           itemCatalog: itemManager.catalog(),
           itemState: itemManager.snapshot(p),
+          lifestyleCatalog: {...gatherManager.catalog(),...craftManager.catalog()},
+          lifestyleState: gatherManager.ensure(p),
+          lifestyleNodes: gatherManager.snapshot(),
           npcCatalog: NPCS,
           bestiary: BESTIARY,
           admin: p.admin===true
@@ -292,7 +300,7 @@ wss.on('connection', ws => {
         if (!m.dados || typeof m.dados !== 'object' || Array.isArray(m.dados)) return;
         if (JSON.stringify(m.dados).length > 20000) return;
         if (COMBATE_AUTORITATIVO) {
-          const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree','pets','petActive','social','mail','pvp']);
+          const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree','pets','petActive','social','mail','pvp','lifestyle']);
           for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
           Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
         } else {
@@ -329,7 +337,7 @@ wss.on('connection', ws => {
         if(m.action==='enter'){const npc=NPCS.find(n=>n.id==='guardiao_cripta');if(!npc||!perto(p,npc,5))return erro(p,'Aproxime-se do Guardião Vaelor.');const out=dungeonManager.create(p,m.dungeonId||'cripta_ecos',m.difficulty||'normal');if(!out.ok)erro(p,out.reason);}
         else if(m.action==='attack') dungeonManager.attack(p,m.targetId);
         else if(m.action==='interact') dungeonManager.progress(p,'interact',m.target,1);
-        else if(m.action==='chest'){const out=dungeonManager.claimChest(p);if(!out.ok)erro(p,'Baú indisponível ou já coletado.');else{const pool=Object.values(EQUIPMENT).filter(x=>x.source==='dungeon'&&Number(x.req||x.level||1)<=p.L&&(!x.cls||x.cls===p.dados.cls));const granted=[];for(let n=0;n<out.loot.rolls&&pool.length;n++){const it=pool[Math.floor(Math.random()*pool.length)];if(itemManager.addItem(p,{id:it.id,n:1}))granted.push(it.id);}p.dirty=true;itemManager.sync(p,{event:'dungeon-chest'});send(p.ws,{t:'dungeonLoot',loot:out.loot,items:granted});}}
+        else if(m.action==='chest'){const out=dungeonManager.claimChest(p);if(!out.ok)erro(p,'Baú indisponível ou já coletado.');else{const pool=Object.values(EQUIPMENT).filter(x=>x.source==='dungeon'&&Number(x.req||x.level||1)<=p.L&&(!x.cls||x.cls===p.dados.cls));const granted=[];const matN=DUNGEON_MATERIALS.cripta_ecos?.[dungeonManager.getForPlayer(p.id)?.difficulty||'normal']||2;itemManager.addItem(p,{id:'cristal_eco',n:matN});for(let n=0;n<out.loot.rolls&&pool.length;n++){const it=pool[Math.floor(Math.random()*pool.length)];if(itemManager.addItem(p,{id:it.id,n:1}))granted.push(it.id);}p.dirty=true;itemManager.sync(p,{event:'dungeon-chest'});send(p.ws,{t:'dungeonLoot',loot:out.loot,items:granted});}}
         break;
       }
       case 'skillTree': {
@@ -395,6 +403,15 @@ wss.on('connection', ws => {
       case 'pet': if(!petManager.handle(p,m)) erro(p,'Ação de pet inválida.'); break;
       case 'social': { const out=socialManager.handle(p,m); if(out&&out.ok===false)erro(p,out.reason||'Ação social inválida.'); else if(out===false)erro(p,'Ação social inválida.'); break; }
       case 'pvp': pvpManager.handle(p,m); break;
+      case 'lifestyle': {
+        if(!COMBATE_AUTORITATIVO)break;
+        if(m.action==='gather')gatherManager.gather(p,m.nodeId);
+        else if(m.action==='craft')craftManager.craft(p,m.recipeId);
+        else if(m.action==='repair')craftManager.repair(p,m.slot);
+        else if(m.action==='sync')gatherManager.sync(p,{catalog:{...gatherManager.catalog(),...craftManager.catalog()}});
+        else erro(p,'Ação Lifestyle inválida.');
+        break;
+      }
       case 'inviteByName': { const alvo=[...players.values()].find(o=>o.name.toLowerCase()===String(m.name||'').trim().toLowerCase()); if(!alvo)return erro(p,'Jogador não encontrado ou offline.'); convidar(p,{kind:m.kind,to:alvo.id}); break; }
       case 'token':
         if (typeof m.token === 'string') p.token = m.token;

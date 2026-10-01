@@ -5,6 +5,7 @@ const SETS=require('../data/items/sets');
 const {RARITIES}=require('../data/items/rarities');
 const CARDS=require('../data/items/cards');
 const NPCS=require('../data/npcs');
+const {ITEMS:LIFESTYLE_ITEMS}=require('../data/lifestyle');
 
 const SLOTS=Object.freeze(['arma','offhand','capacete','peitoral','luvas','botas','capa','acessorio1','acessorio2','voo']);
 const INVENTORY_LIMIT=32,STORAGE_LIMIT=60;
@@ -27,14 +28,14 @@ class ItemManager{
     const maxAffixes=(RARITIES[item.rarity]||RARITIES.comum).affixes||0;
     const affixes=Array.isArray(meta&&meta.affixes)?meta.affixes.filter(a=>a&&ALLOWED_AFFIX.has(a.stat)&&Number.isFinite(Number(a.value))).slice(0,maxAffixes).map(a=>({stat:a.stat,value:Number(a.value),name:String(a.name||a.stat).slice(0,40)})):[];
     const socketed=Array.isArray(meta&&meta.socketed)?meta.socketed.filter(id=>CARDS[id]).slice(0,item.socketCount||0):[];
-    return {uid:typeof meta?.uid==='string'?meta.uid:null,rarity:item.rarity,affixes,socketed,locked:!!meta?.locked,favorite:!!meta?.favorite};
+    return {uid:typeof meta?.uid==='string'?meta.uid:null,rarity:item.rarity,affixes,socketed,locked:!!meta?.locked,favorite:!!meta?.favorite,durability:Math.max(0,Math.min(100,Number(meta?.durability??100)))};
   }
   normalizeEntry(player,entry){
     if(!entry||typeof entry.id!=='string')return null;
     const item=EQUIPMENT[entry.id];
     if(!item)return {id:entry.id,n:Math.max(1,Math.floor(Number(entry.n)||1))};
     const meta=this.normalizeMeta(item,entry);
-    return {id:entry.id,n:1,up:Math.max(0,Math.min(10,Math.floor(Number(entry.up)||0))),uid:meta.uid||this.nextUid(player,entry.id),rarity:item.rarity,affixes:meta.affixes,socketed:meta.socketed,locked:meta.locked,favorite:meta.favorite};
+    return {id:entry.id,n:1,up:Math.max(0,Math.min(10,Math.floor(Number(entry.up)||0))),uid:meta.uid||this.nextUid(player,entry.id),rarity:item.rarity,affixes:meta.affixes,socketed:meta.socketed,locked:meta.locked,favorite:meta.favorite,durability:meta.durability};
   }
   entryMeta(entry,item){const m=this.normalizeMeta(item,entry);return {...m,uid:entry.uid||m.uid};}
   equippedEntry(player,slot){
@@ -94,7 +95,7 @@ class ItemManager{
     if(row){row.n+=n;return true;}if(d.inv.length>=INVENTORY_LIMIT)return false;d.inv.push({id,n});return true;
   }
   catalog(){
-    return {equipment:Object.values(EQUIPMENT).map(x=>({...x})),sets:Object.values(SETS).map(s=>({...s,bonuses:{2:s.bonuses[2].map(x=>({...x})),3:s.bonuses[3].map(x=>({...x})),4:s.bonuses[4].map(x=>({...x}))}})),rarities:Object.values(RARITIES).map(x=>({...x})),cards:Object.values(CARDS).map(x=>({...x})),inventoryLimit:INVENTORY_LIMIT,storageLimit:STORAGE_LIMIT};
+    return {materials:Object.values(LIFESTYLE_ITEMS).map(x=>({...x})),equipment:Object.values(EQUIPMENT).map(x=>({...x})),sets:Object.values(SETS).map(s=>({...s,bonuses:{2:s.bonuses[2].map(x=>({...x})),3:s.bonuses[3].map(x=>({...x})),4:s.bonuses[4].map(x=>({...x}))}})),rarities:Object.values(RARITIES).map(x=>({...x})),cards:Object.values(CARDS).map(x=>({...x})),inventoryLimit:INVENTORY_LIMIT,storageLimit:STORAGE_LIMIT};
   }
   snapshot(player){const d=this.ensurePlayer(player);return {inv:d.inv,storage:d.storage,eq:d.eq,equp:d.equp,eqMeta:d.eqMeta,itemSeq:d.itemSeq};}
   sync(player,extra={}){const d=this.ensurePlayer(player);this.send(player.ws,{t:'itemState',state:this.snapshot(player),gold:d.gold||0,...extra});}

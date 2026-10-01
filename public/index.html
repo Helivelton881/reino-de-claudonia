@@ -1080,6 +1080,25 @@ let dungeonVisual=null;
 function buildDungeonVisual(){if(dungeonVisual){scene.remove(dungeonVisual);dungeonVisual=null;}dungeonVisual=new THREE.Group();dungeonVisual.name='CriptaDosEcos_Instance';dungeonVisual.position.set(player.x,player.y-.1,player.z);scene.add(dungeonVisual);const loader=new THREE.GLTFLoader(),base='assets/dungeons/cripta_ecos/';const parts=[['room_module.glb',0,0,1],['room_module.glb',0,-15,1],['room_module.glb',0,-30,1],['gate_echo.glb',0,-7.5,1],['gate_echo.glb',0,-22.5,1],['echo_seal.glb',-3,-16,1],['echo_seal.glb',0,-18,1],['echo_seal.glb',3,-16,1],['miniboss_vigia_runico.glb',0,-25,.8],['boss_matriarca_ecos.glb',0,-34,.75],['loot_chest.glb',3,-34,.8]];for(const [file,x,z,s] of parts)loader.load(base+file,g=>{if(!dungeonVisual)return;g.scene.position.set(x,0,z);g.scene.scale.setScalar(s);dungeonVisual.add(g.scene);},undefined,()=>log('Falha ao carregar '+file,'bad'));}
 function clearDungeonVisual(){if(dungeonVisual){scene.remove(dungeonVisual);dungeonVisual=null;}}
 let itemCatalog = {equipment:{},sets:{},rarities:{},cards:{},inventoryLimit:32,storageLimit:60}, itemState = {inv:[],storage:[],eq:{},equp:{},eqMeta:{}};
+let lifestyleCatalog={nodes:[],professions:[],recipes:{},materials:{},stations:{}},lifestyleState={professions:{}},lifestyleNodes=[],lifestyleMeshes=new Map(),lifestyleStations=new Map();
+function lifestyleSend(action,data={}){sendWs({t:'lifestyle',action,...data});}
+function ensureLifestylePanel(){
+ if($('lifestylePanel'))return;const launch=document.createElement('button');launch.id='lifestyleLaunch';launch.textContent='⚒';launch.title='Profissões (L)';launch.style.cssText='position:fixed;z-index:1800;right:12px;bottom:92px;width:48px;height:48px;border-radius:50%;font-size:22px';document.body.appendChild(launch);const el=document.createElement('div');el.id='lifestylePanel';el.hidden=true;el.style.cssText='position:fixed;z-index:1900;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,94vw);max-height:82vh;overflow:auto;background:#1d160fef;border:2px solid #c89b4b;border-radius:16px;padding:14px;color:#f8edd2;font:600 14px sans-serif';launch.onclick=()=>{el.hidden=!el.hidden;if(!el.hidden){lifestyleSend('sync');renderLifestyle();}};
+ el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">⚒ Profissões & Artesanato</h2><button id="lifeClose">✕</button></div><div id="lifeProf"></div><hr><div id="lifeRecipes"></div>';document.body.appendChild(el);$('lifeClose').onclick=()=>el.hidden=true;
+}
+function renderLifestyle(){
+ ensureLifestylePanel();const prof=$('lifeProf'),rec=$('lifeRecipes');if(!prof||!rec)return;
+ prof.innerHTML='<h3>Profissões</h3>'+Object.entries(lifestyleState.professions||{}).map(([id,p])=>{const cfg=(lifestyleCatalog.professions||[]).find(x=>x.id===id);return '<div><b>'+esc(cfg?.name||id)+'</b> — Nv '+p.level+' · '+p.xp+' XP</div>';}).join('')+'<h3>Recursos próximos</h3>'+(lifestyleCatalog.nodes||[]).map(n=>{const st=(lifestyleNodes||[]).find(x=>x.id===n.id),dist=Math.hypot(player.x-n.x,player.z-n.z);return dist<18?'<button data-gather="'+n.id+'" '+(st?.ready===false?'disabled':'')+'>'+esc(n.name||n.line)+' · '+dist.toFixed(1)+'m</button>':'';}).join('');prof.querySelectorAll('[data-gather]').forEach(b=>b.onclick=()=>lifestyleSend('gather',{nodeId:b.dataset.gather}));
+ rec.innerHTML='<h3>Receitas</h3>'+Object.entries(lifestyleCatalog.recipes||{}).map(([id,r])=>{const out=r.output?.id||r.output?.tool||id,mat=lifestyleCatalog.materials?.[out];return '<div style="padding:8px;margin:6px 0;background:#ffffff0c;border-radius:8px"><b>'+esc(mat?.name||lifestyleCatalog.tools?.[out]?.name||out)+'</b> · '+esc(r.profession)+' Nv '+r.level+' · '+r.fee+' ouro<br><small>'+(r.inputs||[]).map(x=>x.n+'× '+esc(lifestyleCatalog.materials?.[x.id]?.name||ITEMS[x.id]?.name||x.id)).join(' · ')+'</small><br><button data-craft="'+id+'">Criar</button></div>';}).join('');
+ rec.querySelectorAll('[data-craft]').forEach(b=>b.onclick=()=>lifestyleSend('craft',{recipeId:b.dataset.craft}));
+}
+function syncLifestyleMeshes(){
+ const state=new Map((lifestyleNodes||[]).map(n=>[n.id,n])),asset={mineracao:'Rock_1_A_Color1.gltf',lenhador:'Tree_1_A_Color1.gltf',herbalismo:'Bush_1_A_Color1.gltf',pesca:'Fish.gltf'};
+ for(const n of lifestyleCatalog.nodes||[]){let m=lifestyleMeshes.get(n.id);if(!m){m=new THREE.Group();m.position.set(n.x,heightAt(n.x,n.z),n.z);m.userData.lifestyleNode=n.id;scene.add(m);lifestyleMeshes.set(n.id,m);const loader=new THREE.GLTFLoader();loader.load('/assets/lifestyle/'+asset[n.line],g=>{const model=g.scene;model.scale.setScalar(n.line==='pesca'?.35:n.line==='lenhador'?1.1:.75);if(n.line==='pesca')model.rotation.y=Math.PI/2;m.add(model);},undefined,()=>{const color=n.line==='mineracao'?0x8793a1:n.line==='lenhador'?0x8b5a2b:n.line==='herbalismo'?0x52a85a:0x4aa8d8;m.add(new THREE.Mesh(new THREE.DodecahedronGeometry(.65,0),new THREE.MeshStandardMaterial({color})));});}m.visible=state.get(n.id)?.ready!==false;
+ }
+ for(const [id,s] of Object.entries(lifestyleCatalog.stations||{})){if(lifestyleStations.has(id))continue;const holder=new THREE.Group();holder.position.set(s.x,heightAt(s.x,s.z),s.z);scene.add(holder);lifestyleStations.set(id,holder);const file=id==='forja'?'Anvil.gltf':'Workbench.gltf';new THREE.GLTFLoader().load('/assets/lifestyle/'+file,g=>{g.scene.scale.setScalar(id==='forja'?.85:1);holder.add(g.scene);},undefined,()=>{});const label=makeLabel(s.name||id,'#f2c66d');label.position.y=2.1;label.scale.set(3.6,.7,1);holder.add(label);}
+}
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='l'&&!e.target.closest('input,textarea')){ensureLifestylePanel();$('lifestylePanel').hidden=!$('lifestylePanel').hidden;if(!$('lifestylePanel').hidden){lifestyleSend('sync');renderLifestyle();}}});
 const SLOT_ICONS={arma:'⚔️',offhand:'🛡️',capacete:'⛑️',peitoral:'🥋',luvas:'🧤',botas:'🥾',capa:'🧣',acessorio1:'💍',acessorio2:'📿',voo:'🛹'};
 function applyItemCatalog(catalog,state){
   if(catalog&&Array.isArray(catalog.equipment)){
@@ -4719,6 +4738,7 @@ function handle(m){
       log(`Bem-vindo ao Reino De Claudonia, ${m.char.nome}!`, 'good');
     }
     applyItemCatalog(m.itemCatalog,m.itemState);
+    lifestyleCatalog=m.lifestyleCatalog||lifestyleCatalog;lifestyleState=m.lifestyleState||lifestyleState;lifestyleNodes=m.lifestyleNodes||[];syncLifestyleMeshes();renderLifestyle();
     adminEnabled=!!m.admin;if(adminEnabled)ensureAdminPanel();
     m.others.forEach(addOther); countOnline();
     myGuild = m.guild || null; guildList = null; guildAsked = false;
@@ -4791,6 +4811,9 @@ function handle(m){
   else if(m.t==='pvpEvent'){if(m.event==='territory-captured')banner('Território conquistado',`${m.guild} conquistou ${m.territory}`);else if(m.event==='arena-start')banner('Arena PvP',`Adversário: ${m.opponent}`);else if(m.event==='duel-start')banner('Duelo iniciado',`Adversário: ${m.opponent}`);if(!$('winSocial').hidden&&socialTab==='pvp')sendWs({t:'pvp',action:'sync'});}
   else if(m.t==='pvpHit'){if(m.damage)floatText(player.x,player.y+2.5,player.z,`PvP ${m.damage}`,'bad');}
   else if(m.t==='whisper'){log('✉ '+(m.to?'Para '+m.to:m.from)+': '+m.msg,'good');}
+  else if(m.t==='lifestyleState'){if(m.state)lifestyleState=m.state;if(Array.isArray(m.nodes))lifestyleNodes=m.nodes;if(m.catalog)lifestyleCatalog={...lifestyleCatalog,...m.catalog};syncLifestyleMeshes();renderLifestyle();if(m.ok===false&&m.msg)log(m.msg,'bad');else if(m.reward)log(`Coleta: +${m.reward.n} ${lifestyleCatalog.materials?.[m.reward.id]?.name||m.reward.id}`,'gold');}
+  else if(m.t==='craftResult'){if(m.ok===false)log(m.msg||'Falha no artesanato.','bad');else{if(m.lifestyle)lifestyleState=m.lifestyle;log(`Criação concluída (${m.quality}). -${m.fee} ouro`,'gold');renderLifestyle();}}
+  else if(m.t==='repairResult'){if(m.ok)log(`Equipamento reparado por ${m.cost} ouro.`,'gold');}
   else if(m.t==='itemState'){if(m.state)applyItemCatalog(null,m.state);if(m.ok===false&&m.msg)log(m.msg,'bad');derive();syncHeroEquipment(hero,ch.eq,ch.cls);refreshUI();}
   else if(m.t==='equipmentState'){applyItemCatalog(null,m);if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();syncHeroEquipment(hero,ch.eq,ch.cls);invModalState=null;selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
