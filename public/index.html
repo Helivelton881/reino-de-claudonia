@@ -3042,15 +3042,20 @@ const npcObjs = NPCS.map(n=>{
   return Object.assign({h, markAvailable, markActive, markReady}, n);
 });
 const npcModelLoader = new THREE.GLTFLoader();
+let npcIdleClip=null;
+npcModelLoader.load(KAYKIT_NPC+'Rig_Medium_General.glb',animGltf=>{
+  npcIdleClip=(animGltf.animations||[]).find(a=>a.name==='Idle_A')||(animGltf.animations||[]).find(a=>/idle/i.test(a.name))||null;
+  if(npcIdleClip) npcObjs.filter(n=>n.customModel&&!n.animMixer).forEach(n=>startNpcIdle(n));
+},undefined,err=>console.warn('[NPC] animação Idle KayKit indisponível',err));
+function startNpcIdle(n){
+  if(!npcIdleClip||!n.customModel||n.animMixer)return;
+  n.animMixer=new THREE.AnimationMixer(n.customModel); n.idleAction=n.animMixer.clipAction(npcIdleClip); n.idleAction.setLoop(THREE.LoopRepeat,Infinity); n.idleAction.play();
+}
 npcObjs.filter(n=>n.model).forEach(n=>{
   npcModelLoader.load(n.model,gltf=>{
     const model=gltf.scene||gltf.scenes&&gltf.scenes[0]; if(!model)return;
     n.h.legL.visible=n.h.legR.visible=n.h.armL.visible=n.h.armR.visible=n.h.torso.visible=false;
-    model.position.set(0,0,0); model.scale.setScalar(1); model.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}}); n.h.root.add(model); n.customModel=model;
-    if(gltf.animations&&gltf.animations.length){
-      const idle=gltf.animations.find(a=>/^(idle|idle_a|idle_01)$/i.test(a.name))||gltf.animations.find(a=>/idle/i.test(a.name))||gltf.animations[0];
-      n.animMixer=new THREE.AnimationMixer(model); n.idleAction=n.animMixer.clipAction(idle); n.idleAction.setLoop(THREE.LoopRepeat,Infinity); n.idleAction.play();
-    }
+    model.position.set(0,0,0); model.scale.setScalar(1); model.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}}); n.h.root.add(model); n.customModel=model; startNpcIdle(n);
   },undefined,err=>console.warn('[NPC] modelo 3D indisponível, usando fallback',n.id,err));
 });
 
