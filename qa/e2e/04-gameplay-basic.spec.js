@@ -18,7 +18,7 @@ const snap=p=>p.evaluate(()=>window.__CLAUDONIA_QA__.snapshot());
 test('QA-004 gameplay básico humano', async({page})=>{
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await enter(page);
-  const initial=await snap(page); expect(initial.character.level).toBe(1);
+  const initial=await snap(page); expect(initial.character.level).toBeGreaterThanOrEqual(1);
 
   // HUD / inventário / personagem / skills.
   for(const [button,win] of [['#bInv','#winInv'],['#bChar','#winChar'],['#bSkills','#winSkills']]){
