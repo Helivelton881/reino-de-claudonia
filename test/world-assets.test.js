@@ -29,15 +29,18 @@ test('todo modelo usado no mapa existe nos kits', () => {
   for (const n of propUsed) if (!nature.has(n)) assert.ok(props.has(n), 'objetos sem ' + n);
 });
 
-test('NPCs regionais e de serviço usam GLBs otimizados', () => {
-  const files=['npc_vigia_cael.glb','npc_batedora_maelis.glb','npc_guardia_neris.glb','npc_sentinela_oren.glb','npc_curandeira_lysa.glb','npc_mercador_nilo.glb','npc_escriva_mira.glb','npc_guia_toren.glb','npc_alquimista_sera.glb','npc_equipador_joren.glb','npc_batedor_bran.glb','npc_botanica_ilyra.glb','npc_guardiao_rian.glb','npc_cacador_varo.glb','npc_caravaneiro_rul.glb','npc_vigia_tessa.glb','npc_tecela_sia.glb','npc_pesquisador_iven.glb','npc_arqueologa_dena.glb'];
+test('NPCs usam KayKit sem reutilizar os personagens jogáveis', () => {
+  const files=['Barbarian.glb','Knight.glb','Mage.glb','Rogue_Hooded.glb'];
+  const npcDir=path.join(publicDir,'assets','npcs','kaykit');
   const html = fs.readFileSync(path.join(publicDir,'index.html'),'utf8');
   for (const f of files) {
-    const p = path.join(publicDir,'assets','npcs',f);
+    const p=path.join(npcDir,f);
     assert.ok(fs.existsSync(p),f+' ausente');
     assert.ok(fs.statSync(p).size < 512 * 1024,f+' passou de 512 KB');
     assert.match(html,new RegExp(f.replace('.','\\.')));
   }
+  assert.ok(!fs.existsSync(path.join(npcDir,'Ranger.glb')),'Ranger jogável não pode ser NPC');
+  assert.ok(!fs.existsSync(path.join(npcDir,'Rogue.glb')),'Rogue jogável não pode ser NPC');
 });
 
 test('página carrega o gerenciador e os monstros do Bestiary', () => {
