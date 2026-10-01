@@ -1,0 +1,13 @@
+'use strict';
+class AdminManager{
+ constructor({send,players,isAdmin,maxAudit=500,now=()=>Date.now(),persistAudit=null}){Object.assign(this,{send,players,isAdmin,maxAudit,now,persistAudit});this.audit=[];this.bans=new Map();this.mutes=new Map();}
+ hydrate(p){const v=p?.dados?.opsBanUntil;if(v==='permanent')this.bans.set(p.charId,Infinity);else if(Number(v)>this.now())this.bans.set(p.charId,Number(v));}
+ log(actor,action,target,details={}){const row={at:this.now(),actorId:actor?.charId||'system',action,targetId:target?.charId||String(target||''),details};this.audit.push(row);if(this.audit.length>this.maxAudit)this.audit.shift();if(this.persistAudit)Promise.resolve(this.persistAudit(row)).catch(()=>{});}
+ find(ref){const s=String(ref||'').toLowerCase();return[...this.players.values()].find(x=>String(x.id)===s||x.charId===ref||x.name?.toLowerCase()===s);}
+ inspect(target){if(!target)return null;return{id:target.id,charId:target.charId,name:target.name,L:target.L,x:target.x,z:target.z,hp:target.hp,guild:target.guild?{id:target.guild.id,nome:target.guild.nome}:null,online:true,admin:!!target.admin,inventoryCount:target.dados?.inv?.length||0,gold:target.dados?.gold||0};}
+ muted(p){const until=this.mutes.get(p.charId)||0;if(until&&until<=this.now()){this.mutes.delete(p.charId);return false;}return until===Infinity||until>this.now();}
+ banned(charId){const until=this.bans.get(charId)||0;if(until&&until<=this.now()){this.bans.delete(charId);return false;}return until===Infinity||until>this.now();}
+ command(actor,m){if(!this.isAdmin(actor))return{ok:false,reason:'unauthorized'};const target=this.find(m.target);if(m.action==='inspect'){const data=this.inspect(target);if(!data)return{ok:false,reason:'not-found'};this.log(actor,'inspect',target);this.send(actor.ws,{t:'adminInspect',data});return{ok:true};}if(!target||target===actor)return{ok:false,reason:'invalid-target'};const mins=Math.max(0,Math.min(525600,Math.floor(Number(m.minutes)||0))),until=mins?this.now()+mins*60000:Infinity;if(m.action==='mute'){this.mutes.set(target.charId,until);this.log(actor,'mute',target,{minutes:mins});this.send(target.ws,{t:'erro',msg:'Chat silenciado pela administração.'});return{ok:true};}if(m.action==='kick'){this.log(actor,'kick',target);target.ws.close(4007,'admin kick');return{ok:true};}if(m.action==='ban'){this.bans.set(target.charId,until);target.dados.opsBanUntil=until===Infinity?'permanent':until;target.dirty=true;this.log(actor,'ban',target,{minutes:mins});target.ws.close(4008,'admin ban');return{ok:true};}return{ok:false,reason:'invalid-action'};}
+ snapshot(){return{audit:this.audit.slice(-100),bans:this.bans.size,mutes:this.mutes.size};}
+}
+module.exports=AdminManager;

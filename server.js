@@ -32,6 +32,9 @@ const GatherManager = require('./server/lifestyle/gather-manager');
 const CraftManager = require('./server/lifestyle/craft-manager');
 const {DUNGEON_MATERIALS}=require('./server/data/lifestyle');
 const LiveOpsManager=require('./server/live-ops/live-ops-manager');
+const ObservabilityManager=require('./server/operations/observability-manager');
+const WsGuard=require('./server/security/ws-guard');
+const AdminManager=require('./server/admin/admin-manager');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -61,6 +64,7 @@ app.get('/config.js', (req, res) => {
     .send(`window.IV_CONFIG=${JSON.stringify({ url: SUPABASE_URL, key: SUPABASE_KEY })};`);
 });
 app.get('/saude', (req, res) => res.json({ ok: true, online: players.size }));
+app.get('/api/status',(req,res)=>res.json({ok:true,online:players.size,uptimeMs:Date.now()-observability.startedAt}));
 app.get('/api/live-ops/calendar',(req,res)=>res.json({ok:true,...liveOpsManager.catalog()}));
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, file) => { if (file.endsWith('.html')) res.set('Cache-Control', 'no-cache'); }
@@ -81,6 +85,8 @@ const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 const ADMIN_CHAR_IDS=new Set(['d1d8d695-c26f-4dbb-a3d7-5e79323b385d']);
 const ADMIN_USER_IDS=new Set(['68fbb675-f504-41af-adb1-e2161bca4930']);
 const isAdmin=p=>!!p&&ADMIN_CHAR_IDS.has(p.charId)&&ADMIN_USER_IDS.has(p.userId);
+const observability=new ObservabilityManager();
+const wsGuard=new WsGuard();
 const perto = (a, b, d) => Math.hypot(a.x - b.x, a.z - b.z) < d;
 const resumo = p => ({ id:p.id,name:p.name,L:p.L,x:p.x,y:p.y,z:p.z,f:p.f,cls:p.dados?.cls||'aprendiz',gender:p.dados?.gender==='female'?'female':'male',gear:{...(p.dados?.eq||{})},
   g:p.guild?p.guild.nome:null,s:p.shop?p.shop.title:null });
@@ -118,6 +124,7 @@ const economyManager = new EconomyManager({send,itemManager});
 const gatherManager = new GatherManager({send,itemManager});
 const craftManager = new CraftManager({send,itemManager});
 const liveOpsManager = new LiveOpsManager({send,itemManager});
+const adminManager = new AdminManager({send,players,isAdmin,persistAudit:async row=>{const {error}=await anon.from('iv_admin_audit').insert({actor_char_id:row.actorId==='system'?null:row.actorId,target_char_id:/^[0-9a-f-]{36}$/i.test(row.targetId)?row.targetId:null,action:row.action,details:row.details});if(error)observability.error('admin-audit-db');}});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
 const petManager = new PetManager({send,itemManager,lootManager});
 const socialManager = new SocialManager({players,send,itemManager,save:salvar});
@@ -186,12 +193,16 @@ const semPreco=items=>items.map(({price,...x})=>x);
 /* ---------- WebSocket ---------- */
 wss.on('connection', ws => {
   let p = null;
+  observability.inc('sessions');
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
   const semLogin = setTimeout(() => { if (!p) ws.close(4001, 'sem login'); }, 10000);
 
   ws.on('message', async raw => {
-    let m; try { m = JSON.parse(raw); } catch { return; }
+    let m; try { m = JSON.parse(raw); } catch { observability.error('ws-json'); return; }
+    observability.inc('messages');
+    const guarded=wsGuard.check(ws,m,raw?.length||raw?.byteLength||0);
+    if(!guarded.ok){observability.inc('rateLimited');send(ws,{t:'erro',msg:'Muitas solicitações. Aguarde um instante.'});if(guarded.close)ws.close(4009,'rate limit');return;}
 
     if (!p) {
       if (m.t !== 'auth' || typeof m.token !== 'string' || typeof m.charId !== 'string' || ws.entrando) return;
@@ -199,10 +210,11 @@ wss.on('connection', ws => {
       try {
         if (players.size >= MAX_JOGADORES) { send(ws, { t: 'erro', msg: 'Servidor cheio. Tente daqui a pouco.' }); return ws.close(4006); }
         const { data, error } = await anon.auth.getUser(m.token);
-        if (error || !data.user) { send(ws, { t: 'erro', msg: 'Sessão expirada. Entre de novo.' }); return ws.close(4003); }
+        if (error || !data.user) { observability.inc('authFail');send(ws, { t: 'erro', msg: 'Sessão expirada. Entre de novo.' }); return ws.close(4003); }
         const { data: row, error: e2 } = await dbDoJogador(m.token).from('iv_personagens')
           .select('id,nome,dados,pos_x,pos_z').eq('id', m.charId).single();
-        if (e2 || !row) { send(ws, { t: 'erro', msg: 'Personagem não encontrado.' }); return ws.close(4004); }
+        if (e2 || !row) { observability.inc('authFail');send(ws, { t: 'erro', msg: 'Personagem não encontrado.' }); return ws.close(4004); }
+        if(adminManager.banned(row.id)) { observability.inc('authFail');send(ws,{t:'erro',msg:'Acesso suspenso pela administração.'});return ws.close(4008); }
 
         for (const o of players.values()) {
           if (o.charId === row.id) { send(o.ws, { t: 'erro', msg: 'Este personagem entrou em outro aparelho.' }); o.ws.close(4005); }
@@ -219,6 +231,8 @@ wss.on('connection', ws => {
           lastPosAt: Date.now(), fallingFromFlight: false, invisible:false
         };
         novo.admin=isAdmin(novo);
+        adminManager.hydrate(novo);
+        if(adminManager.banned(novo.charId)){observability.inc('authFail');send(ws,{t:'erro',msg:'Acesso suspenso pela administração.'});return ws.close(4008);}
         itemManager.ensurePlayer(novo);
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         questManager.initializePlayer(novo);
@@ -228,7 +242,7 @@ wss.on('connection', ws => {
         await carregarGuilda(novo);
         if (ws.readyState !== 1) return;
         p = novo;
-        players.set(p.id, p);
+        players.set(p.id, p);observability.inc('authOk');observability.setOnline(players.size);
         dungeonManager.reconnect(p);
         restaurarGrupo(p);
         socialManager.onLogin(p);
@@ -289,6 +303,7 @@ wss.on('connection', ws => {
         break;
       }
       case 'chat': {
+        if(adminManager.muted(p))return erro(p,'Seu chat está temporariamente silenciado.');
         if (typeof m.text !== 'string') return;
         const text = m.text.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 120);
         const agora = Date.now();
@@ -377,6 +392,10 @@ wss.on('connection', ws => {
           p.invisible=!!m.value;
           if(p.invisible)broadcast({t:'leave',id:p.id},p);else broadcast({t:'join',...resumo(p)},p);
           send(p.ws,{t:'adminState',invisible:p.invisible});
+        }else if(['inspect','mute','kick','ban'].includes(m.action)){
+          const out=adminManager.command(p,m);if(!out.ok)return erro(p,'Operação administrativa inválida: '+out.reason);
+        }else if(m.action==='ops'){
+          send(p.ws,{t:'adminOps',observability:observability.snapshot(),admin:adminManager.snapshot(),liveOps:liveOpsManager.telemetrySnapshot()});
         }else return erro(p,'Comando ADM inválido.');
         break;
       }
@@ -436,7 +455,7 @@ wss.on('connection', ws => {
     socialManager.onDisconnect(p);
     pvpManager.onDisconnect(p);
     preservarGrupo(p);
-    players.delete(p.id);
+    players.delete(p.id);observability.setOnline(players.size);
     if (p.trade) fimTroca(p.trade, `${p.name} saiu do jogo. Troca cancelada.`);
     if (p.shop) fecharLoja(p);
     broadcast({ t: 'leave', id: p.id });

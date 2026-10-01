@@ -179,13 +179,22 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
   sua função. Os SVGs são leves (menos de 6 KB cada), vetoriais e responsivos.
   Esta etapa é UI 2D, portanto não exigiu Blender/GLB.
 
+## Estado operacional atual (Fases 10–17)
+- Fases 10–13 concluídas: ecossistema PvE/Giants/World Bosses, dungeon cooperativa, pets/social e expansão/revitalização do mundo, mantendo servidor autoritativo e assets 3D otimizados.
+- Fase 14 concluída: PvP/Guild endgame e integrações competitivas sobre a base server-authoritative.
+- Fase 15 concluída: Lifestyle com coleta, crafting, profissões, materiais de Giant/dungeon, reparo e sinks econômicos.
+- Fase 16 concluída: Live Ops com achievements, objetivos diários/semanais, temporada gratuita, calendário/eventos rotativos e telemetria server-side.
+- Fase 17 concluída no código: camada operacional com observabilidade, rate limiting/validação WebSocket, Admin auditado (inspect/mute/kick/ban), migration/rollback documentados, load test, asset budget, regressão multiplataforma e PWA. Métricas privadas não são expostas por HTTP público.
+- Segurança operacional: mensagens WebSocket passam por token-bucket por tipo; operações críticas continuam validadas pelos managers server-side. Admin exige simultaneamente UUID autorizado de conta e personagem.
+- PWA: manifest + service worker cacheiam somente shell/assets GET; API, WebSocket e Supabase/auth nunca entram no cache offline.
+- Banco: migrations novas são versionadas em `supabase/`; nunca editar migration aplicada. Procedimento em `docs/OPERATIONS_PHASE17.md`.
+
 ## Limites conhecidos (próximos passos)
 - As Fases 7, 8 e 9 estão formalmente fechadas e publicadas.
 - Pré-Fase 10 UI: inventário e Habilidades foram concluídos. Referências editáveis
   Canva: inventário `DAHWrK1NTLE` e Habilidades `DAHWrUd5IMQ`. A implementação
   runtime continua própria do Reino de Claudonia e usa dados/regras atuais do jogo.
-- Próxima fase planejada: Fase 10 — ecossistema de
-  monstros, variantes rare/Giant e World Bosses.
+- Fases 10 a 17 já foram implementadas; o trabalho seguinte deve ser tratado como manutenção, conteúdo incremental, balanceamento, performance e operação contínua, não como retorno à Fase 10.
 - Qualquer novo NPC, monstro, boss, arma, armadura, pet, montaria, prop ou objeto
   3D de skill continua passando pelo Blender aberto no PC antes de entrar no jogo.
 
