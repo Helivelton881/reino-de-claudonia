@@ -2377,7 +2377,7 @@ function mergeBody(body){
   body.userData = keep;
 }
 function createMonster(key, giant, net){
-  const T = MTYPES[key], built = T.build(giant);
+  const T = MTYPES[key] || (net&&net.worldBoss ? MTYPES.ciclope : null); if(!T){console.warn('[Monster] tipo visual desconhecido',key);return null;} const built = T.build(giant);
   mergeBody(built.body);
   const m = {type:T, key, giant:!!giant, mesh:built.g, body:built.body, label:null, face:Math.random()*6.28,
     state:'idle', cd:0, wanderT:rnd(1,4), wx:0, wz:0, dead:false, deadT:0, dying:0, hitT:0, phase:Math.random()*6};
