@@ -31,6 +31,7 @@ const PvpManager = require('./server/pvp/pvp-manager');
 const GatherManager = require('./server/lifestyle/gather-manager');
 const CraftManager = require('./server/lifestyle/craft-manager');
 const {DUNGEON_MATERIALS}=require('./server/data/lifestyle');
+const LiveOpsManager=require('./server/live-ops/live-ops-manager');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -60,6 +61,7 @@ app.get('/config.js', (req, res) => {
     .send(`window.IV_CONFIG=${JSON.stringify({ url: SUPABASE_URL, key: SUPABASE_KEY })};`);
 });
 app.get('/saude', (req, res) => res.json({ ok: true, online: players.size }));
+app.get('/api/live-ops/calendar',(req,res)=>res.json({ok:true,...liveOpsManager.catalog()}));
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, file) => { if (file.endsWith('.html')) res.set('Cache-Control', 'no-cache'); }
 }));
@@ -105,7 +107,8 @@ const combatManager = new CombatManager({
     const recipients = allowedIds.map(id=>players.get(id)).filter(q=>q&&Math.hypot(q.x-monster.x,q.z-monster.z)<=40);
     recipients.forEach(q=>{
       questManager.recordEvent(q,'kill',{monsterKey:monster.key,giant:monster.giant,count:1});
-      if(monster.giant){questManager.recordEvent(q,'boss',{monsterKey:monster.key,giant:true,count:1});itemManager.addItem(q,{id:'fragmento_gigante',n:monster.worldBoss?2:1});q.dirty=true;itemManager.sync(q,{event:'giant-material'});}
+      liveOpsManager.record(q,'kill',{count:1});
+      if(monster.giant){questManager.recordEvent(q,'boss',{monsterKey:monster.key,giant:true,count:1});liveOpsManager.record(q,'giant',{count:1,target:monster.key});itemManager.addItem(q,{id:'fragmento_gigante',n:monster.worldBoss?2:1});q.dirty=true;itemManager.sync(q,{event:'giant-material'});}
     });
   }
 });
@@ -114,6 +117,7 @@ lootManager = new LootManager({ players, send, emitNearby:emitirPerto, itemManag
 const economyManager = new EconomyManager({send,itemManager});
 const gatherManager = new GatherManager({send,itemManager});
 const craftManager = new CraftManager({send,itemManager});
+const liveOpsManager = new LiveOpsManager({send,itemManager});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
 const petManager = new PetManager({send,itemManager,lootManager});
 const socialManager = new SocialManager({players,send,itemManager,save:salvar});
@@ -219,6 +223,7 @@ wss.on('connection', ws => {
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         questManager.initializePlayer(novo);
         skillManager.initializePlayer(novo);
+        liveOpsManager.ensure(novo);
         if (COMBATE_AUTORITATIVO) combatManager.refresh(novo);
         await carregarGuilda(novo);
         if (ws.readyState !== 1) return;
@@ -250,6 +255,8 @@ wss.on('connection', ws => {
           lifestyleCatalog: {...gatherManager.catalog(),...craftManager.catalog()},
           lifestyleState: gatherManager.ensure(p),
           lifestyleNodes: gatherManager.snapshot(),
+          liveOpsCatalog: liveOpsManager.catalog(),
+          liveOpsState: liveOpsManager.snapshot(p),
           npcCatalog: NPCS,
           bestiary: BESTIARY,
           admin: p.admin===true
@@ -278,6 +285,7 @@ wss.on('connection', ws => {
         p.fallingFromFlight = !!move.fallingFromFlight;
         p.moved = true; p.posDirty = true;
         questManager.recordPosition(p,p.x,p.z);
+        for(const [zoneId,zone] of Object.entries(ZONES))if(Math.hypot(p.x-zone.x,p.z-zone.z)<=zone.radius+6){liveOpsManager.explore(p,zoneId);break;}
         break;
       }
       case 'chat': {
@@ -301,6 +309,7 @@ wss.on('connection', ws => {
         if (JSON.stringify(m.dados).length > 20000) return;
         if (COMBATE_AUTORITATIVO) {
           const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree','pets','petActive','social','mail','pvp','lifestyle']);
+          protectedKeys.add('liveOps');
           for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
           Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
         } else {
@@ -325,7 +334,7 @@ wss.on('connection', ws => {
       case 'pkill': if (!COMBATE_AUTORITATIVO) monstroDoGrupo(p, m); break;
       case 'attack': if (COMBATE_AUTORITATIVO) combatManager.attack(p,m); break;
       case 'skill': if (COMBATE_AUTORITATIVO) combatManager.skill(p,m); break;
-      case 'pickup': if (COMBATE_AUTORITATIVO && lootManager.pickup(p,m.id)) questManager.sync(p,{event:'inventory'}); break;
+      case 'pickup': if (COMBATE_AUTORITATIVO && lootManager.pickup(p,m.id)){questManager.sync(p,{event:'inventory'});liveOpsManager.record(p,'collect',{count:1});} break;
       case 'petPickup': { if(!COMBATE_AUTORITATIVO)break;const drop=lootManager.get(m.id),check=petManager.pickup(p,drop);if(!check.ok)return erro(p,check.reason);const active=p.dados.petActive,cfg=active&&require('./server/data/pets').PETS[active];if(cfg&&lootManager.pickup(p,m.id,{radius:cfg.pickupRadius})){petManager.gainExp(p,1);questManager.sync(p,{event:'inventory'});}break; }
       case 'itemUse': if (COMBATE_AUTORITATIVO && combatManager.useItem(p,m)) questManager.recordEvent(p,'use-item',{itemId:m.itemId,count:1}); break;
       case 'equipment': if (COMBATE_AUTORITATIVO && combatManager.equipment(p,m)) broadcast({t:'gear',id:p.id,cls:p.dados.cls||'aprendiz',gear:{...(p.dados.eq||{})}},p); break;
@@ -337,7 +346,7 @@ wss.on('connection', ws => {
         if(m.action==='enter'){const npc=NPCS.find(n=>n.id==='guardiao_cripta');if(!npc||!perto(p,npc,5))return erro(p,'Aproxime-se do Guardião Vaelor.');const out=dungeonManager.create(p,m.dungeonId||'cripta_ecos',m.difficulty||'normal');if(!out.ok)erro(p,out.reason);}
         else if(m.action==='attack') dungeonManager.attack(p,m.targetId);
         else if(m.action==='interact') dungeonManager.progress(p,'interact',m.target,1);
-        else if(m.action==='chest'){const out=dungeonManager.claimChest(p);if(!out.ok)erro(p,'Baú indisponível ou já coletado.');else{const pool=Object.values(EQUIPMENT).filter(x=>x.source==='dungeon'&&Number(x.req||x.level||1)<=p.L&&(!x.cls||x.cls===p.dados.cls));const granted=[];const matN=DUNGEON_MATERIALS.cripta_ecos?.[dungeonManager.getForPlayer(p.id)?.difficulty||'normal']||2;itemManager.addItem(p,{id:'cristal_eco',n:matN});for(let n=0;n<out.loot.rolls&&pool.length;n++){const it=pool[Math.floor(Math.random()*pool.length)];if(itemManager.addItem(p,{id:it.id,n:1}))granted.push(it.id);}p.dirty=true;itemManager.sync(p,{event:'dungeon-chest'});send(p.ws,{t:'dungeonLoot',loot:out.loot,items:granted});}}
+        else if(m.action==='chest'){const out=dungeonManager.claimChest(p);if(!out.ok)erro(p,'Baú indisponível ou já coletado.');else{liveOpsManager.record(p,'dungeon',{count:1});const pool=Object.values(EQUIPMENT).filter(x=>x.source==='dungeon'&&Number(x.req||x.level||1)<=p.L&&(!x.cls||x.cls===p.dados.cls));const granted=[];const matN=DUNGEON_MATERIALS.cripta_ecos?.[dungeonManager.getForPlayer(p.id)?.difficulty||'normal']||2;itemManager.addItem(p,{id:'cristal_eco',n:matN});for(let n=0;n<out.loot.rolls&&pool.length;n++){const it=pool[Math.floor(Math.random()*pool.length)];if(itemManager.addItem(p,{id:it.id,n:1}))granted.push(it.id);}p.dirty=true;itemManager.sync(p,{event:'dungeon-chest'});send(p.ws,{t:'dungeonLoot',loot:out.loot,items:granted});}}
         break;
       }
       case 'skillTree': {
@@ -405,13 +414,14 @@ wss.on('connection', ws => {
       case 'pvp': pvpManager.handle(p,m); break;
       case 'lifestyle': {
         if(!COMBATE_AUTORITATIVO)break;
-        if(m.action==='gather')gatherManager.gather(p,m.nodeId);
-        else if(m.action==='craft')craftManager.craft(p,m.recipeId);
+        if(m.action==='gather'){if(gatherManager.gather(p,m.nodeId))liveOpsManager.record(p,'gather',{count:1});}
+        else if(m.action==='craft'){if(craftManager.craft(p,m.recipeId))liveOpsManager.record(p,'craft',{count:1});}
         else if(m.action==='repair')craftManager.repair(p,m.slot);
         else if(m.action==='sync')gatherManager.sync(p,{catalog:{...gatherManager.catalog(),...craftManager.catalog()}});
         else erro(p,'Ação Lifestyle inválida.');
         break;
       }
+      case 'liveOps': { if(m.action==='sync')liveOpsManager.sync(p); else if(m.action==='claim')liveOpsManager.claim(p,String(m.kind||''),String(m.id||'')); else if(m.action==='telemetry'&&isAdmin(p))send(p.ws,{t:'liveOpsTelemetry',telemetry:liveOpsManager.telemetrySnapshot()}); else erro(p,'Ação Live Ops inválida.'); break; }
       case 'inviteByName': { const alvo=[...players.values()].find(o=>o.name.toLowerCase()===String(m.name||'').trim().toLowerCase()); if(!alvo)return erro(p,'Jogador não encontrado ou offline.'); convidar(p,{kind:m.kind,to:alvo.id}); break; }
       case 'token':
         if (typeof m.token === 'string') p.token = m.token;
@@ -798,6 +808,7 @@ async function entrarNaGuilda(quemConvida, p){
       throw e2;
     }
     p.guild = { id: g.id, nome: g.nome, cargo: 'novato', nivel: g.nivel };
+    liveOpsManager.social(p,1);liveOpsManager.guild(p,1);
     avisarGuilda(p);
     for (const o of daGuilda(g.id)) aviso(o, `${p.name} entrou na guilda.`);
   } catch (err) {
@@ -874,6 +885,7 @@ async function doarParaGuilda(p, m){
     p.dados = { ...p.dados, inv, gold: (p.dados.gold || 0) - gold }; p.dirty = true; salvar(p);
     const r = Array.isArray(data) ? data[0] : data;
     send(p.ws, { t: 'gdonated', gold, items, pontos });
+    liveOpsManager.guild(p,1);
     const subiu = r && r.nivel > (g.nivel || 1);
     for (const o of daGuilda(g.id)){
       if (r) o.guild.nivel = r.nivel;
