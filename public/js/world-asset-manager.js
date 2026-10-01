@@ -129,6 +129,9 @@
             dummy.scale.set(s, s * (it.sy || 1), s);
             dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix);
             if (pt.tint || it.colorAll) m.setColorAt(i, it.color ? col.copy(it.color) : col.setRGB(1, 1, 1));
+            // modelos com textura única (atlas, sem material "Leaves"): cor suave por cópia para não
+            // ficarem todas iguais; toda cópia recebe cor (sem cor = branco), senão sairia preta.
+            else if (opts.softTint) m.setColorAt(i, it.color ? col.copy(it.color).lerp(WorldAssetManager._white, opts.softTint) : col.setRGB(1, 1, 1));
           });
           m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true;
           m.castShadow = !!(opts.shadow && this.hq); m.receiveShadow = false;
@@ -162,13 +165,16 @@
       const pace=state==='move'?0.88:state==='idle'?0.92:1;
       next.reset().setEffectiveTimeScale(pace).setEffectiveWeight(1);
       if(state==='death'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=true;}
-      else if(state==='attack'||state==='hit'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=false;}
+      // golpe/dano tocam uma vez e seguram o último quadro até o próximo estado
+      // (sem clamp, o mixer soltava os ossos e o monstro voltava para a pose de repouso/T-pose).
+      else if(state==='attack'||state==='hit'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=true;}
       else next.setLoop(THREE.LoopRepeat,Infinity);
       if(immediate)next.play();else next.fadeIn(.12).play();row.current=state;
     }
     update(cameraPosition, dt){
       const frameDt = dt || 0.016;
-      for (let i=this.mixers.length-1;i>=0;i--){ const row=this.mixers[i]; if(!row.root.parent){this.mixers.splice(i,1);continue;} row.mixer.update(frameDt); }
+      // monstro escondido (longe ou morto) não gasta CPU com ossos; retoma quando aparece de novo
+      for (let i=this.mixers.length-1;i>=0;i--){ const row=this.mixers[i]; if(!row.root.parent){this.mixers.splice(i,1);continue;} if(row.root.parent.visible===false)continue; row.mixer.update(frameDt); }
       this._t -= frameDt;
       if (this._t > 0) return; this._t = 0.25;
       const cx = cameraPosition.x, cz = cameraPosition.z;
@@ -193,7 +199,7 @@
         const object = THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(gltf.scene) : gltf.scene.clone(true);
         const box = new THREE.Box3().setFromObject(gltf.scene), size = new THREE.Vector3(); box.getSize(size);
         const factor = height / Math.max(0.001, size.y);
-        object.scale.setScalar(factor); object.position.y = -box.min.y * factor;
+        object.scale.setScalar(factor); object.position.y = -box.min.y * factor; object.userData.baseY = object.position.y;
         object.traverse(o => { if (o.isMesh){
           o.castShadow = this.hq; o.frustumCulled = true;
           if (variant && variant !== 'normal' && o.material){ o.material=o.material.clone(); const tint={rare:0xb9d8ff,elite:0xd7b5ff,giant:0xffc19a}[variant]; if(tint&&o.material.color)o.material.color.multiply(new THREE.Color(tint)); }
@@ -221,6 +227,7 @@
     }
   }
   WorldAssetManager._v = new THREE.Vector3();
+  WorldAssetManager._white = new THREE.Color(1, 1, 1);
   WorldAssetManager.CHUNK = CHUNK;
 
   global.CLAUDONIA_WORLD_ASSETS = {

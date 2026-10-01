@@ -23,8 +23,11 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 ## Arquitetura
 - `public/index.html`: o jogo inteiro (Three.js r128 pelo cdnjs, supabase-js
   pelo jsdelivr). Mundo 3D, HUD, janelas, login e escolha de personagem.
-  - Mundo: continente de raio 185 (`R`), vila no centro, 9 regiões em `ZONES`
-    (caminhos de terra até cada uma), lago, serra na borda, ilhotas voadoras.
+  - Mundo: continente de raio 330 (`R`), vila no centro, 13 regiões em `ZONES`
+    (caminhos de terra até cada uma), lago, serra na borda, ilhotas voadoras (pousáveis).
+    `public/js/world-collision-map.js` exporta `heightAt` com o mesmo relevo do cliente
+    (`TERRAIN_R` = 330) e usa o raio antigo 185 só para gerar árvores/arbustos/pedras sólidos
+    nas mesmas posições (`layoutHeightAt`). Servidor e cliente escolhem ilhota ou chão pela altura.
   - Objetos parados da vila são "assados" em 2 malhas (`bake`/`finishBake`);
     vegetação usa InstancedMesh; peças dos monstros viram 1 a 3 malhas
     (`mergeBody`). Isso mantém o celular leve; siga esse padrão.

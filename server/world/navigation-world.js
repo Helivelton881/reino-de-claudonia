@@ -1,9 +1,10 @@
 'use strict';
 
 const { GridPathfinder } = require('../../public/js/pathfinding');
-const { solidNaturalColliders, STATIC_NPCS, STATIC_PROP_COLLIDERS, ISLANDS, heightAt } = require('../../public/js/world-collision-map');
+const { solidNaturalColliders, STATIC_NPCS, STATIC_PROP_COLLIDERS, ISLANDS, heightAt, TERRAIN_R } = require('../../public/js/world-collision-map');
 
-const WORLD_RADIUS = 185;
+// Mesmo continente que o cliente desenha e deixa andar (index.html: R = 330, limite R - 1.5).
+const WORLD_RADIUS = TERRAIN_R;
 const CELL = 8;
 
 const BASE_ZONE_POINTS = [
@@ -121,26 +122,35 @@ class WorldNavigation {
     return true;
   }
 
-  playerSurfaceAt(x,z){
+  // As ilhotas flutuam sobre o continente: sem altura (y), vale a ilhota (comportamento antigo);
+  // com y, quem está bem abaixo do topo da ilhota anda no chão embaixo dela.
+  playerSurfaceAt(x,z,y){
+    const expansion=EXPANSION_ZONE_POINTS.some(([zx,zz])=>Math.hypot(x-zx,z-zz)<=42)||EXPANSION_PATHS.some(P=>P.some(([px,pz])=>Math.hypot(x-px,z-pz)<=12));
+    const ground=(Math.hypot(x,z)<=WORLD_RADIUS-1.5||expansion)?{kind:'continent',id:-1,h:heightAt(x,z)}:null;
     for(let i=0;i<ISLANDS.length;i++){
       const s=ISLANDS[i];
-      if(Math.hypot(x-s.x,z-s.z)<=s.r-0.6)return {kind:'island',id:i,h:s.y+0.5};
+      if(Math.hypot(x-s.x,z-s.z)<=s.r-0.6){
+        const top=s.y+0.5;
+        if(ground&&Number.isFinite(y)&&y<top-1.5)return ground;
+        return {kind:'island',id:i,h:top};
+      }
     }
-    const expansion=EXPANSION_ZONE_POINTS.some(([zx,zz])=>Math.hypot(x-zx,z-zz)<=42)||EXPANSION_PATHS.some(P=>P.some(([px,pz])=>Math.hypot(x-px,z-pz)<=12));
-    if(Math.hypot(x,z)<=WORLD_RADIUS-1.5||expansion)return {kind:'continent',id:-1,h:heightAt(x,z)};
-    return null;
+    return ground;
   }
 
-  isPlayerWalkable(x,z,pad=0.45){
-    const s=this.playerSurfaceAt(x,z);
+  // Chão firme (login, respawn, teleporte): nunca coloca o jogador em cima de uma ilhota.
+  groundSurfaceAt(x,z){ return this.playerSurfaceAt(x,z,-1000); }
+
+  isPlayerWalkable(x,z,pad=0.45,y){
+    const s=this.playerSurfaceAt(x,z,y);
     return !!s && (s.kind==='island' || !this.blockedAt(x,z,pad));
   }
 
-  playerLineClear(ax,az,bx,bz,pad=0.45){
+  playerLineClear(ax,az,bx,bz,pad=0.45,y){
     const d=Math.hypot(bx-ax,bz-az), n=Math.max(1,Math.ceil(d/0.35));
     let surfaceKey=null;
     for(let i=0;i<=n;i++){
-      const k=i/n,x=ax+(bx-ax)*k,z=az+(bz-az)*k,s=this.playerSurfaceAt(x,z);
+      const k=i/n,x=ax+(bx-ax)*k,z=az+(bz-az)*k,s=this.playerSurfaceAt(x,z,y);
       if(!s)return false;
       const key=s.kind+':'+s.id;
       if(surfaceKey===null)surfaceKey=key;

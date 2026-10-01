@@ -41,7 +41,7 @@ function validateMovement({navigation,player,to,requestedAction,elapsed,now=Date
 
   // Queda no vazio usa o respawn local conhecido do jogo.
   if(!flying&&falling&&player.y<-28&&Math.hypot(to.x-SPAWN.x,to.z-SPAWN.z)<1.5){
-    const s=navigation.playerSurfaceAt(SPAWN.x,SPAWN.z);
+    const s=navigation.playerSurfaceAt(SPAWN.x,SPAWN.z,to.y);
     if(s&&Math.abs(to.y-s.h)<3)return {ok:true,action:0,fallingFromFlight:false,fallRespawn:true};
   }
 
@@ -64,7 +64,8 @@ function validateMovement({navigation,player,to,requestedAction,elapsed,now=Date
     return {ok:true,action,fallingFromFlight:false};
   }
 
-  const surface=navigation.playerSurfaceAt(to.x,to.z);
+  // A altura enviada decide entre o topo de uma ilhota e o chão embaixo dela.
+  const surface=navigation.playerSurfaceAt(to.x,to.z,to.y);
   if(falling){
     if(to.y>player.y+0.3)return reject(action,'fall-ascent');
     if(!surface){
@@ -72,12 +73,12 @@ function validateMovement({navigation,player,to,requestedAction,elapsed,now=Date
       return {ok:true,action,fallingFromFlight:true};
     }
     if(to.y>surface.h+3.2)return {ok:true,action,fallingFromFlight:true};
-    if(!navigation.isPlayerWalkable(to.x,to.z,PLAYER_PAD))return reject(action,'blocked-destination');
+    if(!navigation.isPlayerWalkable(to.x,to.z,PLAYER_PAD,to.y))return reject(action,'blocked-destination');
     return {ok:true,action,fallingFromFlight:false};
   }
 
-  if(!surface||!navigation.isPlayerWalkable(to.x,to.z,PLAYER_PAD))return reject(action,'blocked-destination');
-  if(!navigation.playerLineClear(player.x,player.z,to.x,to.z,PLAYER_PAD))return reject(action,'blocked-path');
+  if(!surface||!navigation.isPlayerWalkable(to.x,to.z,PLAYER_PAD,to.y))return reject(action,'blocked-destination');
+  if(!navigation.playerLineClear(player.x,player.z,to.x,to.z,PLAYER_PAD,to.y))return reject(action,'blocked-path');
 
   const tolerance=surface.kind==='island'?3.2:2.8;
   if(to.y<surface.h-1.5||to.y>surface.h+tolerance)return reject(action,'ground-height');

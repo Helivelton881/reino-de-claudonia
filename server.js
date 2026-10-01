@@ -201,7 +201,7 @@ wss.on('connection', ws => {
         const savedPos = sanitizeSavedPosition(worldNavigation,
           Number.isFinite(row.pos_x) ? row.pos_x : 0,
           Number.isFinite(row.pos_z) ? row.pos_z : 5);
-        const startSurface = worldNavigation.playerSurfaceAt(savedPos.x, savedPos.z);
+        const startSurface = worldNavigation.groundSurfaceAt(savedPos.x, savedPos.z);
         const novo = {
           id: nextId++, ws, userId: data.user.id, charId: row.id, name: row.nome, token: m.token,
           L: (row.dados && row.dados.L) || 1, x: savedPos.x, y: startSurface ? startSurface.h : 0, z: savedPos.z, f: 0, a: 0,
@@ -350,7 +350,7 @@ wss.on('connection', ws => {
         if(!isAdmin(p))return erro(p,'Comando administrativo não autorizado.');
         if(m.action==='teleport'){
           const x=num(Number(m.x),-MUNDO,MUNDO),z=num(Number(m.z),-MUNDO,MUNDO);if(x===null||z===null)return erro(p,'Destino inválido.');
-          const surf=worldNavigation.playerSurfaceAt(x,z);if(!surf)return erro(p,'Destino fora do mundo.');
+          const surf=worldNavigation.groundSurfaceAt(x,z);if(!surf)return erro(p,'Destino fora do mundo.');
           p.x=x;p.z=z;p.y=surf.h;p.a=0;p.fallingFromFlight=false;p.moved=true;p.posDirty=true;send(p.ws,{t:'adminTeleport',x:p.x,y:p.y,z:p.z});
         }else if(m.action==='addItem'){
           const id=String(m.id||'').trim().slice(0,80),n=Math.max(1,Math.min(9999,Math.floor(Number(m.n)||1)));

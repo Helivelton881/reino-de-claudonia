@@ -74,7 +74,9 @@ class MonsterManager {
       navIndex:0,
       navTargetX:null,
       navTargetZ:null,
-      navReplanAt:0
+      navReplanAt:0,
+      returning:false,
+      returnStartedAt:0
     });
     m.hp=m.maxHp;
     this.monsters.set(m.id,m);
@@ -91,7 +93,7 @@ class MonsterManager {
   spawnWorldBoss(id='guardiao_cinzas',existing=null){
     const cfg=WORLD_BOSSES[id];if(!cfg)throw new Error(`World Boss desconhecido: ${id}`);
     const point=this.spawnManager.point(cfg.zone),m=existing||{id:this.nextId++};
-    Object.assign(m,{key:id,name:cfg.name,zone:cfg.zone,x:point.x,z:point.z,spawnX:point.x,spawnZ:point.z,level:cfg.level,giant:true,worldBoss:true,variant:'worldBoss',aggressive:true,speed:cfg.speed,radius:cfg.radius,material:'boss',maxHp:cfg.hp,hp:cfg.hp,attack:cfg.attack,defense:cfg.defense,exp:cfg.level*120,respawnMs:cfg.respawnMs,skills:[],resistances:{stun:.85,root:.85,slow:.65},contributions:new Map(),phase:1,bossConfig:cfg,state:'idle',targetId:null,dead:false,deathAt:0,nextThinkAt:0,nextAttackAt:0,nextBossSkillAt:0,wanderX:point.x,wanderZ:point.z,slowUntil:0,rootUntil:0,stunUntil:0,tauntUntil:0,effects:{},navPath:[],navIndex:0,navTargetX:null,navTargetZ:null,navReplanAt:0});
+    Object.assign(m,{key:id,name:cfg.name,zone:cfg.zone,x:point.x,z:point.z,spawnX:point.x,spawnZ:point.z,level:cfg.level,giant:true,worldBoss:true,variant:'worldBoss',aggressive:true,speed:cfg.speed,radius:cfg.radius,material:'boss',maxHp:cfg.hp,hp:cfg.hp,attack:cfg.attack,defense:cfg.defense,exp:cfg.level*120,respawnMs:cfg.respawnMs,skills:[],resistances:{stun:.85,root:.85,slow:.65},contributions:new Map(),phase:1,bossConfig:cfg,state:'idle',targetId:null,dead:false,deathAt:0,nextThinkAt:0,nextAttackAt:0,nextBossSkillAt:0,wanderX:point.x,wanderZ:point.z,slowUntil:0,rootUntil:0,stunUntil:0,tauntUntil:0,effects:{},navPath:[],navIndex:0,navTargetX:null,navTargetZ:null,navReplanAt:0,returning:false,returnStartedAt:0});
     this.monsters.set(m.id,m);this.emit(m,{t:'worldBossSpawn',boss:this.public(m)});return m;
   }
   updateBossPhase(m){if(!m.worldBoss||!m.bossConfig)return;const ratio=m.hp/m.maxHp,phases=m.bossConfig.phases;let phase=1;for(let i=0;i<phases.length;i++)if(ratio<=phases[i].at)phase=i+1;if(phase!==m.phase){m.phase=phase;const cfg=phases[phase-1];if(cfg.enrage)m.attack=m.bossConfig.attack*cfg.enrage;this.emit(m,{t:'worldBossPhase',id:m.id,phase,adds:cfg.adds||null,enrage:cfg.enrage||1});if(cfg.adds){for(let i=0;i<2;i++)this.spawn(cfg.adds,false,null,'elite');}}}
@@ -105,6 +107,14 @@ class MonsterManager {
     m.navTargetX=null;
     m.navTargetZ=null;
     m.navReplanAt=0;
+  }
+
+  finishReturn(m,now){
+    m.returning=false;
+    m.returnStartedAt=0;
+    this.clearNavigation(m);
+    m.state='idle';
+    m.nextThinkAt=now+1200+this.rng()*1800;
   }
 
   navPad(m){ return Math.max(0.4,m.radius*0.6); }
@@ -171,10 +181,12 @@ class MonsterManager {
         target=null;
         this.clearNavigation(m);
       }
-      if(!target&&m.aggressive) target=this.closestPlayer(m,9+Math.min(5,m.level*.08));
+      // voltando para casa não puxa aggro de novo (antes alternava chase/return a cada tick na borda do leash)
+      if(!target&&m.aggressive&&!m.returning) target=this.closestPlayer(m,9+Math.min(5,m.level*.08));
 
       if(target){
         m.targetId=target.id;
+        m.returnStartedAt=0;
         if(m.worldBoss)this.bossSkill(m,target,now);
         const distance=Math.hypot(target.x-m.x,target.z-m.z);
         const attackRange=m.radius+1.15;
@@ -192,22 +204,39 @@ class MonsterManager {
           this.moveToward(m,target.x,target.z,dt,now,1,attackRange);
         }
       }else{
-        if(m.targetId!==null) this.clearNavigation(m);
+        // perdeu o alvo: volta para casa antes de voltar a passear
+        if(m.targetId!==null){ this.clearNavigation(m); m.returning=true; }
         m.targetId=null;
         const homeDistance=Math.hypot(m.x-m.spawnX,m.z-m.spawnZ);
+        const wanderRadius=this.zones[m.zone].radius*.45;
 
-        if(homeDistance>2){
-          m.state='return';
-          this.moveToward(m,m.spawnX,m.spawnZ,dt,now);
+        // Passeio vai até wanderRadius do spawn; só volta para casa depois de perseguir alguém
+        // ou se foi parar longe demais (antes voltava a 2 m e cancelava o próprio passeio).
+        if(m.returning||homeDistance>wanderRadius+3){
+          m.returning=true;
+          if(!m.returnStartedAt) m.returnStartedAt=now;
+          if(homeDistance<=1.5){
+            this.finishReturn(m,now);
+          }else if(now-m.returnStartedAt>15000){
+            // preso atrás de obstáculo: reaparece no próprio spawn em vez de ficar "andando" parado
+            m.x=m.spawnX; m.z=m.spawnZ; this.finishReturn(m,now);
+          }else{
+            m.state='return';
+            this.moveToward(m,m.spawnX,m.spawnZ,dt,now);
+          }
         }else if(now>=m.nextThinkAt){
           this.clearNavigation(m);
           m.nextThinkAt=now+1800+this.rng()*3200;
-          const a=this.rng()*Math.PI*2,r=this.rng()*this.zones[m.zone].radius*.45;
+          const a=this.rng()*Math.PI*2,r=this.rng()*wanderRadius;
           m.wanderX=m.spawnX+Math.cos(a)*r;
           m.wanderZ=m.spawnZ+Math.sin(a)*r;
           m.state=this.rng()<.65?'wander':'idle';
-        }else if(m.state==='wander'&&Math.hypot(m.x-m.wanderX,m.z-m.wanderZ)>.5){
-          this.moveToward(m,m.wanderX,m.wanderZ,dt,now,.45);
+        }else if(m.state==='wander'){
+          // chegou: fica em idle até o próximo passeio (antes continuava "wander" parado no lugar)
+          if(Math.hypot(m.x-m.wanderX,m.z-m.wanderZ)<=.5) m.state='idle';
+          else this.moveToward(m,m.wanderX,m.wanderZ,dt,now,.45);
+        }else if(m.state!=='idle'){
+          m.state='idle';
         }
       }
 

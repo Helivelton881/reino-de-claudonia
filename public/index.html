@@ -1701,14 +1701,6 @@ function autumnLeaf(x, z){
   const k = rand(), h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
   return new THREE.Color().setHSL(h + (hash(x,z)-0.5)*0.02, h > 0.2 ? 0.45 : 0.75, (h > 0.2 ? 0.4 : 0.55) + hash(z,x)*0.08);
 }
-// Fase 13: expansão contínua com natureza KayKit nas regiões 60–100.
-const PHASE13_NATURE='/assets/world/phase13/';
-const PHASE13_MODELS=['Tree_1_A_Color1.glb','Tree_2_C_Color1.glb','Tree_3_B_Color1.glb','Tree_Bare_1_A_Color1.glb','Bush_1_A_Color1.glb','Bush_3_A_Color1.glb','Rock_1_A_Color1.glb','Rock_3_C_Color1.glb'];
-Promise.all(PHASE13_MODELS.map(name=>worldAssets._gltf(PHASE13_NATURE+name).then(gltf=>({name,gltf})).catch(()=>null))).then(rows=>{
- const models=rows.filter(Boolean);if(!models.length)return;
- const zones=ZONES.filter(z=>['ossario','legionário','espectro','necromante'].includes(z.key));
- zones.forEach((z,zi)=>{for(let i=0;i<(HQ?34:18);i++){const a=(i*2.399)+(zi*.7),rr=z.r*(.35+.55*((i%11)/10)),x=z.x+Math.cos(a)*rr,zz=z.z+Math.sin(a)*rr;if(distPath(x,zz)<4)continue;const base=models[(i+zi*2)%models.length].gltf.scene,src=base.clone(true);src.position.set(x,heightAt(x,zz),zz);src.rotation.y=a;src.scale.setScalar(0.8+(i%5)*.12);scene.add(src);}});
-});
 const sharedCollisionWorld = window.ClaudoniaWorldCollision.generate();
 const trees = sharedCollisionWorld.trees.map(src=>{
   const t = Object.assign({pine:src.kind === 'pine'}, src), zk = zoneKeyAt(t.x,t.z);
@@ -1739,6 +1731,7 @@ const lowGround = (x,z,town) => freeSpot(x,z,town) && heightAt(x,z) <= 9 && !nea
 // grama
 scatterVeg(HQ ? 11800 : 4300, (x,z)=>{
   if (Math.hypot(x,z) < TOWN+2 || Math.hypot(x-LAKE.x,z-LAKE.z) < LAKE.r+5 || heightAt(x,z) > 11 || nearHouse(x, z, 0)) return null;
+  if (distPath(x,z) < 1.9) return null;                   // tufos não nascem no meio da estrada de terra
   const r = rand();
   return {model: 'Grass_Common_Short', h:0.72+rand()*0.58,
     color:new THREE.Color().setHSL(0.15+rand()*0.09, 0.55, 0.66+rand()*0.14)};
@@ -1776,6 +1769,33 @@ sharedCollisionWorld.rocks.forEach(src=>{
   const r = Object.assign({},src); vegAdd(r.model,r);
   if (r.solid) addCollider({x:r.x,z:r.z,r:r.r});
 });
+// Anel externo (além do raio onde o mapa compartilhado gera arbustos e pedras): só tinha grama.
+// Arbustos até 1,7 e pedras até 1,1 de altura, que pela regra do mapa compartilhado não são sólidos,
+// então servidor e cliente continuam com as mesmas colisões.
+const OUTER_RING = window.ClaudoniaWorldCollision.R - 4;
+scatterVeg(HQ ? 340 : 170, (x,z)=>{
+  if (Math.hypot(x,z) < OUTER_RING || !lowGround(x,z,TOWN)) return null;
+  if (rand() < 0.5) return {model: rand() < 0.45 ? 'Bush_Common_Flowers' : 'Bush_Common', h:1.0+rand()*0.7,
+    color:new THREE.Color().setHSL(0.2+rand()*0.12, 0.45, 0.38)};
+  return {model: rand() < 0.5 ? 'Rock_Medium_1' : 'Rock_Medium_3', h:0.45+rand()*0.65};
+});
+// Fase 13: natureza das regiões 60–100. Os GLBs de /assets/world/phase13/ não têm textura nem cor
+// (apareciam brancos) e eram ~136 cenas soltas sem recorte; agora usam os mesmos modelos KayKit
+// texturizados do kit de natureza, instanciados por blocos como o resto da vegetação.
+{
+  const PHASE13_KIT = ['CommonTree_3','CommonTree_5','TwistedTree_1','DeadTree_1','Bush_Common','Bush_Common_Flowers','Rock_Medium_1','Rock_Medium_3'];
+  // as 4 últimas regiões de ZONES: Bosque Velado, Penhascos Rúnicos, Floresta Pálida, Coroa dos Ossos
+  const HUE = [[0.78,0.3],[0.3,0.25],[0.15,0.12],[0.02,0.35]];
+  ZONES.slice(-4).forEach((z,zi)=>{
+    for (let i=0;i<(HQ?34:18);i++){
+      const a=(i*2.399)+(zi*.7), rr=z.r*(.35+.55*((i%11)/10)), x=z.x+Math.cos(a)*rr, zz=z.z+Math.sin(a)*rr;
+      if (distPath(x,zz)<4) continue;
+      const model=PHASE13_KIT[(i+zi*2)%PHASE13_KIT.length], k=i%5, [hue,sat]=HUE[zi];
+      const h=/Tree/.test(model) ? 6.5+k*0.9 : /Bush/.test(model) ? 1.2+k*0.12 : 0.55+k*0.12;
+      vegAdd(model, {x, z:zz, rot:a, h, color:new THREE.Color().setHSL(hue+hash(x,zz)*0.04, sat, 0.42+hash(zz,x)*0.1)});
+    }
+  });
+}
 // pedrinhas perto dos caminhos
 scatterVeg(HQ ? 720 : 280, (x,z)=>{
   const dp = distPath(x,z); if (dp > 5.5 || dp < 1.2 || Math.hypot(x,z) < TOWN || nearHouse(x, z, 0)) return null;
@@ -1788,7 +1808,9 @@ const natureReady = worldAssets.loadKit(WA.nature).then(K=>{
   VEG.forEach((items, name)=>{
     const model = K.get(name); if (!model){ console.warn('[Mundo] modelo não achado:', name); return; }
     items.forEach(it=>{ if (it.h) it.s = it.h / model.height; });
-    worldAssets.instance(model, items, {far:VEG_FAR(name), shadow:/Tree|Pine|Rock_Medium/.test(name)}); total += items.length;
+    // kit 14.5 usa uma textura única: as cores de outono de cada árvore/arbusto entram suavizadas
+    const softTint = /Tree|Pine|Bush/.test(name) && !model.parts.some(p=>p.tint) ? 0.6 : 0;
+    worldAssets.instance(model, items, {far:VEG_FAR(name), shadow:/Tree|Pine|Rock_Medium/.test(name), softTint}); total += items.length;
   });
   console.info(`[Mundo] Natureza pronta: ${total} plantas e pedras (${VEG.size} modelos).`);
   return K;
@@ -1889,7 +1911,9 @@ ZONES.filter(z=>!['ossario','legionário','espectro','necromante'].includes(z.ke
   const kit = zi<3 ? ['Barrel','Crate_Wooden','FarmCrate_Apple'] : zi<6 ? ['Bench','Barrel','Stall_Cart_Empty'] : ['Crate_Wooden','Barrel','Torch_Metal'];
   for(let i=0;i<(HQ?10:6);i++){
     const a=i*2.399+zi*.71, rr=z.r+7+(i%4)*2.4, x=z.x+Math.cos(a)*rr, zz=z.z+Math.sin(a)*rr;
-    if(distPath(x,zz)<4.6 || nearHouse(x,zz,2) || Math.hypot(x-LAKE.x,zz-LAKE.z)<LAKE.r+4) continue;
+    // não nasce dentro de árvore/pedra nem em cima de NPC (os NPCs ganham colisão só mais adiante)
+    if(distPath(x,zz)<4.6 || nearHouse(x,zz,2) || Math.hypot(x-LAKE.x,zz-LAKE.z)<LAKE.r+4 || blockedAt(x,zz,1.3)
+      || window.ClaudoniaWorldCollision.STATIC_NPCS.some(n=>Math.hypot(n.x-x,n.z-zz)<3)) continue;
     propAt(kit[i%kit.length],x,zz,a+Math.PI/2,{solid:false,s:.72+(i%3)*.12});
   }
 });
@@ -1926,7 +1950,9 @@ const clouds = [], cloudGeo = new THREE.IcosahedronGeometry(1,2), cloudMat = fla
 for (let i=0;i<26;i++){
   const g = new THREE.Group(), n = 3 + Math.floor(rand()*3);
   for (let k=0;k<n;k++){ const m = new THREE.Mesh(cloudGeo, cloudMat); m.position.set((k-n/2)*3 + rand(), rand()*1.5, rand()*2.5); m.scale.setScalar(3+rand()*3); g.add(m); }
-  scene.add(g); clouds.push({g, a:rand()*Math.PI*2, r:215+rand()*140, y:-35+rand()*80, v:0.003+rand()*0.006});
+  // o continente agora vai até R: nuvem sobre terra firme fica acima da serra (não atravessa o morro)
+  const a = rand()*Math.PI*2, r = 215+rand()*140, ky = rand();
+  scene.add(g); clouds.push({g, a, r, y:r < R+8 ? 34+ky*34 : -35+ky*80, v:0.003+rand()*0.006});
 }
 
 /* ---------- Vida no mundo: borboletas e pássaros ---------- */
@@ -2429,9 +2455,19 @@ function clearMonsters(){ monsters.splice(0).forEach(m=>scene.remove(m.mesh)); t
 function netMonster(data){
   let m=monsters.find(x=>x.id===data.id);
   if(!m)m=createMonster(data.key,data.giant,data);
+  if(!m)return null;
+  // o servidor reaproveita o mesmo id no respawn: nasce no novo ponto, sem deslizar do local da morte
+  const reborn=m.dead&&!data.dead,oldLvl=m.lvl,oldName=m.name;
   Object.assign(m,{x:data.x,z:data.z,lvl:data.level||m.lvl,name:data.name||m.name,hp:data.hp,maxHp:data.maxHp,state:data.state||m.state,dead:!!data.dead});
-  if(m.renderX==null){m.renderX=m.x;m.renderZ=m.z;}
-  m.mesh.visible=!m.dead;m.mesh.position.set(m.renderX,heightAt(m.renderX,m.renderZ),m.renderZ);return m;
+  if(m.renderX==null||reborn){m.renderX=m.x;m.renderZ=m.z;m.netSpeed=0;m.netFace=null;}
+  if(reborn){
+    m.deathT=0;m.attackT=0;m.atkClock=0;m.hitT=0;m.body.position.set(0,0,0);m.body.rotation.z=0;
+    if(!m.worldBoss&&!m.giant){m.scale=.9+(m.lvl-m.type.lv[0])*.07;m.radius=m.type.r*m.scale;}
+    m.mesh.scale.setScalar(m.scale);
+    if(m.lvl!==oldLvl||m.name!==oldName)refreshLabel(m);
+  }
+  if(m.dead&&!(m.deathT>0))m.mesh.visible=false;else if(!m.dead)m.mesh.visible=true;
+  m.mesh.position.set(m.renderX,monsterGroundY(m.renderX,m.renderZ),m.renderZ);return m;
 }
 function startLegacyMonsters(){if(monsters.length)return;Object.keys(MTYPES).forEach(k=>{for(let i=0;i<MTYPES[k].count;i++)createMonster(k);});createMonster('bolota',true);}
 
@@ -3138,8 +3174,9 @@ const villagers = [['[Moradora] Clara',0xC96A8A,0x6B3A1E],['[Morador] Tobias',0x
 let villagerIdleClip=null,villagerWalkClip=null;
 npcModelLoader.load(KAYKIT_NPC+'Rig_Medium_MovementBasic.glb',g=>{villagerWalkClip=(g.animations||[]).find(a=>a.name==='Walking_A')||(g.animations||[]).find(a=>/walk/i.test(a.name))||null;});
 function setVillagerAnim(v,moving){
-  if(!v.animMixer)return;const state=moving?'walk':'idle';if(v.animState===state)return;v.animState=state;
-  const clip=moving?villagerWalkClip:npcIdleClip;if(!clip)return;
+  if(!v.animMixer)return;const state=moving?'walk':'idle';if(v.animState===state)return;
+  // só marca o estado quando o clipe já baixou; senão o morador ficava parado na pose de repouso
+  const clip=moving?villagerWalkClip:npcIdleClip;if(!clip)return;v.animState=state;
   if(v.animAction)v.animAction.fadeOut(.15);v.animAction=v.animMixer.clipAction(clip);v.animAction.reset().fadeIn(.15).play();
 }
 function loadVillagerModel(v){
@@ -4041,7 +4078,7 @@ const mapBase = document.createElement('canvas'); mapBase.width = mapBase.height
 }
 const mapX = x => (x + MAPE)*MAPK;
 function drawMini(){
-  const surf = surfaceAt(player.x, player.z), wide = player.flying || !surf || surf.isle >= 0;
+  const surf = surfaceAt(player.x, player.z, player.y), wide = player.flying || !surf || surf.isle >= 0;
   const VR = wide ? 170 : 62, S = (MS/2)/VR; // unidades de mundo visíveis no raio do minimapa
   mctx.save();
   mctx.fillStyle = '#3A2A1A'; mctx.fillRect(0,0,MS,MS);
@@ -4095,7 +4132,13 @@ addEventListener('resize', resize); resize();
 const clock = new THREE.Clock(), camTarget = new THREE.Vector3(player.x, player.y+1.6, player.z), tmpT = new THREE.Vector3();
 const lerpAngle = (a,b,t) => { const dd = ((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; return a + dd*t; };
 
-function surfaceAt(x, z){
+// As ilhotas flutuam sobre o continente: com a altura (y), quem chega perto do topo pisa nela
+// e quem está embaixo continua no chão (mesma regra do servidor em navigation-world.js).
+function surfaceAt(x, z, y){
+  if (Number.isFinite(y)) for (let i = 0; i < isles.length; i++){
+    const s = isles[i]; if (Math.hypot(x - s.x, z - s.z) > s.r - 0.6) continue;
+    const top = s.g.position.y + 0.5; if (y >= top - 1.5) return {h:top, isle:i};
+  }
   if (Math.hypot(x,z) < R) return {h:heightAt(x,z), isle:-1};
   for (let i = 0; i < isles.length; i++){ const s = isles[i]; if (Math.hypot(x - s.x, z - s.z) < s.r) return {h:s.g.position.y + 0.5, isle:i}; }
   return null;
@@ -4120,16 +4163,47 @@ function pushOut(nx, nz, rad, isle){
     const dd = Math.hypot(nx,nz), lim = R - 1.5;
     if (dd > lim){ nx *= lim/dd; nz *= lim/dd; }
   } else if (isle !== null && isle >= 0){
-    const s = isles[isle], dx = nx - s.x, dz = nz - s.z, dd = Math.hypot(dx,dz), lim = s.r - 0.6;
+    // um fio dentro do limite do servidor (s.r - 0.6) para a borda continuar contando como ilhota
+    const s = isles[isle], dx = nx - s.x, dz = nz - s.z, dd = Math.hypot(dx,dz), lim = s.r - 0.61;
     if (dd > lim){ nx = s.x + dx/dd*lim; nz = s.z + dz/dd*lim; }
   }
   return [nx, nz];
 }
 
+const MONSTER_DEATH_T=1.6,LAKE_WATER_Y=0.25;
+// chão visual do monstro: sobre o espelho d'água do lago (o servidor nasce os espíritos dentro dele;
+// pelo relevo eles ficavam no fundo, a -1,6, escondidos debaixo da água)
+function monsterGroundY(x,z){
+  const h=heightAt(x,z);
+  return Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r+4?Math.max(h,LAKE_WATER_Y):h;
+}
+// posição do alvo do monstro (eu ou outro jogador), só para virar o modelo
+function monsterTargetPos(m){
+  if(m.targetId==null)return null;
+  if(m.targetId===online.myId)return player;
+  const o=others.get(m.targetId);return o?{x:o.x,z:o.z}:null;
+}
+// um golpe visual: duração do clipe "attack" do GLB (ou investida curta no corpo procedural)
+function monsterSwing(m){
+  const row=m.userData&&m.userData.assetAnimation,clip=row&&row.actions.attack;
+  m.attackDur=clip&&clip.duration>.1?Math.min(1.3,clip.duration):.45;m.attackT=m.attackDur;m.atkClock=1.6;
+}
 function updateMonsters(dt, t){
   if(authoritativeCombat){
     monsters.forEach(m=>{
-      const dp=Math.hypot(player.x-m.x,player.z-m.z);m.mesh.visible=!m.dead&&dp<PERF.monsterFar;if(!m.mesh.visible){if(m.dead)worldAssets.setMonsterAnimation(m,'death');return;}
+      const dp=Math.hypot(player.x-m.x,player.z-m.z);
+      // morte: o corpo fica no chão alguns instantes tocando "death" e depois some (antes sumia na hora)
+      if(m.dead){
+        m.deathT=Math.max(0,(m.deathT||0)-dt);m.mesh.visible=m.deathT>0&&dp<PERF.monsterFar;m.label.visible=false;
+        if(m.mesh.visible){
+          worldAssets.setMonsterAnimation(m,'death');
+          const k=1-m.deathT/MONSTER_DEATH_T;
+          if(!m.userData||!m.userData.assetAnimation){m.body.position.y=-k*k*.6;m.body.rotation.z=k*1.2;}
+          if(m.deathT<.35)m.mesh.scale.setScalar(m.scale*Math.max(.05,m.deathT/.35));
+        }
+        return;
+      }
+      m.mesh.visible=dp<PERF.monsterFar;if(!m.mesh.visible)return;
       m.label.visible=dp<32;
       // O servidor continua autoritativo em m.x/m.z; renderX/renderZ suavizam apenas a apresentação.
       const gap=Math.hypot(m.x-m.renderX,m.z-m.renderZ);
@@ -4143,12 +4217,27 @@ function updateMonsters(dt, t){
         m.renderFace=lerpAngle(m.renderFace==null?m.face:m.renderFace,desired,1-Math.exp(-dt*12));
         m.face=m.renderFace;
       }
-      m.mesh.position.set(m.renderX,heightAt(m.renderX,m.renderZ),m.renderZ);m.mesh.rotation.y=m.face;
-      const assetState=m.dead?'death':m.hitT>0?'hit':m.state==='attack'?'attack':moving?'move':'idle';worldAssets.setMonsterAnimation(m,assetState);
+      // atacando: vira para o alvo e repete o golpe no ritmo do servidor (1,6 s);
+      // antes o clipe tocava uma vez e o modelo ficava parado na pose de repouso.
+      if(m.state==='attack'){
+        const tg=monsterTargetPos(m);
+        if(tg)m.face=m.renderFace=lerpAngle(m.renderFace==null?m.face:m.renderFace,Math.atan2(tg.x-m.renderX,tg.z-m.renderZ),1-Math.exp(-dt*10));
+        m.atkClock=(m.atkClock||0)-dt;if(m.atkClock<=0)monsterSwing(m);
+      }else m.atkClock=0;
+      m.attackT=Math.max(0,(m.attackT||0)-dt);
+      m.mesh.position.set(m.renderX,monsterGroundY(m.renderX,m.renderZ),m.renderZ);m.mesh.rotation.y=m.face;
+      const assetState=m.hitT>0?'hit':m.attackT>0?'attack':moving?'move':'idle';worldAssets.setMonsterAnimation(m,assetState);
       // Rigs GLB já possuem passada própria: não somar bob/hop procedural durante movimento.
-      if(m.body.userData.float)m.body.position.y=.35+Math.sin(t*2+m.phase)*.12;
+      if(m.body.userData.float){
+        const hover=.35+Math.sin(t*2+m.phase)*.12;m.body.position.y=hover;
+        // o modelo GLB fica fora do "body" procedural: flutua junto (antes ficava no fundo do lago)
+        if(m.assetVisual&&m.assetVisual.userData.baseY!=null)m.assetVisual.position.y=m.assetVisual.userData.baseY+hover;
+      }
       else if(m.type.hop)m.body.position.y=moving?0:Math.abs(Math.sin(t*2+m.phase))*.035;
       else{m.body.position.y=0;m.body.rotation.z=0;}
+      // monstro sem clipe de animação: investida curta para a frente no golpe
+      const animated=!!(m.userData&&m.userData.assetAnimation);
+      m.body.position.z=!animated&&m.attackT>0?Math.sin((1-m.attackT/m.attackDur)*Math.PI)*.4:0;
       m.netSpeed*=Math.exp(-dt*7);
       m.hitT=Math.max(0,m.hitT-dt);m.mesh.scale.setScalar(m.scale*(1+m.hitT*1.2));
     });
@@ -4237,7 +4326,7 @@ function updatePlayer(dt, t){
     const dw = Math.hypot(player.x, player.z); if (dw > 330){ player.x *= 330/dw; player.z *= 330/dw; }
     const up = (keys.has(' ') || player.upHeld) ? 1 : 0, down = (keys.has('q') || keys.has('control') || player.downHeld) ? 1 : 0;
     player.y += (up - down)*9*dt;
-    surf = surfaceAt(player.x, player.z); g = surf ? surf.h : -1000;
+    surf = surfaceAt(player.x, player.z, player.y); g = surf ? surf.h : -1000;
     player.y = Math.min(75, Math.max(surf ? g + 0.7 : -25, player.y));
     player.face = player.fdir; player.vy = 0; player.ground = false;
     moving = player.fspd > 0.5;
@@ -4296,7 +4385,7 @@ function updatePlayer(dt, t){
         }
       }
     }
-    surf = surfaceAt(player.x, player.z); g = surf ? surf.h : -1000;
+    surf = surfaceAt(player.x, player.z, player.y); g = surf ? surf.h : -1000;
     if (jumpQueued && player.ground && !deadOpen){ player.vy = 9; player.ground = false; }
     player.vy -= 25*dt; player.y += player.vy*dt;
     if (surf && (player.y <= g || (player.ground && player.vy <= 0 && player.y - g < 0.5))){ player.y = g; player.vy = 0; player.ground = true; player.isle = surf.isle; }
@@ -4407,7 +4496,11 @@ function frame(){
 
   // alvo
   if (target && target.dead) selectTarget(null);
-  if (target){ ring.visible = true; ring.position.set(target.x, heightAt(target.x,target.z)+0.06, target.z); ring.scale.setScalar(target.radius + 0.3); }
+  if (target){
+    // segue o modelo suavizado (não pula 10x/s com a rede) e fica sobre a água no lago
+    const tx = authoritativeCombat && target.renderX != null ? target.renderX : target.x, tz = authoritativeCombat && target.renderZ != null ? target.renderZ : target.z;
+    ring.visible = true; ring.position.set(tx, monsterGroundY(tx,tz)+0.06, tz); ring.scale.setScalar(target.radius + 0.3);
+  }
 
   // câmera
   camTarget.lerp(tmpT.set(player.x, player.y + 1.6, player.z), Math.min(1, dt*10));
@@ -4670,7 +4763,7 @@ function handle(m){
   else if(m.t==='dungeonComplete'){if(dungeonState)dungeonState.instance=m.instance;banner('DUNGEON CONCLUÍDA','Baú individual liberado');renderDungeonHud();}
   else if(m.t==='dungeonLoot'){log(`Recompensa individual: ${m.loot.rolls} rolagens (${m.loot.rarityMin}+).`,'gold');}
   else if(m.t==='worldSnapshot'){(m.monsters||[]).forEach(netMonster);(m.loot||[]).forEach(l=>{if(!drops.some(d=>d.id===l.lootId))spawnDrop(l.x,l.z,l.gold?{gold:l.gold}:{id:l.id,n:l.n||1},{id:l.lootId});});}
-  else if(m.t==='monsterMove'){const x=monsters.find(q=>q.id===m.id);if(x){const ox=x.x,oz=x.z;x.x=m.x;x.z=m.z;x.state=m.state;x.hp=m.hp;const d=Math.hypot(x.x-ox,x.z-oz);x.netSpeed=d;x.netPrevX=ox;x.netPrevZ=oz;if(d>.001)x.netFace=Math.atan2(x.x-ox,x.z-oz);}}
+  else if(m.t==='monsterMove'){const x=monsters.find(q=>q.id===m.id);if(x){const ox=x.x,oz=x.z;x.x=m.x;x.z=m.z;x.state=m.state;x.hp=m.hp;x.targetId=m.targetId==null?null:m.targetId;const d=Math.hypot(x.x-ox,x.z-oz);x.netSpeed=d;x.netPrevX=ox;x.netPrevZ=oz;if(d>.001)x.netFace=Math.atan2(x.x-ox,x.z-oz);}}
   else if(m.t==='combatHit'){
     const x=monsters.find(q=>q.id===m.monsterId);if(x){x.hp=m.hp;x.hitT=.15;if(m.miss)floatText(x.x,x.type.h*x.scale+.3,x.z,'Errou','miss');else floatText(x.x,x.type.h*x.scale+.3,x.z,(m.dot?'• ':'')+String(m.damage),m.critical?'crit':'');if(x===target)refreshTarget();}
   }
@@ -4682,7 +4775,7 @@ function handle(m){
   else if(m.t==='monsterStatus'){
     const x=monsters.find(q=>q.id===m.id);if(x){x.statusT=Math.max(x.statusT||0,Number(m.seconds)||1);floatText(x.x,x.type.h*x.scale+.6,x.z,m.kind==='dot'?'DoT':m.kind==='debuff'?'Debuff':m.kind==='stun'?'Atordoado':'Imobilizado','loot');}
   }
-  else if(m.t==='monsterDeath'){const x=monsters.find(q=>q.id===m.id);if(x){x.dead=true;x.hp=0;x.mesh.visible=false;if(target===x){target=null;autoAttack=false;queuedSkill=null;refreshTarget();}}}
+  else if(m.t==='monsterDeath'){const x=monsters.find(q=>q.id===m.id);if(x){x.dead=true;x.hp=0;x.deathT=MONSTER_DEATH_T;x.attackT=0;x.hitT=0;if(target===x){target=null;autoAttack=false;queuedSkill=null;refreshTarget();}}}
   else if(m.t==='lootSpawn'){const l=m.loot;spawnDrop(l.x,l.z,l.gold?{gold:l.gold}:{id:l.id,n:l.n||1},{id:l.lootId});}
   else if(m.t==='lootRemove'){const i=drops.findIndex(q=>q.id===m.id);if(i>=0){scene.remove(drops[i].mesh);drops.splice(i,1);}}
   else if(m.t==='pickupResult'){
@@ -4715,7 +4808,7 @@ function handle(m){
   }
   else if(m.t==='resetState'){ch=m.dados;questState={active:[],completed:[],lastCompletedAt:{}};skillTreeState={version:2,cls:'aprendiz',level:1,total:0,spent:0,available:0,ranks:{},specialization:null,specializationName:null,role:null,respecs:0};trackedQuestId=null;derive();target=null;autoAttack=false;queuedSkill=null;player.npcGoal=null;clearMoveRoute();buffs=[];buildHotbar();setHeroWeapon(hero,'aprendiz');player.x=SPAWN.x;player.z=SPAWN.z;player.y=heightAt(SPAWN.x,SPAWN.z);log('Personagem reiniciado.');refreshUI();}
   else if(m.t==='economyState'){if(!m.ok){log(m.msg,'bad');return;}Object.assign(ch,m.dados);derive();syncHeroEquipment(hero,ch.eq,ch.cls);log(m.msg,m.result==='broken'?'bad':'gold');refreshUI();if(npcOpen)renderNpc();}
-  else if(m.t==='playerHit'){ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
+  else if(m.t==='playerHit'){const atk=m.monsterId!=null&&monsters.find(q=>q.id===m.monsterId);if(atk&&!atk.dead)monsterSwing(atk);ch.hp=m.hp;if(m.dodged)floatText(player.x,player.y+2.2,player.z,'Esquivou','miss');else{floatText(player.x,player.y+2.2,player.z,'-'+m.damage,'hurt');hurtFlash();}refreshUI();}
   else if(m.t==='playerDeath'){ch.hp=0;die();refreshUI();}
   else if(m.t==='expGain'){ch.L=m.L;ch.exp=m.exp;ch.pts=m.pts;if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();floatText(player.x,player.y+2.6,player.z,`+${m.amount} EXP`,'exp');if(m.leveled)banner(`Nível ${ch.L}!`,'+2 pontos de atributo na janela Herói');refreshUI();}
   else if(m.t==='questReward'){ch.gold=m.totalGold; if(m.gold)log(`Recompensa da missão: +${m.gold} ouro.`,'gold'); refreshUI();}

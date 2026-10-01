@@ -4,7 +4,9 @@
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.ClaudoniaWorldCollision=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
-  const R=185,TOWN=20,LAKE={x:-80,z:98,r:20};
+  // R=185 é o raio antigo, mantido só para gerar árvores/arbustos/pedras nas mesmas posições.
+  // TERRAIN_R é o continente atual desenhado pelo cliente (index.html: const R = 330).
+  const R=185,TERRAIN_R=330,TOWN=20,LAKE={x:-80,z:98,r:20};
   const ZONES=[
     {key:'bolota',x:30,z:32,r:16},{key:'coelhorn',x:-42,z:40,r:18},
     {key:'cogumelo',x:-58,z:-38,r:18},{key:'javali',x:62,z:-32,r:18},
@@ -65,7 +67,11 @@
     }
     return Math.sqrt(best);
   }
-  function heightAt(x,z){
+  // Relevo com raio configurável: layoutHeightAt (R antigo) decide o tipo das árvores geradas;
+  // heightAt (TERRAIN_R) é o chão real, igual ao heightAt do cliente, usado pelo servidor.
+  function layoutHeightAt(x,z){return reliefAt(x,z,R);}
+  function heightAt(x,z){return reliefAt(x,z,TERRAIN_R);}
+  function reliefAt(x,z,R){
     const dd=Math.hypot(x,z),ang=Math.atan2(z,x);
     let h=2.2*Math.sin(x*.035+1.3)*Math.cos(z*.03-.4)+1.1*Math.sin(x*.08+z*.06)+.5*Math.cos(z*.17-x*.05);
     h+=7*Math.exp(-((x-62)**2+(z+32)**2)/500);
@@ -91,7 +97,7 @@
       const a=rand()*Math.PI*2,rr=Math.sqrt(rand())*(R-6),x=Math.cos(a)*rr,z=Math.sin(a)*rr;
       if(!freeSpot(x,z,36)||(inZoneCore(x,z)&&rand()<.8)||nearHouse(x,z,3))continue;
       const ck=Math.floor(x/3.6)+','+Math.floor(z/3.6);if(occ.has(ck))continue;occ.add(ck);
-      const zk=zoneKeyAt(x,z),y=heightAt(x,z),r=rand();let kind='common';
+      const zk=zoneKeyAt(x,z),y=layoutHeightAt(x,z),r=rand();let kind='common';
       if(zk==='aranha'||zk==='cogumelo')kind=r<.55?'twisted':'common';
       else if(zk==='golem'||zk==='ciclope')kind=r<.45?'dead':'pine';
       else if(zk==='javali')kind=r<.3?'dead':r<.5?'pine':'common';
@@ -116,7 +122,7 @@
   }
   function generateBushes(){
     return scatter(20260928,120,(x,z,rand)=>{
-      if(!freeSpot(x,z,TOWN+6)||heightAt(x,z)>10||nearHouse(x,z,1))return null;
+      if(!freeSpot(x,z,TOWN+6)||layoutHeightAt(x,z)>10||nearHouse(x,z,1))return null;
       const h=1.2+rand()*.9;
       return {model:rand()<.45?'Bush_Common_Flowers':'Bush_Common',h,solid:h>1.8,r:.7};
     });
@@ -169,5 +175,5 @@
     for(const r of w.rocks)if(r.solid)out.push({x:r.x,z:r.z,r:r.r,kind:'rock'});
     return out;
   }
-  return {R,TOWN,LAKE,ZONES,COTTAGES,OPEN_HALLS,ISLANDS,STATIC_NPCS,STATIC_PROP_COLLIDERS,heightAt,distPath,zoneKeyAt,generate,solidNaturalColliders};
+  return {R,TERRAIN_R,TOWN,LAKE,ZONES,COTTAGES,OPEN_HALLS,ISLANDS,STATIC_NPCS,STATIC_PROP_COLLIDERS,heightAt,layoutHeightAt,distPath,zoneKeyAt,generate,solidNaturalColliders};
 });
