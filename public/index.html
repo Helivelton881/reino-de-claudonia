@@ -2502,22 +2502,24 @@ function routeLength(path){
 }
 function setApproachRoute(tx,tz,range,silent){
   if (!pathfinder || !Number.isFinite(tx) || !Number.isFinite(tz)) return setMoveRoute(tx,tz,silent,tx,tz);
-  const base=Math.atan2(player.z-tz,player.x-tx), maxRadius=Math.max(1.25,range*0.96);
-  const radii=[Math.max(1.25,range*0.72),Math.max(1.25,range*0.84),maxRadius];
+  const base=Math.atan2(player.z-tz,player.x-tx);
+  const normal=[Math.max(1.25,range*0.72),Math.max(1.25,range*0.84),Math.max(1.25,range*0.96)];
+  const fallback=[Math.max(range+0.35,3),Math.max(range+0.8,3.5),Math.max(range+1.3,4)];
   let best=null;
-  for(const radius of radii){
+  for(const radius of [...normal,...fallback]){
     for(let i=0;i<24;i++){
       const a=base+i*Math.PI/12,x=tx+Math.cos(a)*radius,z=tz+Math.sin(a)*radius;
       if(!navWalkable(x,z))continue;
       const path=pathfinder.findPath({x:player.x,z:player.z},{x,z});
       if(!path||!path.length)continue;
       const cost=routeLength(path);
-      if(!best||cost<best.cost)best={x,z,path,cost};
+      if(!best||radius<best.radius-0.05||(Math.abs(radius-best.radius)<=0.05&&cost<best.cost))best={x,z,path,cost,radius};
     }
+    if(best)break;
   }
   if (!best){ if (!silent) log('Não há caminho até o alvo.', 'bad'); return false; }
   player.moveGoal = {x:best.x,z:best.z}; player.movePath = best.path; player.movePathIndex = 0; player.moveStuckT = 0;
-  player.navTargetX = tx; player.navTargetZ = tz;
+  player.navTargetX = tx; player.navTargetZ = tz; player.approachRadius=best.radius;
   return true;
 }
 function routeVector(){
@@ -3140,7 +3142,7 @@ function updateNpcs(t){
 }
 function goToNpc(n){
   if (player.flying){ log('Pouse para falar com alguém.'); return; }
-  autoAttack = false; queuedSkill = null; clearMoveRoute();
+  autoAttack = false; queuedSkill = null; clearMoveRoute(); player.approachRadius = null;
   if (Math.hypot(n.x - player.x, n.z - player.z) < 3){ openNpc(n); return; }
   player.npcGoal = n;
   if (!setApproachRoute(n.x,n.z,2.3,false)) player.npcGoal = null;
@@ -4163,8 +4165,9 @@ function updatePlayer(dt, t){
   } else {
     if (player.npcGoal && !deadOpen){
       const n = player.npcGoal, dx = n.x-player.x, dz = n.z-player.z, dd = Math.hypot(dx,dz);
-      if (dd <= 2.6){
-        moving = false; player.npcGoal = null; clearMoveRoute(); player.face = Math.atan2(dx,dz); openNpc(n);
+      const npcReach=Math.max(2.6,(player.approachRadius||0)+0.25);
+      if (dd <= npcReach){
+        moving = false; player.npcGoal = null; player.approachRadius=null; clearMoveRoute(); player.face = Math.atan2(dx,dz); openNpc(n);
       } else {
         if (!player.moveGoal) setApproachRoute(n.x,n.z,2.3,true);
         const v = routeVector();
