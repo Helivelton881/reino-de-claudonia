@@ -2451,6 +2451,7 @@ const drops = [];
 const dropFallbackGeo = new THREE.OctahedronGeometry(0.24), dropFallbackMat=flat(0xF2C14E);
 const DROP_VISUAL_BASE='/assets/world/drops/refresh14_5/';
 const DROP_VISUALS={gold:'gold.glb',pocao_vida:'potion_red.glb',pocao_mana:'potion_green.glb',pocao_energia:'potion_green.glb',material:'material.glb',equipment:'equipment.glb',quest:'quest.glb'};
+const DROP_TINTS={gold:0xffc928,pocao_vida:0xd9363e,pocao_mana:0x31a96b,pocao_energia:0x31a96b,material:0xb8783e,equipment:0x7896b8,quest:0x9b6bd3};
 function dropVisualKey(what){if(what.gold)return'gold';const it=ITEMS[what.id];if(!it)return'material';if(DROP_VISUALS[what.id])return what.id;if(it.kind==='eq')return'equipment';if(it.kind==='use')return'pocao_vida';return /quest|miss/i.test(it.kind||'')?'quest':'material';}
 function spawnDrop(x, z, what, net){
   const mesh = new THREE.Group(),fallback=new THREE.Mesh(dropFallbackGeo,dropFallbackMat);fallback.visible=false;mesh.add(fallback);
@@ -2458,7 +2459,7 @@ function spawnDrop(x, z, what, net){
   const dx = x + Math.cos(a)*r, dz = z + Math.sin(a)*r;
   mesh.position.set(dx, heightAt(dx,dz)+0.08, dz); scene.add(mesh);
   const key=dropVisualKey(what),file=DROP_VISUALS[key]||DROP_VISUALS.material;
-  worldAssets._gltf(DROP_VISUAL_BASE+file).then(g=>{if(!mesh.parent)return;const o=g.scene.clone(true),box=new THREE.Box3().setFromObject(o),sz=new THREE.Vector3();box.getSize(sz);const sc=.65/Math.max(.001,Math.max(sz.x,sz.y,sz.z));o.scale.setScalar(sc);o.position.y=-box.min.y*sc;o.rotation.y=Math.random()*6.28;o.traverse(x=>{if(x.isMesh)x.castShadow=HQ});mesh.add(o)}).catch(()=>{fallback.visible=true});
+  worldAssets._gltf(DROP_VISUAL_BASE+file).then(g=>{if(!mesh.parent)return;const o=g.scene.clone(true),tint=new THREE.Color(DROP_TINTS[key]||0xffffff);o.traverse(x=>{if(!x.isMesh)return;x.castShadow=HQ;x.material=Array.isArray(x.material)?x.material.map(m=>{const c=m.clone();if(c.color)c.color.multiply(tint);return c;}):x.material.clone();if(!Array.isArray(x.material)&&x.material.color)x.material.color.multiply(tint);});const box=new THREE.Box3().setFromObject(o),sz=new THREE.Vector3();box.getSize(sz);const sc=.65/Math.max(.001,Math.max(sz.x,sz.y,sz.z));o.scale.setScalar(sc);o.position.y=-box.min.y*sc;o.rotation.y=Math.random()*6.28;mesh.add(o)}).catch(()=>{fallback.material=flat(DROP_TINTS[key]||0xF2C14E);fallback.visible=true});
   drops.push({mesh, x:dx, z:dz, what, age:0, id:net&&net.id, requested:false});
 }
 
