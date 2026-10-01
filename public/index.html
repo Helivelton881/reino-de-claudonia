@@ -1396,7 +1396,7 @@ const skyDome = (()=>{
 }
 
 /* ---------- Relevo ---------- */
-const R = 185, TOWN = 20;
+const R = 330, TOWN = 20;
 const LAKE = {x:-80, z:98, r:20};
 function heightAt(x,z){
   const dd = Math.hypot(x,z), ang = Math.atan2(z,x);
@@ -1425,6 +1425,10 @@ const ZONES = [
   {key:'aranha',   name:'Mata das Teias',         x:-105, z:-85, r:22},
   {key:'espirito', name:'Lago Espelhado',         x:-80,  z:98,  r:24},
   {key:'ciclope',  name:'Ruínas do Ciclope',      x:40,   z:128, r:22},
+  {key:'ossario', name:'Bosque Velado', x:185,z:120,r:25},
+  {key:'legionário', name:'Penhascos Rúnicos', x:245,z:55,r:27},
+  {key:'espectro', name:'Floresta Pálida', x:255,z:-55,r:29},
+  {key:'necromante', name:'Coroa dos Ossos', x:195,z:-135,r:31},
 ];
 const PATHS = ZONES.map(z=> [[0,0],[z.x*0.5 + (z.z>0?8:-8), z.z*0.5 + (z.x>0?-6:6)],[z.x,z.z]]);
 function distPath(x,z){
@@ -1697,6 +1701,14 @@ function autumnLeaf(x, z){
   const k = rand(), h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
   return new THREE.Color().setHSL(h + (hash(x,z)-0.5)*0.02, h > 0.2 ? 0.45 : 0.75, (h > 0.2 ? 0.4 : 0.55) + hash(z,x)*0.08);
 }
+// Fase 13: expansão contínua com natureza KayKit nas regiões 60–100.
+const PHASE13_NATURE='/assets/world/phase13/';
+const PHASE13_MODELS=['Tree_1_A_Color1.glb','Tree_2_C_Color1.glb','Tree_3_B_Color1.glb','Tree_Bare_1_A_Color1.glb','Bush_1_A_Color1.glb','Bush_3_A_Color1.glb','Rock_1_A_Color1.glb','Rock_3_C_Color1.glb'];
+Promise.all(PHASE13_MODELS.map(name=>worldAssets._gltf(PHASE13_NATURE+name).then(gltf=>({name,gltf})).catch(()=>null))).then(rows=>{
+ const models=rows.filter(Boolean);if(!models.length)return;
+ const zones=ZONES.filter(z=>['ossario','legionário','espectro','necromante'].includes(z.key));
+ zones.forEach((z,zi)=>{for(let i=0;i<(HQ?34:18);i++){const a=(i*2.399)+(zi*.7),rr=z.r*(.35+.55*((i%11)/10)),x=z.x+Math.cos(a)*rr,zz=z.z+Math.sin(a)*rr;if(distPath(x,zz)<4)continue;const base=models[(i+zi*2)%models.length].gltf.scene,src=base.clone(true);src.position.set(x,heightAt(x,zz),zz);src.rotation.y=a;src.scale.setScalar(0.8+(i%5)*.12);scene.add(src);}});
+});
 const sharedCollisionWorld = window.ClaudoniaWorldCollision.generate();
 const trees = sharedCollisionWorld.trees.map(src=>{
   const t = Object.assign({pine:src.kind === 'pine'}, src), zk = zoneKeyAt(t.x,t.z);

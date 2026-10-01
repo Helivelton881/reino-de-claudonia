@@ -199,6 +199,7 @@
     // Monstros que ganham o modelo do Bestiary (1 em cada 4 e os gigantes)
     monsterVariants: { golem: 'puglin.glb', ciclope: 'puglin.glb', aranha: 'imp.glb', espirito: 'imp.glb' },
     phase10: { rare:'phase10/monster_rare.glb', elite:'phase10/monster_elite.glb', giant:'phase10/monster_giant.glb', worldBoss:'phase10/worldboss_guardiao_cinzas.glb' },
+    phase13: { ossario:'phase13/skeleton_minion.glb', 'legionário':'phase13/skeleton_warrior.glb', espectro:'phase13/skeleton_rogue.glb', necromante:'phase13/skeleton_mage.glb', worldBoss:'phase13/skeleton_warrior.glb' },
   };
   global.WorldAssetManager = WorldAssetManager;
 })(window);

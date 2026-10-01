@@ -10,7 +10,7 @@ function manager(rng=()=>.5){
 }
 test('fase 10 define normal rare elite giant e skills para 9 familias',()=>{
  assert.deepEqual(Object.keys(VARIANTS),['normal','rare','elite','giant']);
- assert.equal(Object.keys(FAMILY_SKILLS).length,9);
+ assert.ok(Object.keys(FAMILY_SKILLS).length>=9);
  for(const key of Object.keys(MONSTER_TYPES))assert.ok(FAMILY_SKILLS[key]?.length,key);
 });
 test('initialize cria giant para cada familia',()=>{
@@ -35,5 +35,5 @@ test('world boss tem fases enrage e elegibilidade por contribuicao',()=>{
  m.recordContribution(b,'a',970);m.recordContribution(b,'tagger',30);assert.deepEqual(m.eligibleContributors(b,.04).map(x=>x.playerId),['a']);
  b.hp=b.maxHp*.3;m.updateBossPhase(b);assert.equal(b.phase,3);assert.ok(b.attack>b.bossConfig.attack);
 });
-test('bestiario cobre as 9 familias e world boss',()=>{assert.equal(BESTIARY.entries.length,9);assert.equal(BESTIARY.bosses.length,1);assert.ok(BESTIARY.entries.every(x=>x.variants.includes('giant')&&x.skills.length));});
+test('bestiario preserva as familias e world boss da fase 10',()=>{assert.ok(BESTIARY.entries.length>=9);assert.ok(BESTIARY.bosses.length>=1);assert.ok(BESTIARY.entries.every(x=>x.variants.includes('giant')&&x.skills.length));});
 test('assets Blender da fase 10 ficam dentro do budget web',()=>{const fs=require('node:fs'),path=require('node:path');for(const n of ['monster_rare.glb','monster_elite.glb','monster_giant.glb','worldboss_guardiao_cinzas.glb']){const p=path.join(__dirname,'..','public','assets','world','monsters','phase10',n),s=fs.statSync(p).size;assert.ok(s>1000&&s<256000,`${n}: ${s}`);}});

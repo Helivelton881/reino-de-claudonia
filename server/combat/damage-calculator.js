@@ -38,7 +38,7 @@ function collectItemBonuses(data={}){
 
 function derivePlayer(data={}){
   const cls=CLASSES[data.cls]?data.cls:'aprendiz',C=CLASSES[cls];
-  const level=clamp(Math.floor(data.L||1),1,cls==='aprendiz'?15:60);
+  const level=clamp(Math.floor(data.L||1),1,cls==='aprendiz'?15:100);
   const itemBonus=collectItemBonuses(data).bonuses;
   const stat=key=>clamp(Math.floor(data[key]||15)+Math.floor(itemBonus[key]||0),1,700);
   const eq=data.eq&&typeof data.eq==='object'?data.eq:{};

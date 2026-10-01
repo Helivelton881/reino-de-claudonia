@@ -6,16 +6,19 @@ const { solidNaturalColliders, STATIC_NPCS, STATIC_PROP_COLLIDERS, ISLANDS, heig
 const WORLD_RADIUS = 185;
 const CELL = 8;
 
-const ZONE_POINTS = [
+const BASE_ZONE_POINTS = [
   [30,32],[-42,40],[-58,-38],[62,-32],[5,-88],
   [105,42],[-105,-85],[-80,98],[40,128]
 ];
+const EXPANSION_ZONE_POINTS=[[185,120],[245,55],[255,-55],[195,-135]];
+const ZONE_POINTS=[...BASE_ZONE_POINTS,...EXPANSION_ZONE_POINTS];
 
-const PATHS = ZONE_POINTS.map(([x,z]) => [
+const PATHS = BASE_ZONE_POINTS.map(([x,z]) => [
   [0,0],
   [x*0.5 + (z>0?8:-8), z*0.5 + (x>0?-6:6)],
   [x,z]
 ]);
+const EXPANSION_PATHS=EXPANSION_ZONE_POINTS.map(([x,z])=>[[40,128],[120,130],[x,z]]);
 
 function distPath(x,z){
   let best = Infinity;
@@ -119,11 +122,12 @@ class WorldNavigation {
   }
 
   playerSurfaceAt(x,z){
-    if(Math.hypot(x,z)<=WORLD_RADIUS-1.5)return {kind:'continent',id:-1,h:heightAt(x,z)};
     for(let i=0;i<ISLANDS.length;i++){
       const s=ISLANDS[i];
       if(Math.hypot(x-s.x,z-s.z)<=s.r-0.6)return {kind:'island',id:i,h:s.y+0.5};
     }
+    const expansion=EXPANSION_ZONE_POINTS.some(([zx,zz])=>Math.hypot(x-zx,z-zz)<=42)||EXPANSION_PATHS.some(P=>P.some(([px,pz])=>Math.hypot(x-px,z-pz)<=12));
+    if(Math.hypot(x,z)<=WORLD_RADIUS-1.5||expansion)return {kind:'continent',id:-1,h:heightAt(x,z)};
     return null;
   }
 

@@ -12,6 +12,7 @@
     {key:'aranha',x:-105,z:-85,r:22},{key:'espirito',x:-80,z:98,r:24},
     {key:'ciclope',x:40,z:128,r:22}
   ];
+  const EXPANSION_ZONES=[{key:'ossario',x:185,z:120,r:25},{key:'legionário',x:245,z:55,r:27},{key:'espectro',x:255,z:-55,r:29},{key:'necromante',x:195,z:-135,r:31}];
   const PATHS=ZONES.map(z=>[[0,0],[z.x*.5+(z.z>0?8:-8),z.z*.5+(z.x>0?-6:6)],[z.x,z.z]]);
   const OPEN_HALLS=[[0,27],[27,0],[-27,0],[-19,-19]];
   const ISLANDS=[

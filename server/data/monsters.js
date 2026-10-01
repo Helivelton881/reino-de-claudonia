@@ -9,7 +9,11 @@ const ZONES = Object.freeze({
   lobo: { x: 105, z: 42, radius: 22 },
   aranha: { x: -105, z: -85, radius: 22 },
   espirito: { x: -80, z: 98, radius: 24 },
-  ciclope: { x: 40, z: 128, radius: 22 }
+  ciclope: { x: 40, z: 128, radius: 22 },
+  ossario: { x: 185, z: 120, radius: 25 },
+  legionário: { x: 245, z: 55, radius: 27 },
+  espectro: { x: 255, z: -55, radius: 29 },
+  necromante: { x: 195, z: -135, radius: 31 }
 });
 
 const MONSTER_TYPES = Object.freeze({
@@ -21,7 +25,11 @@ const MONSTER_TYPES = Object.freeze({
   lobo: { name: 'Lobo Cinzento', aggressive: true, levels: [21, 28], count: 12, height: 1.9, radius: 1, speed: 4.2, material: 'pele_lobo', expMultiplier: 2.2 },
   aranha: { name: 'Aranha Sombria', aggressive: true, levels: [29, 37], count: 12, height: 1.6, radius: 1.2, speed: 3.4, material: 'seda', expMultiplier: 2.4 },
   espirito: { name: 'Espirito do Lago', aggressive: true, levels: [38, 47], count: 10, height: 2.2, radius: 0.9, speed: 3, material: 'essencia', expMultiplier: 2.6 },
-  ciclope: { name: 'Ciclope de Lava', aggressive: true, levels: [48, 60], count: 9, height: 3.6, radius: 1.3, speed: 2.8, material: 'nucleo', expMultiplier: 3 }
+  ciclope: { name: 'Ciclope de Lava', aggressive: true, levels: [48, 60], count: 9, height: 3.6, radius: 1.3, speed: 2.8, material: 'nucleo', expMultiplier: 3 },
+  ossario: { name: 'Servo do Ossário', aggressive:true, levels:[61,69], count:10, height:1.9, radius:.85, speed:3.3, material:'fragmento_osseo', expMultiplier:3.2, model:'phase13/skeleton_minion.glb' },
+  legionário: { name: 'Legionário Rúnico', aggressive:true, levels:[70,79], count:10, height:2.1, radius:.9, speed:3.1, material:'runa_ossea', expMultiplier:3.5, model:'phase13/skeleton_warrior.glb' },
+  espectro: { name: 'Lâmina Sepulcral', aggressive:true, levels:[80,89], count:10, height:2, radius:.85, speed:4.1, material:'selo_sombrio', expMultiplier:3.8, model:'phase13/skeleton_rogue.glb' },
+  necromante: { name: 'Necromante Pálido', aggressive:true, levels:[90,100], count:9, height:2.1, radius:.9, speed:2.9, material:'essencia_necrotica', expMultiplier:4.2, model:'phase13/skeleton_mage.glb' }
 });
 
 module.exports = { ZONES, MONSTER_TYPES };

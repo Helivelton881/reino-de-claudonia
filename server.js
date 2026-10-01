@@ -108,7 +108,7 @@ const economyManager = new EconomyManager({send,itemManager});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
 const petManager = new PetManager({send,itemManager,lootManager});
 const socialManager = new SocialManager({players,send,itemManager,save:salvar});
-combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); combatManager.setItemManager(itemManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize(); monsterManager.spawnWorldBoss('guardiao_cinzas');
+combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); combatManager.setItemManager(itemManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize(); monsterManager.spawnWorldBoss('guardiao_cinzas'); monsterManager.spawnWorldBoss('rei_ossario');
 
 async function salvar(p) {
   if (!p.dirty && !p.posDirty) return;
@@ -525,7 +525,7 @@ function monstroDoGrupo(p, m){
 function expNeed(level){ return Math.round(28*Math.pow(level,1.65)+22); }
 function grantPlayerExp(p,amount,meta={}){
   amount=Math.max(0,Math.round(Number(amount)||0));
-  const cls=p.dados.cls||'aprendiz',cap=cls==='aprendiz'?15:60;
+  const cls=p.dados.cls||'aprendiz',cap=cls==='aprendiz'?15:100;
   let leveled=false;p.dados.exp=Math.max(0,Math.floor(p.dados.exp||0))+amount;
   while(p.L<cap&&p.dados.exp>=expNeed(p.L)){p.dados.exp-=expNeed(p.L);p.L++;p.dados.L=p.L;p.dados.pts=Math.max(0,Math.floor(p.dados.pts||0))+2;leveled=true;}
   if(p.L>=cap)p.dados.exp=0;
