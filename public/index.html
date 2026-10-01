@@ -5500,6 +5500,10 @@ refreshUI();
 requestAnimationFrame(frame);
 })();
 </script>
-<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));</script>
+<script>
+/* Hotfix iOS: Fase 17 não usa SW. Remove worker/cache já instalados sem tocar no cache HTTP normal. */
+if('serviceWorker' in navigator)navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).catch(()=>{});
+if('caches' in window)caches.delete('claudonia-shell-v1').catch(()=>{});
+</script>
 </body>
 </html>

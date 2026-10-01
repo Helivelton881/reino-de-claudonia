@@ -186,7 +186,7 @@ Antes de criar um sistema, pesquisar como ele funciona no Flyff Universe.
 - Fase 16 concluída: Live Ops com achievements, objetivos diários/semanais, temporada gratuita, calendário/eventos rotativos e telemetria server-side.
 - Fase 17 concluída no código: camada operacional com observabilidade, rate limiting/validação WebSocket, Admin auditado (inspect/mute/kick/ban), migration/rollback documentados, load test, asset budget, regressão multiplataforma e PWA. Métricas privadas não são expostas por HTTP público.
 - Segurança operacional: mensagens WebSocket passam por token-bucket por tipo; operações críticas continuam validadas pelos managers server-side. Admin exige simultaneamente UUID autorizado de conta e personagem.
-- PWA: manifest + service worker cacheiam somente shell/assets GET; API, WebSocket e Supabase/auth nunca entram no cache offline.
+- PWA: o manifest continua instalável. O service worker/cache offline foi desativado após regressão de memória observada no Safari/iOS; `sw.js` existe apenas para desregistrar versões antigas e limpar `claudonia-shell-v1`. Não reativar cache amplo de GLB/texturas no iOS.
 - Banco: migrations novas são versionadas em `supabase/`; nunca editar migration aplicada. Procedimento em `docs/OPERATIONS_PHASE17.md`.
 
 ## Limites conhecidos (próximos passos)
