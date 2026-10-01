@@ -1876,6 +1876,10 @@ function buildTownProps(){
       if (propFree(x,z,0.8)) propAt(m, x, z, Math.atan2(dx,dz) + (k ? 0.4 : -0.3));
     });
   });
+  // Renovação visual 14.5: identidade da praça sem alterar colisão ou regras do mundo.
+  [[-8,-7],[8,-7],[-8,7],[8,7]].forEach(([x,z],i)=>propAt(i%2?'Banner_1':'Banner_2',x,z,Math.atan2(-x,-z),{solid:false,s:.9}));
+  [[-5,-10],[5,-10],[-5,10],[5,10]].forEach(([x,z])=>propAt('Lantern_Wall',x,z,Math.atan2(-x,-z),{solid:false,s:1.1}));
+  [[-12,0],[12,0],[0,-12],[0,12]].forEach(([x,z])=>propAt('Torch_Metal',x,z,Math.atan2(-x,-z),{solid:false,s:1.05}));
 }
 buildTownProps();
 // colisões dos props são parte do mundo lógico e não dependem do GLB carregar
@@ -2402,8 +2406,9 @@ function createMonster(key, giant, net){
   scene.add(m.mesh); monsters.push(m);
   const phase10Visual=net&&(net.worldBoss?WA.phase10.worldBoss:WA.phase10[net.variant]);
   const premium=WA.monsterVariants[key];
-  if(phase10Visual)worldAssets.replaceMonster(m,WA.monsters+phase10Visual,T.h*(m.worldBoss?2.1:m.giant?1.55:1));
-  else if(premium&&(m.giant||(net&&Number(net.id)%4===0)))worldAssets.replaceMonster(m,WA.monsters+premium,T.h);
+  if(m.worldBoss&&phase10Visual)worldAssets.replaceMonster(m,WA.monsters+phase10Visual,T.h*2.1,m.variant);
+  else if(premium)worldAssets.replaceMonster(m,WA.monsters+premium,T.h*(m.giant?1.18:1),m.giant?'giant':m.variant);
+  else if(phase10Visual)worldAssets.replaceMonster(m,WA.monsters+phase10Visual,T.h*(m.giant?1.55:1),m.variant);
   return m;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(()=> monsters.forEach(refreshLabel));
@@ -2430,16 +2435,17 @@ ring.rotation.x = -Math.PI/2; ring.visible = false; scene.add(ring);
    DROPS NO CHÃO
    ========================================================= */
 const drops = [];
-const goldGeo = new THREE.OctahedronGeometry(0.24), boxGeo = new THREE.BoxGeometry(0.34,0.34,0.34);
-const dropMats = {gold:flat(0xF2C14E), use:flat(0xE5484D), use2:flat(0x35B779), mat:flat(0xB08A5A), eq:flat(0x5EA8FF)};
+const dropFallbackGeo = new THREE.OctahedronGeometry(0.24), dropFallbackMat=flat(0xF2C14E);
+const DROP_VISUAL_BASE='/assets/world/drops/refresh14_5/';
+const DROP_VISUALS={gold:'gold.glb',pocao_vida:'potion_red.glb',pocao_mana:'potion_green.glb',pocao_energia:'potion_green.glb',material:'material.glb',equipment:'equipment.glb',quest:'quest.glb'};
+function dropVisualKey(what){if(what.gold)return'gold';const it=ITEMS[what.id];if(!it)return'material';if(DROP_VISUALS[what.id])return what.id;if(it.kind==='eq')return'equipment';if(it.kind==='use')return'pocao_vida';return /quest|miss/i.test(it.kind||'')?'quest':'material';}
 function spawnDrop(x, z, what, net){
-  let mat = dropMats.mat, geo = boxGeo;
-  if (what.gold){ mat = dropMats.gold; geo = goldGeo; }
-  else { const it = ITEMS[what.id]; if (it.kind==='use') mat = what.id==='pocao_vida' ? dropMats.use : dropMats.use2; else if (it.kind==='eq') mat = dropMats.eq; }
-  const mesh = new THREE.Mesh(geo, mat);
+  const mesh = new THREE.Group(),fallback=new THREE.Mesh(dropFallbackGeo,dropFallbackMat);fallback.visible=false;mesh.add(fallback);
   const a = Math.random()*6.28, r = net ? 0 : rnd(0.4,1.3);
   const dx = x + Math.cos(a)*r, dz = z + Math.sin(a)*r;
-  mesh.position.set(dx, heightAt(dx,dz)+0.35, dz); scene.add(mesh);
+  mesh.position.set(dx, heightAt(dx,dz)+0.08, dz); scene.add(mesh);
+  const key=dropVisualKey(what),file=DROP_VISUALS[key]||DROP_VISUALS.material;
+  worldAssets._gltf(DROP_VISUAL_BASE+file).then(g=>{if(!mesh.parent)return;const o=g.scene.clone(true),box=new THREE.Box3().setFromObject(o),sz=new THREE.Vector3();box.getSize(sz);const sc=.65/Math.max(.001,Math.max(sz.x,sz.y,sz.z));o.scale.setScalar(sc);o.position.y=-box.min.y*sc;o.rotation.y=Math.random()*6.28;o.traverse(x=>{if(x.isMesh)x.castShadow=HQ});mesh.add(o)}).catch(()=>{fallback.visible=true});
   drops.push({mesh, x:dx, z:dz, what, age:0, id:net&&net.id, requested:false});
 }
 

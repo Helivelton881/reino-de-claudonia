@@ -47,5 +47,5 @@ test('página carrega o gerenciador e os monstros do Bestiary', () => {
   const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
   assert.match(html, /world-asset-manager\.js/);
   const js = fs.readFileSync(path.join(publicDir, 'js', 'world-asset-manager.js'), 'utf8');
-  for (const name of ['imp.glb', 'puglin.glb']) assert.match(js, new RegExp(name.replace('.', '\.')));
+  for (const name of ['refresh14_5/bolota.glb','refresh14_5/coelhorn.glb','refresh14_5/cogumelo.glb','refresh14_5/javali.glb','refresh14_5/golem.glb','refresh14_5/lobo.glb','refresh14_5/aranha.glb','refresh14_5/espirito.glb','refresh14_5/ciclope.glb']) assert.match(js, new RegExp(name.replace('.', '\.')));
 });

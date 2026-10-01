@@ -23,6 +23,7 @@
       this.gltfs = new Map();       // url -> Promise<gltf>
       this.chunks = [];             // {x, z, far, meshes[]}
       this.instances = [];          // objetos soltos (monstros) com distância máxima
+      this.mixers = [];             // animações puramente visuais dos GLBs
       this._t = 0;
     }
 
@@ -154,7 +155,9 @@
 
     // Some com os blocos longe da câmera (chamado todo quadro; trabalha 4 vezes por segundo).
     update(cameraPosition, dt){
-      this._t -= dt || 0.016;
+      const frameDt = dt || 0.016;
+      for (let i=this.mixers.length-1;i>=0;i--){ const row=this.mixers[i]; if(!row.root.parent){this.mixers.splice(i,1);continue;} row.mixer.update(frameDt); }
+      this._t -= frameDt;
       if (this._t > 0) return; this._t = 0.25;
       const cx = cameraPosition.x, cz = cameraPosition.z;
       for (const c of this.chunks){
@@ -170,7 +173,7 @@
     }
 
     // Monstro com modelo do Bestiary (sem animações no pacote grátis: o jogo balança o corpo inteiro)
-    async replaceMonster(monster, url, height){
+    async replaceMonster(monster, url, height, variant){
       if (monster.assetVisual) return monster.assetVisual;
       try {
         const gltf = await this._gltf(url);
@@ -181,10 +184,15 @@
         object.scale.setScalar(factor); object.position.y = -box.min.y * factor;
         object.traverse(o => { if (o.isMesh){
           o.castShadow = this.hq; o.frustumCulled = true;
+          if (variant && variant !== 'normal' && o.material){ o.material=o.material.clone(); const tint={rare:0xb9d8ff,elite:0xd7b5ff,giant:0xffc19a}[variant]; if(tint&&o.material.color)o.material.color.multiply(new THREE.Color(tint)); }
           if (o.material && o.material.map) o.material.map.encoding = THREE.LinearEncoding;
           if (o.material && o.material.emissiveMap) o.material.emissiveMap.encoding = THREE.LinearEncoding;
         } });
         monster.body.visible = false; monster.mesh.add(object); monster.assetVisual = object;
+        if (gltf.animations && gltf.animations.length){
+          const mixer=new THREE.AnimationMixer(object), idle=gltf.animations.find(a=>/idle/i.test(a.name))||gltf.animations[0];
+          mixer.clipAction(idle).play(); this.mixers.push({root:object,mixer});
+        }
         return object;
       } catch (error){ console.warn('[WorldAssets] Monstro do Bestiary indisponível', error); return null; }
     }
@@ -193,11 +201,11 @@
   WorldAssetManager.CHUNK = CHUNK;
 
   global.CLAUDONIA_WORLD_ASSETS = {
-    nature: '/assets/world/nature.glb',
+    nature: '/assets/world/nature_refresh14_5.glb',
     props: '/assets/world/props.glb',
     monsters: '/assets/world/monsters/',
     // Monstros que ganham o modelo do Bestiary (1 em cada 4 e os gigantes)
-    monsterVariants: { golem: 'puglin.glb', ciclope: 'puglin.glb', aranha: 'imp.glb', espirito: 'imp.glb' },
+    monsterVariants: { bolota:'refresh14_5/bolota.glb', coelhorn:'refresh14_5/coelhorn.glb', cogumelo:'refresh14_5/cogumelo.glb', javali:'refresh14_5/javali.glb', golem:'refresh14_5/golem.glb', lobo:'refresh14_5/lobo.glb', aranha:'refresh14_5/aranha.glb', espirito:'refresh14_5/espirito.glb', ciclope:'refresh14_5/ciclope.glb' },
     phase10: { rare:'phase10/monster_rare.glb', elite:'phase10/monster_elite.glb', giant:'phase10/monster_giant.glb', worldBoss:'phase10/worldboss_guardiao_cinzas.glb' },
     phase13: { ossario:'phase13/skeleton_minion.glb', 'legionário':'phase13/skeleton_warrior.glb', espectro:'phase13/skeleton_rogue.glb', necromante:'phase13/skeleton_mage.glb', worldBoss:'phase13/skeleton_warrior.glb' },
   };
