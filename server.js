@@ -9,6 +9,7 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 const { ZONES, MONSTER_TYPES } = require('./server/data/monsters');
+const BESTIARY = require('./server/data/bestiary');
 const SpawnManager = require('./server/world/spawn-manager');
 const MonsterManager = require('./server/world/monster-manager');
 const { WorldNavigation } = require('./server/world/navigation-world');
@@ -84,10 +85,11 @@ const combatManager = new CombatManager({
   players, send,
   awardExperience: (killer, monster) => premiarMonstro(killer, monster),
   onMonsterDeath: (monster, killer) => {
-    const allowedIds = killer.party ? [...killer.party.members] : [killer.id];
+    const allowedIds = monster.worldBoss ? (()=>{const rows=[...(monster.contributions||new Map()).entries()],total=rows.reduce((s,x)=>s+x[1],0)||1,min=monster.bossConfig?.rewards?.minContribution||.03;return rows.filter(x=>x[1]/total>=min).map(x=>x[0]);})() : (killer.party ? [...killer.party.members] : [killer.id]);
     const luck = killer.party && killer.party.skills.sorte > Date.now() ? 2 : 1;
     const copies = killer.party && killer.party.skills.presente > Date.now() ? 2 : 1;
-    lootManager.spawn(monster, killer, { allowedIds, luck, copies });
+    if(monster.worldBoss){for(const id of allowedIds){const q=players.get(id);if(q)lootManager.spawn(monster,q,{allowedIds:[id],luck:1,copies:1});}}
+    else lootManager.spawn(monster, killer, { allowedIds, luck, copies });
     const recipients = allowedIds.map(id=>players.get(id)).filter(q=>q&&Math.hypot(q.x-monster.x,q.z-monster.z)<=40);
     recipients.forEach(q=>{
       questManager.recordEvent(q,'kill',{monsterKey:monster.key,giant:monster.giant,count:1});
@@ -99,7 +101,7 @@ const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, sp
 lootManager = new LootManager({ players, send, emitNearby:emitirPerto, itemManager });
 const economyManager = new EconomyManager({send,itemManager});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
-combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); combatManager.setItemManager(itemManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize();
+combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); combatManager.setItemManager(itemManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize(); monsterManager.spawnWorldBoss('guardiao_cinzas');
 
 async function salvar(p) {
   if (!p.dirty && !p.posDirty) return;
@@ -221,7 +223,8 @@ wss.on('connection', ws => {
           classCatalog: skillManager.classCatalog(),
           itemCatalog: itemManager.catalog(),
           itemState: itemManager.snapshot(p),
-          npcCatalog: NPCS
+          npcCatalog: NPCS,
+          bestiary: BESTIARY
         });
         broadcast({ t: 'join', ...resumo(p) }, p);
         console.log(`Entrou: ${p.name} (${players.size} online)`);

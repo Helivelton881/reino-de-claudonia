@@ -1,5 +1,7 @@
 'use strict';
 
+const {VARIANTS,FAMILY_SKILLS,WORLD_BOSSES,variantForSpawn}=require('../data/monster-ecosystem');
+
 class MonsterManager {
   constructor({ types, zones, spawnManager, players, send, navigation=null, now=Date.now, rng=Math.random, aoiRadius=110 }) {
     this.types=types;
@@ -23,32 +25,37 @@ class MonsterManager {
 
   initialize(){
     for(const [key,type] of Object.entries(this.types)){
-      for(let i=0;i<type.count;i++) this.spawn(key,false);
-      if(key==='bolota') this.spawn(key,true);
+      for(let i=0;i<type.count;i++) this.spawn(key,false,null,variantForSpawn(this.rng));
+      this.spawn(key,true);
     }
   }
 
-  spawn(key,giant=false,existing=null){
+  spawn(key,giant=false,existing=null,variant=null){
     const type=this.types[key], point=this.spawnManager.point(key);
     if(!type) throw new Error(`Tipo desconhecido: ${key}`);
-    const level=giant?6:Math.floor(type.levels[0]+this.rng()*(type.levels[1]-type.levels[0]+1));
-    const k=giant?6:1;
+    const variantId=giant?'giant':(variant||'normal'),v=VARIANTS[variantId]||VARIANTS.normal;
+    const level=giant?Math.min(60,type.levels[1]+3):Math.floor(type.levels[0]+this.rng()*(type.levels[1]-type.levels[0]+1));
     const m=existing||{id:this.nextId++};
     Object.assign(m,{
       key,
-      name:giant?'Bolota Gigante':type.name,
+      name:giant?`${type.name} Gigante`:variantId==='normal'?type.name:`${type.name} ${v.name}`,
       zone:key,
       x:point.x,z:point.z,
       spawnX:point.x,spawnZ:point.z,
       level,giant,
-      aggressive:type.aggressive,
+      variant:variantId,
+      aggressive:giant?true:type.aggressive,
       speed:type.speed,
-      radius:type.radius,
+      radius:type.radius*v.scale,
       material:type.material,
-      maxHp:Math.round((22+level*16)*k),
-      attack:(3+level*2.4)*(giant?1.5:1),
-      defense:level*0.7,
-      exp:Math.round((10+level*7)*k*(type.expMultiplier||1)),
+      maxHp:Math.round((22+level*16)*v.hp),
+      attack:(3+level*2.4)*v.attack,
+      defense:level*0.7*v.defense,
+      exp:Math.round((10+level*7)*v.exp*(type.expMultiplier||1)),
+      respawnMs:v.respawnMs,
+      skills:FAMILY_SKILLS[key]||[],
+      resistances:giant?{stun:.5,root:.4,slow:.3}:{},
+      contributions:new Map(),
       hp:0,
       state:'idle',
       targetId:null,
@@ -77,7 +84,18 @@ class MonsterManager {
 
   get(id){ return this.monsters.get(Number(id)); }
   near(x,z,radius){ return [...this.monsters.values()].filter(m=>Math.hypot(m.x-x,m.z-z)<=radius); }
-  public(m){ return {id:m.id,key:m.key,name:m.name,x:m.x,z:m.z,level:m.level,giant:m.giant,radius:m.radius,hp:m.hp,maxHp:m.maxHp,state:m.state,dead:m.dead}; }
+  public(m){ return {id:m.id,key:m.key,name:m.name,x:m.x,z:m.z,level:m.level,giant:m.giant,variant:m.variant||'normal',worldBoss:!!m.worldBoss,radius:m.radius,hp:m.hp,maxHp:m.maxHp,state:m.state,dead:m.dead,phase:m.phase||1}; }
+  recordContribution(m,playerId,damage){if(!m||!playerId||damage<=0)return;const map=m.contributions||(m.contributions=new Map());map.set(playerId,(map.get(playerId)||0)+damage);}
+  contributionShares(m){const entries=[...(m.contributions||new Map()).entries()],total=entries.reduce((s,x)=>s+x[1],0)||1;return entries.map(([playerId,damage])=>({playerId,damage,share:damage/total}));}
+  eligibleContributors(m,minShare=.03){return this.contributionShares(m).filter(x=>x.share>=minShare);}
+  spawnWorldBoss(id='guardiao_cinzas',existing=null){
+    const cfg=WORLD_BOSSES[id];if(!cfg)throw new Error(`World Boss desconhecido: ${id}`);
+    const point=this.spawnManager.point(cfg.zone),m=existing||{id:this.nextId++};
+    Object.assign(m,{key:id,name:cfg.name,zone:cfg.zone,x:point.x,z:point.z,spawnX:point.x,spawnZ:point.z,level:cfg.level,giant:true,worldBoss:true,variant:'worldBoss',aggressive:true,speed:cfg.speed,radius:cfg.radius,material:'boss',maxHp:cfg.hp,hp:cfg.hp,attack:cfg.attack,defense:cfg.defense,exp:cfg.level*120,respawnMs:cfg.respawnMs,skills:[],resistances:{stun:.85,root:.85,slow:.65},contributions:new Map(),phase:1,bossConfig:cfg,state:'idle',targetId:null,dead:false,deathAt:0,nextThinkAt:0,nextAttackAt:0,nextBossSkillAt:0,wanderX:point.x,wanderZ:point.z,slowUntil:0,rootUntil:0,stunUntil:0,tauntUntil:0,effects:{},navPath:[],navIndex:0,navTargetX:null,navTargetZ:null,navReplanAt:0});
+    this.monsters.set(m.id,m);this.emit(m,{t:'worldBossSpawn',boss:this.public(m)});return m;
+  }
+  updateBossPhase(m){if(!m.worldBoss||!m.bossConfig)return;const ratio=m.hp/m.maxHp,phases=m.bossConfig.phases;let phase=1;for(let i=0;i<phases.length;i++)if(ratio<=phases[i].at)phase=i+1;if(phase!==m.phase){m.phase=phase;const cfg=phases[phase-1];if(cfg.enrage)m.attack=m.bossConfig.attack*cfg.enrage;this.emit(m,{t:'worldBossPhase',id:m.id,phase,adds:cfg.adds||null,enrage:cfg.enrage||1});if(cfg.adds){for(let i=0;i<2;i++)this.spawn(cfg.adds,false,null,'elite');}}}
+  bossSkill(m,target,now){if(!m.worldBoss||!target||now<(m.nextBossSkillAt||0))return false;const phase=m.bossConfig.phases[(m.phase||1)-1],skills=phase.skills||[];if(!skills.length)return false;const skill=skills[Math.floor(this.rng()*skills.length)],telegraphMs=skill.includes('meteor')?1600:1100;m.nextBossSkillAt=now+6500;this.emit(m,{t:'bossTelegraph',id:m.id,skill,x:target.x,z:target.z,radius:skill.includes('circular')?6:4,executeAt:now+telegraphMs});return true;}
   snapshotFor(player){ return [...this.monsters.values()].filter(m=>Math.hypot(m.x-player.x,m.z-player.z)<=this.aoiRadius).map(m=>this.public(m)); }
   emit(m,message){ for(const p of this.players.values()) if(Math.hypot(m.x-p.x,m.z-p.z)<=this.aoiRadius) this.send(p.ws,message); }
 
@@ -140,9 +158,10 @@ class MonsterManager {
     this.navPlansThisTick=0;
 
     for(const m of this.monsters.values()){
+      if(m.worldBoss&&!m.dead)this.updateBossPhase(m);
       if(m.dead){
-        const delay=m.giant?45000:9000;
-        if(now-m.deathAt>=delay) this.spawn(m.key,m.giant,m);
+        const delay=m.respawnMs||(m.giant?300000:9000);
+        if(now-m.deathAt>=delay){if(m.worldBoss)this.spawnWorldBoss(m.key,m);else this.spawn(m.key,m.giant,m,m.variant);}
         continue;
       }
 
@@ -156,6 +175,7 @@ class MonsterManager {
 
       if(target){
         m.targetId=target.id;
+        if(m.worldBoss)this.bossSkill(m,target,now);
         const distance=Math.hypot(target.x-m.x,target.z-m.z);
         const attackRange=m.radius+1.15;
         const lineOfSight=this.canAttackThroughWorld(m,target);

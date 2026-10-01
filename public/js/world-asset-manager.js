@@ -198,6 +198,7 @@
     monsters: '/assets/world/monsters/',
     // Monstros que ganham o modelo do Bestiary (1 em cada 4 e os gigantes)
     monsterVariants: { golem: 'puglin.glb', ciclope: 'puglin.glb', aranha: 'imp.glb', espirito: 'imp.glb' },
+    phase10: { rare:'phase10/monster_rare.glb', elite:'phase10/monster_elite.glb', giant:'phase10/monster_giant.glb', worldBoss:'phase10/worldboss_guardiao_cinzas.glb' },
   };
   global.WorldAssetManager = WorldAssetManager;
 })(window);

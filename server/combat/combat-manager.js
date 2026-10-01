@@ -141,6 +141,7 @@ class CombatManager {
     const result=playerDamage(stats,effectiveMonster,{...options,attackBonus,critBonus:this.bonus(player,'crit')},this.rng);
     if(!result.miss){
       monster.hp=Math.max(0,monster.hp-result.damage);
+      if(this.monsters&&typeof this.monsters.recordContribution==='function')this.monsters.recordContribution(monster,player.id,result.damage);
       if(!(monster.tauntUntil>this.now())||monster.targetId===player.id)monster.targetId=player.id;
       monster.state='chase';
     }
@@ -148,7 +149,7 @@ class CombatManager {
     if(monster.hp<=0&&!monster.dead){
       monster.dead=true;monster.state='dead';monster.deathAt=this.now();monster.effects={};
       this.awardExperience(player,monster);this.onMonsterDeath(monster,player);
-      this.monsters.emit(monster,{t:'monsterDeath',id:monster.id,killerId:player.id,respawnAt:monster.deathAt+(monster.giant?45000:9000)});
+      this.monsters.emit(monster,{t:'monsterDeath',id:monster.id,killerId:player.id,respawnAt:monster.deathAt+(monster.respawnMs||(monster.giant?300000:9000))});
     }
     return true;
   }

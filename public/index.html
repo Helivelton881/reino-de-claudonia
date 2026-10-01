@@ -687,6 +687,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   <button id="bSkills" type="button" title="Árvore de habilidades (K)">🌟<small>Skills</small></button>
   <button id="bQuest" type="button" title="Diário de missões (J)">📜<small>Missões</small><span class="badge" id="questBadge"></span></button>
   <button id="bShop" type="button" title="Loja pessoal (L)">🏪<small>Loja</small></button>
+  <button id="bBestiary" type="button" title="Bestiário (B)">🐾<small>Bestiário</small></button>
   <button id="bChat" type="button" title="Conversar (Enter)">💬<small>Chat</small></button>
 </div>
 
@@ -754,6 +755,11 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
       </section>
     </div>
   </div>
+</section>
+
+<section class="win" id="winBestiary" hidden aria-label="Bestiário">
+  <header><b>Bestiário de Claudonia</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+  <div class="wbody" id="bestiaryBody"></div>
 </section>
 
 <section class="win" id="winBank" hidden aria-label="Banco">
@@ -1064,7 +1070,7 @@ let dirty = false;
 const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
 // Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
 let party = {leader:null, members:[], skills:{}}, trade = null, myGuild = null, guildList = null, guildAsked = false, myShop = null;
-let questCatalog = {}, questState = {active:[], completed:[], lastCompletedAt:{}}, npcCatalog = [];
+let questCatalog = {}, questState = {active:[], completed:[], lastCompletedAt:{}}, npcCatalog = [], bestiaryCatalog={entries:[],bosses:[]};
 let itemCatalog = {equipment:{},sets:{},rarities:{},cards:{},inventoryLimit:32,storageLimit:60}, itemState = {inv:[],storage:[],eq:{},equp:{},eqMeta:{}};
 const SLOT_ICONS={arma:'⚔️',offhand:'🛡️',capacete:'⛑️',peitoral:'🥋',luvas:'🧤',botas:'🥾',capa:'🧣',acessorio1:'💍',acessorio2:'📿',voo:'🛹'};
 function applyItemCatalog(catalog,state){
@@ -2371,12 +2377,13 @@ function createMonster(key, giant, net){
   const m = {type:T, key, giant:!!giant, mesh:built.g, body:built.body, label:null, face:Math.random()*6.28,
     state:'idle', cd:0, wanderT:rnd(1,4), wx:0, wz:0, dead:false, deadT:0, dying:0, hitT:0, phase:Math.random()*6};
   const p = net || spawnPoint(T.zone); m.x = p.x; m.z = p.z; m.home = {x:p.x, z:p.z};
-  if (net){ m.id=net.id; m.lvl=net.level; m.name=net.name; m.maxHp=net.maxHp; m.hp=net.hp; m.dead=!!net.dead; m.state=net.state||'idle'; m.scale=m.giant?2.4:0.9+(m.lvl-T.lv[0])*0.07; m.mesh.scale.setScalar(m.scale); m.radius=T.r*m.scale; refreshLabel(m); }
+  if (net){ m.id=net.id; m.lvl=net.level; m.name=net.name; m.maxHp=net.maxHp; m.hp=net.hp; m.dead=!!net.dead; m.state=net.state||'idle'; m.variant=net.variant||'normal';m.worldBoss=!!net.worldBoss;m.bossPhase=net.phase||1; m.scale=m.worldBoss?2.8:m.giant?2.4:0.9+(m.lvl-T.lv[0])*0.07; m.mesh.scale.setScalar(m.scale); m.radius=T.r*m.scale; refreshLabel(m); }
   else setupStats(m);
   scene.add(m.mesh); monsters.push(m);
+  const phase10Visual=net&&(net.worldBoss?WA.phase10.worldBoss:WA.phase10[net.variant]);
   const premium=WA.monsterVariants[key];
-  // Chefes e uma amostra dos monstros online usam os modelos do Bestiary.
-  if(premium&&(m.giant||(net&&Number(net.id)%4===0)))worldAssets.replaceMonster(m,WA.monsters+premium,T.h);
+  if(phase10Visual)worldAssets.replaceMonster(m,WA.monsters+phase10Visual,T.h*(m.worldBoss?2.1:m.giant?1.55:1));
+  else if(premium&&(m.giant||(net&&Number(net.id)%4===0)))worldAssets.replaceMonster(m,WA.monsters+premium,T.h);
   return m;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(()=> monsters.forEach(refreshLabel));
@@ -3825,7 +3832,9 @@ document.querySelectorAll('.win').forEach(w=>{
 $('bInv').addEventListener('click', ()=> openWin($('winInv'), 1));
 $('bChar').addEventListener('click', ()=> openWin($('winChar'), -1));
 $('bSkills').addEventListener('click', ()=> openWin($('winSkills'), 1));
+$('bBestiary').addEventListener('click', ()=>{renderBestiary();openWin($('winBestiary'),1);});
 
+function renderBestiary(){const body=$('bestiaryBody');if(!body)return;const rows=(bestiaryCatalog.entries||[]).map(x=>`<div class="card"><b>${esc(x.name)}</b><div class="sub">Níveis ${x.levels[0]}–${x.levels[1]} · ${x.aggressive?'Agressivo':'Neutro'}</div><div>Variantes: Normal · Raro · Elite · Gigante</div><div class="note">Habilidade: ${esc((x.skills||[]).join(', ').replaceAll('_',' '))}</div></div>`).join('');const bosses=(bestiaryCatalog.bosses||[]).map(x=>`<div class="card"><b>⚠ ${esc(x.name)}</b><div class="sub">World Boss · Nível ${x.level} · ${x.phases} fases</div></div>`).join('');body.innerHTML=rows+bosses;}
 buildHotbar();
 function refreshUI(){
   refreshStatus(); refreshHotbar(); refreshTarget(); refreshQuestBadge(); renderQuestTracker();
@@ -4544,7 +4553,7 @@ function handle(m){
     applyItemCatalog(m.itemCatalog,m.itemState);
     m.others.forEach(addOther); countOnline();
     myGuild = m.guild || null; guildList = null; guildAsked = false;
-    applyQuestSync(m.questCatalog,m.questState,m.questLegacy); npcCatalog = Array.isArray(m.npcCatalog) ? m.npcCatalog : [];
+    applyQuestSync(m.questCatalog,m.questState,m.questLegacy); npcCatalog = Array.isArray(m.npcCatalog) ? m.npcCatalog : []; bestiaryCatalog=m.bestiary||{entries:[],bosses:[]};
     applySkillSync(m.skillCatalog,m.skillState,m.classCatalog); buildHotbar();syncHeroEquipment(hero,ch.eq,ch.cls);
     authoritativeCombat=!!m.authoritativeCombat;
     if(authoritativeCombat){
@@ -4571,6 +4580,9 @@ function handle(m){
   else if (m.t === 'erro'){ log(m.msg, 'bad'); }
   else if (m.t === 'aviso'){ log(m.msg, 'good'); }
   else if(m.t==='monsterSpawn'){netMonster(m.monster);}
+  else if(m.t==='worldBossSpawn'){netMonster(m.boss);banner('WORLD BOSS',`${m.boss.name} surgiu!`);log(`${m.boss.name} apareceu no mundo.`,'bad');}
+  else if(m.t==='worldBossPhase'){const x=monsters.find(q=>q.id===m.id);if(x)x.bossPhase=m.phase;banner(`Fase ${m.phase}`,m.enrage>1?'O chefe entrou em fúria!':'O combate mudou!');}
+  else if(m.t==='bossTelegraph'){ringFx(m.x,m.z,m.radius||4,0xE5484D);log(`Ataque do chefe: ${String(m.skill||'perigo').replaceAll('_',' ')}`,'bad');}
   else if(m.t==='worldSnapshot'){(m.monsters||[]).forEach(netMonster);(m.loot||[]).forEach(l=>{if(!drops.some(d=>d.id===l.lootId))spawnDrop(l.x,l.z,l.gold?{gold:l.gold}:{id:l.id,n:l.n||1},{id:l.lootId});});}
   else if(m.t==='monsterMove'){const x=monsters.find(q=>q.id===m.id);if(x){x.x=m.x;x.z=m.z;x.state=m.state;x.hp=m.hp;}}
   else if(m.t==='combatHit'){
