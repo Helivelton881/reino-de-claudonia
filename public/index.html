@@ -4597,6 +4597,17 @@ function connect(){
     setTimeout(connect, 3000);
   };
 }
+let adminEnabled=false,adminInvisible=false;
+function applyServerPosition(m){player.x=m.x;player.z=m.z;player.y=Number.isFinite(m.y)?m.y:heightAt(m.x,m.z);player.vy=0;player.ground=true;player.flying=false;player.npcGoal=null;clearMoveRoute();if(hero?.root)hero.root.position.set(player.x,player.y,player.z);}
+function ensureAdminPanel(){
+  if(!adminEnabled||$('adminPanel'))return;
+  const el=document.createElement('div');el.id='adminPanel';el.style.cssText='position:fixed;z-index:2500;right:10px;top:360px;width:min(300px,82vw);background:#24170eef;border:2px solid #d7a84c;border-radius:14px;padding:10px;color:white;font:700 13px sans-serif';
+  el.innerHTML='<b>⚙ ADM — Helivelton</b><select id="admZone" style="width:100%;margin-top:8px"></select><button id="admTp">Teleportar</button><input id="admItem" placeholder="ID do item"><input id="admQty" type="number" value="1" min="1" max="9999" style="width:55px"><button id="admGive">Adicionar item</button><button id="admInvisible">Invisível: OFF</button>';
+  document.body.appendChild(el);const z=$('admZone');ZONES.forEach((q,i)=>z.add(new Option(q.name||q.key,String(i))));z.add(new Option('Vila principal','spawn'));
+  $('admTp').onclick=()=>{const v=z.value,q=v==='spawn'?{x:0,z:5}:ZONES[Number(v)];if(q)sendWs({t:'adminCommand',action:'teleport',x:q.x,z:q.z});};
+  $('admGive').onclick=()=>sendWs({t:'adminCommand',action:'addItem',id:$('admItem').value,n:Number($('admQty').value)||1});
+  $('admInvisible').onclick=()=>sendWs({t:'adminCommand',action:'invisible',value:!adminInvisible});
+}
 function handle(m){
   if (m.t === 'welcome'){
     online.myId = m.id;
@@ -4610,6 +4621,7 @@ function handle(m){
       log(`Bem-vindo ao Reino De Claudonia, ${m.char.nome}!`, 'good');
     }
     applyItemCatalog(m.itemCatalog,m.itemState);
+    adminEnabled=!!m.admin;if(adminEnabled)ensureAdminPanel();
     m.others.forEach(addOther); countOnline();
     myGuild = m.guild || null; guildList = null; guildAsked = false;
     applyQuestSync(m.questCatalog,m.questState,m.questLegacy); npcCatalog = Array.isArray(m.npcCatalog) ? m.npcCatalog : []; bestiaryCatalog=m.bestiary||{entries:[],bosses:[]};
@@ -4624,6 +4636,8 @@ function handle(m){
     if (dirty) save();
     online.last = ''; online.hpKey = '';
   }
+  else if(m.t==='respawnPosition'||m.t==='adminTeleport'){applyServerPosition(m);if(m.t==='respawnPosition'){deadOpen=false;$('dead').hidden=true;log('Você retornou à vila.','good');}else log('Teleporte ADM concluído.','good');}
+  else if(m.t==='adminState'){adminInvisible=!!m.invisible;const b=$('admInvisible');if(b)b.textContent=`Invisível: ${adminInvisible?'ON':'OFF'}`;log(adminInvisible?'Modo invisível ativado.':'Modo invisível desativado.','gold');}
   else if (m.t === 'join'){ addOther(m); countOnline(); log(`${m.name} entrou na ilha.`); }
   else if (m.t === 'leave'){ const o = others.get(m.id); if (o){ log(`${o.name} saiu.`); removeOther(o); } countOnline(); }
   else if (m.t === 's'){

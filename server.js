@@ -73,6 +73,9 @@ function broadcast(msg, except) {
 }
 const num = (v, min, max) => (typeof v === 'number' && Number.isFinite(v)) ? Math.min(max, Math.max(min, v)) : null;
 const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+const ADMIN_CHAR_IDS=new Set(['d1d8d695-c26f-4dbb-a3d7-5e79323b385d']);
+const ADMIN_USER_IDS=new Set(['68fbb675-f504-41af-adb1-e2161bca4930']);
+const isAdmin=p=>!!p&&ADMIN_CHAR_IDS.has(p.charId)&&ADMIN_USER_IDS.has(p.userId);
 const perto = (a, b, d) => Math.hypot(a.x - b.x, a.z - b.z) < d;
 const resumo = p => ({ id:p.id,name:p.name,L:p.L,x:p.x,y:p.y,z:p.z,f:p.f,cls:p.dados?.cls||'aprendiz',gender:p.dados?.gender==='female'?'female':'male',gear:{...(p.dados?.eq||{})},
   g:p.guild?p.guild.nome:null,s:p.shop?p.shop.title:null });
@@ -204,8 +207,9 @@ wss.on('connection', ws => {
           L: (row.dados && row.dados.L) || 1, x: savedPos.x, y: startSurface ? startSurface.h : 0, z: savedPos.z, f: 0, a: 0,
           dados: row.dados || {}, dirty: false, posDirty: savedPos.corrected, moved: true, lastChat: 0,
           hp: 0, maxHp: 1, party: null, trade: null, shop: null, guild: null, invites: new Map(), lastInv: 0, expBucket: 20,
-          lastPosAt: Date.now(), fallingFromFlight: false
+          lastPosAt: Date.now(), fallingFromFlight: false, invisible:false
         };
+        novo.admin=isAdmin(novo);
         itemManager.ensurePlayer(novo);
         if (COMBATE_AUTORITATIVO) combatManager.initializePlayer(novo);
         questManager.initializePlayer(novo);
@@ -225,7 +229,7 @@ wss.on('connection', ws => {
         send(ws, {
           t: 'welcome', id: p.id,
           char: { nome: row.nome, x: p.x, z: p.z }, guild: p.guild,
-          others: [...players.values()].filter(o => o !== p).map(resumo),
+          others: [...players.values()].filter(o => o !== p && !o.invisible).map(resumo),
           authoritativeCombat: COMBATE_AUTORITATIVO,
           monsters: COMBATE_AUTORITATIVO ? monsterManager.snapshotFor(p) : [],
           loot: COMBATE_AUTORITATIVO ? lootManager.snapshotFor(p) : [],
@@ -239,7 +243,8 @@ wss.on('connection', ws => {
           itemCatalog: itemManager.catalog(),
           itemState: itemManager.snapshot(p),
           npcCatalog: NPCS,
-          bestiary: BESTIARY
+          bestiary: BESTIARY,
+          admin: p.admin===true
         });
         broadcast({ t: 'join', ...resumo(p) }, p);
         console.log(`Entrou: ${p.name} (${players.size} online)`);
@@ -340,7 +345,24 @@ wss.on('connection', ws => {
       case 'quest': questManager.handle(p,m,{changeClass:(player,cls)=>{const ok=combatManager.changeClassFromQuest(player,cls);if(ok){skillManager.onClassChange(player);broadcast({t:'gear',id:player.id,cls:player.dados.cls||'aprendiz',gear:{...(player.dados.eq||{})}},player);}return ok;},grantReward:(player,reward)=>premiarQuest(player,reward)}); break;
       case 'resetCharacter': if (COMBATE_AUTORITATIVO && combatManager.resetPlayer(p)) broadcast({t:'gear',id:p.id,cls:p.dados.cls||'aprendiz',gear:{...(p.dados.eq||{})}},p); break;
       case 'economy': if (COMBATE_AUTORITATIVO && economyManager.act(p,m)) broadcast({t:'gear',id:p.id,cls:p.dados.cls||'aprendiz',gear:{...(p.dados.eq||{})}},p); break;
-      case 'combatRespawn': if (COMBATE_AUTORITATIVO) combatManager.respawn(p,0,5); break;
+      case 'combatRespawn': if (COMBATE_AUTORITATIVO && combatManager.respawn(p,0,5)){const surf=worldNavigation.playerSurfaceAt(0,5);p.y=surf?surf.h:0;p.a=0;p.fallingFromFlight=false;p.moved=true;p.posDirty=true;send(p.ws,{t:'respawnPosition',x:p.x,y:p.y,z:p.z});} break;
+      case 'adminCommand': {
+        if(!isAdmin(p))return erro(p,'Comando administrativo não autorizado.');
+        if(m.action==='teleport'){
+          const x=num(Number(m.x),-MUNDO,MUNDO),z=num(Number(m.z),-MUNDO,MUNDO);if(x===null||z===null)return erro(p,'Destino inválido.');
+          const surf=worldNavigation.playerSurfaceAt(x,z);if(!surf)return erro(p,'Destino fora do mundo.');
+          p.x=x;p.z=z;p.y=surf.h;p.a=0;p.fallingFromFlight=false;p.moved=true;p.posDirty=true;send(p.ws,{t:'adminTeleport',x:p.x,y:p.y,z:p.z});
+        }else if(m.action==='addItem'){
+          const id=String(m.id||'').trim().slice(0,80),n=Math.max(1,Math.min(9999,Math.floor(Number(m.n)||1)));
+          if(!id||!itemManager.addItem(p,{id,n}))return erro(p,'Item inválido ou mochila cheia.');
+          p.dirty=true;itemManager.sync(p,{event:'admin-grant'});aviso(p,`ADM: adicionado ${id} x${n}.`);
+        }else if(m.action==='invisible'){
+          p.invisible=!!m.value;
+          if(p.invisible)broadcast({t:'leave',id:p.id},p);else broadcast({t:'join',...resumo(p)},p);
+          send(p.ws,{t:'adminState',invisible:p.invisible});
+        }else return erro(p,'Comando ADM inválido.');
+        break;
+      }
       case 'worldSnapshot': if (COMBATE_AUTORITATIVO) send(p.ws,{t:'worldSnapshot',monsters:monsterManager.snapshotFor(p),loot:lootManager.snapshotFor(p)}); break;
       case 'inv': convidar(p, m); break;
       case 'resp': responder(p, m); break;
@@ -881,7 +903,7 @@ setInterval(() => {
   for (const p of players.values()) {
     if (!p.moved) continue;
     p.moved = false;
-    lista.push([p.id, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.f.toFixed(2), p.a]);
+    if(!p.invisible)lista.push([p.id, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.f.toFixed(2), p.a]);
   }
   if (lista.length) broadcast({ t: 's', p: lista });
 }, 100);
