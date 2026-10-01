@@ -68,7 +68,7 @@ function broadcast(msg, except) {
 const num = (v, min, max) => (typeof v === 'number' && Number.isFinite(v)) ? Math.min(max, Math.max(min, v)) : null;
 const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 const perto = (a, b, d) => Math.hypot(a.x - b.x, a.z - b.z) < d;
-const resumo = p => ({ id:p.id,name:p.name,L:p.L,x:p.x,y:p.y,z:p.z,f:p.f,cls:p.dados?.cls||'aprendiz',gear:{...(p.dados?.eq||{})},
+const resumo = p => ({ id:p.id,name:p.name,L:p.L,x:p.x,y:p.y,z:p.z,f:p.f,cls:p.dados?.cls||'aprendiz',gender:p.dados?.gender==='female'?'female':'male',gear:{...(p.dados?.eq||{})},
   g:p.guild?p.guild.nome:null,s:p.shop?p.shop.title:null });
 const aviso = (p, msg) => send(p.ws, { t: 'aviso', msg });
 const erro = (p, msg) => send(p.ws, { t: 'erro', msg });

@@ -840,7 +840,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
     <h1>Personagens</h1>
     <p>Escolha um personagem ou crie um novo. São até 3 por conta.</p>
     <div id="charList"></div>
-    <div class="newchar"><label style="flex:1;margin:0">Novo personagem<input id="newName" maxlength="16" autocomplete="off" placeholder="3 a 16 letras ou números"></label><button class="btn" id="createBtn" type="button">Criar</button></div>
+    <div class="newchar"><label style="flex:1;margin:0">Novo personagem<input id="newName" maxlength="16" autocomplete="off" placeholder="3 a 16 letras ou números"></label><label style="margin:0">Sexo<select id="newGender" aria-label="Sexo do personagem"><option value="male">Masculino</option><option value="female">Feminino</option></select></label><button class="btn" id="createBtn" type="button">Criar</button></div>
     <div class="msg" id="charMsg" aria-live="polite"></div>
     <button class="btn ghost" id="logout" type="button" style="width:100%">Sair da conta</button>
   </div>
@@ -1017,7 +1017,7 @@ const maxLevel = () => ch.cls === 'aprendiz' ? 15 : 60;
    ESTADO DO PERSONAGEM (salvo no navegador)
    ========================================================= */
 function freshChar(){
-  return {L:1, exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[],lastCompletedAt:{}}, skillTree:{version:2,ranks:{},legacyUnlocks:[],specialization:null,respecs:0}, skillBar:[],
+  return {L:1, gender:'male', exp:0, str:15, sta:15, dex:15, int:15, pts:0, gold:0, cls:'aprendiz', quest:null, quests:{active:{},completed:[],lastCompletedAt:{}}, skillTree:{version:2,ranks:{},legacyUnlocks:[],specialization:null,respecs:0}, skillBar:[],
     inv:[{id:'pocao_vida',n:5},{id:'pocao_energia',n:3}], storage:[], itemSeq:0,
     eq:{arma:'espada_treino',offhand:null,capacete:null,peitoral:null,luvas:null,botas:null,capa:null,acessorio1:null,acessorio2:null,voo:null}, equp:{}, eqMeta:{}, hp:null, fp:null, mp:null};
 }
@@ -4319,7 +4319,8 @@ async function showChars(){
     const el = document.createElement('div'); el.className = 'charrow';
     const L = (row.dados && row.dados.L) || 1;
     const cn = (CLASSES[(row.dados && row.dados.cls) || 'aprendiz'] || CLASSES.aprendiz).name;
-    el.innerHTML = `<div><b></b><span>Nível ${L} ${cn}</span></div><button class="btn ghost" type="button" data-del>Excluir</button><button class="btn" type="button" data-play>Jogar</button>`;
+    const gn = row.dados && row.dados.gender === 'female' ? 'Feminino' : 'Masculino';
+    el.innerHTML = `<div><b></b><span>Nível ${L} ${cn} · ${gn}</span></div><button class="btn ghost" type="button" data-del>Excluir</button><button class="btn" type="button" data-play>Jogar</button>`;
     el.querySelector('b').textContent = row.nome;
     el.querySelector('[data-play]').addEventListener('click', ()=> enterGame(row));
     el.querySelector('[data-del]').addEventListener('click', async ev=>{
@@ -4336,7 +4337,8 @@ async function createChar(){
   const nome = $('newName').value.trim(), msg = $('charMsg');
   if (!/^[A-Za-zÀ-ÿ0-9]{3,16}$/.test(nome)){ authMessage(msg, 'Use de 3 a 16 letras ou números, sem espaços.'); return; }
   $('createBtn').disabled = true;
-  const { error } = await sb.from('iv_personagens').insert({ nome, dados: freshChar() });
+  const dados = freshChar(); dados.gender = $('newGender') && $('newGender').value === 'female' ? 'female' : 'male';
+  const { error } = await sb.from('iv_personagens').insert({ nome, dados });
   $('createBtn').disabled = false;
   if (error){
     if (error.code === '23505') authMessage(msg, 'Esse nome já existe. Escolha outro.');
@@ -4353,6 +4355,8 @@ $('logout').addEventListener('click', async ()=>{ await sb.auth.signOut(); $('ch
 function enterGame(row){
   currentChar = row; online.first = true; online.kicked = false;
   ch = Object.assign(freshChar(), row.dados || {}); capWarned = false;
+  hero.opts = Object.assign({}, hero.opts || {}, {gender: ch.gender === 'female' ? 'female' : 'male'});
+  if (hero.isGLB && charSys){ const pos=hero.root.position.clone(), rot=hero.root.rotation.clone(); charSys.release(hero.view); scene.remove(hero.root); scene.remove(hero.shadow); const g=glbHero(hero.opts); if(g){ g.root.position.copy(pos); g.root.rotation.copy(rot); Object.keys(hero).forEach(k=>delete hero[k]); Object.assign(hero,g); charSys.setLocal(hero.view); } }
   derive(); if (ch.hp <= 0) ch.hp = d.maxHp;
   if (player.flying) setFlying(false);
   buffs = []; buildHotbar(); setHeroWeapon(hero, ch.cls); player.isle = -1;
@@ -4562,7 +4566,7 @@ function makeSign(text){
 }
 function addOther(p){
   if (others.has(p.id) || p.id === online.myId) return;
-  const pal = PALETTE[p.id % PALETTE.length], h = makeCharacter({tunic:pal[0], hair:pal[1], long:p.id % 2 === 0, eye:[0x3A6FB8,0x2E8A5A,0x8A5A2A,0x6A4AB8][p.id % 4]});
+  const pal = PALETTE[p.id % PALETTE.length], h = makeCharacter({gender:p.gender==='female'?'female':'male', tunic:pal[0], hair:pal[1], long:p.id % 2 === 0, eye:[0x3A6FB8,0x2E8A5A,0x8A5A2A,0x6A4AB8][p.id % 4]});
   const o = {id:p.id,name:p.name,L:p.L,cls:p.cls||'aprendiz',gear:{...(p.gear||{})},g:p.g||null,s:p.s||null,sign:null,party:inParty(p.id),h,label:null,glabel:null,x:p.x,y:p.y,z:p.z,f:p.f,tx:p.x,ty:p.y,tz:p.z,tf:p.f,a:0,phase:0,bubble:null,bubbleT:0};
   setOtherLabel(o);
   h.root.position.set(o.x,o.y,o.z);

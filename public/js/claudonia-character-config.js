@@ -19,6 +19,7 @@
   const CHARACTER_CONFIG = {
     useGLB: true,
     model: '/assets/characters/base_male/base_male.glb',
+    femaleModel: '/assets/characters/base_female/base_female.glb',
     label: 'KayKit base male',
     scale: 1,
     yOffset: 0,
@@ -30,6 +31,7 @@
 
     // Modelo principal do jogador (definido no CHARACTER_CONFIG acima)
     model: CHARACTER_CONFIG.model,
+    models: { male: CHARACTER_CONFIG.model, female: CHARACTER_CONFIG.femaleModel },
     modelLabel: CHARACTER_CONFIG.label,
 
     // Boneco de TESTE (não é o visual do jogo). Só é usado se usePlaceholderIfMissing

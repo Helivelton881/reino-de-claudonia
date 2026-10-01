@@ -13,7 +13,7 @@
       this.available = !!(THREE && THREE.GLTFLoader && THREE.SkeletonUtils && window.ClaudoniaAnimationManager && window.ClaudoniaEquipmentManager);
       this.enabled = !!this.cfg.USE_NEW_CHARACTER_MODEL && this.available;
       this.ready = false; this.error = null; this.source = null; this.missing = false;
-      this.template = null; this.clips = []; this.views = new Set(); this._frame = 0;
+      this.template = null; this.templates = {}; this.clips = []; this.views = new Set(); this._frame = 0;
       this.onReady = [];
       if (this.available){
         this.loader = new THREE.GLTFLoader();
@@ -48,6 +48,9 @@
           catch (e){ console.warn(`[Character] Animações não carregaram: ${fileName(url)}`); }
         }
         this.template = this._prepare(gltf.scene);
+        this.templates.male = this.template;
+        const femaleUrl = this.cfg.models && this.cfg.models.female;
+        if (femaleUrl){ try { const female = await this._load(femaleUrl); this.templates.female = this._prepare(female.scene); console.info('[Character] Female model loaded: ' + fileName(femaleUrl)); } catch(e){ console.warn('[Character] Female model failed; male fallback active.', e); } }
         this.ready = true; this.error = null;
         console.info(`[Character] Model loaded: ${fileName(this.source)}${/placeholder/.test(this.source) ? ' (PLACEHOLDER DE TESTE)' : ''}`);
         console.info('[Character] Model loaded successfully.');
@@ -113,7 +116,9 @@
     createView(opts){
       if (!this.ready) return null;
       const T = this.THREE, root = new T.Group(); root.rotation.order = 'YXZ';
-      const model = T.SkeletonUtils.clone(this.template);
+      const gender = opts && opts.gender === 'female' ? 'female' : 'male';
+      const template = this.templates[gender] || this.templates.male || this.template;
+      const model = T.SkeletonUtils.clone(template);
       root.add(model);
       const anim = new window.ClaudoniaAnimationManager(T, model, this.clips, this.cfg.clips);
       const view = { isGLB: true, root, model, anim, opts: opts || {}, dist: 0, acc: 0, local: false };
