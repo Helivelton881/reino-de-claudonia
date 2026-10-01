@@ -191,6 +191,15 @@ button{font-family:inherit;color:inherit}
 .touch #chatBar.open{display:block}
 .touch #chatIn{height:46px;font-size:16px;background:var(--panel2)}
 
+
+.more-menu{display:grid;grid-template-columns:repeat(2,auto);gap:7px;padding:8px;border:1px solid var(--panel-edge);border-radius:12px;background:linear-gradient(180deg,rgba(58,38,18,.97),rgba(34,22,10,.97));box-shadow:0 8px 22px rgba(0,0,0,.58)}
+.more-menu[hidden]{display:none}.menu>#bMore{box-shadow:0 0 0 2px #E0B45C,0 3px 8px rgba(0,0,0,.5)}
+#lifestyleLaunch,#liveOpsLaunch{display:none!important}
+.touch #joy{display:none;opacity:0;pointer-events:none;transition:opacity .1s}
+.touch #joy.active{display:block;opacity:1;pointer-events:none;left:0;top:0;bottom:auto}
+.touch .menu{top:calc(env(safe-area-inset-top,0px) + 196px)}
+.touch .more-menu{position:absolute;right:0;top:48px;grid-template-columns:repeat(2,40px);max-height:min(330px,60vh);overflow:auto}
+
 /* Janelas */
 .win{position:fixed;width:min(360px,94vw);max-height:74%;display:flex;flex-direction:column;z-index:20;
   background:linear-gradient(180deg,rgba(58,38,18,.96),rgba(34,22,10,.96));border:2px solid var(--panel-edge);border-radius:12px;
@@ -697,15 +706,20 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 </div>
 
 <div class="menu" id="menu">
-  <button id="bInv" type="button" title="Mochila (I)">🎒<small>Mochila</small></button>
-  <button id="bChar" type="button" title="Personagem (C)">🛡️<small>Herói</small></button>
-  <button id="bSocial" type="button" title="Social (G)">🤝<small>Social</small></button>
-  <button id="bPets" type="button" title="Companheiros (V)">🐾<small>Pets</small></button>
-  <button id="bSkills" type="button" title="Árvore de habilidades (K)">🌟<small>Skills</small></button>
-  <button id="bQuest" type="button" title="Diário de missões (J)">📜<small>Missões</small><span class="badge" id="questBadge"></span></button>
-  <button id="bShop" type="button" title="Loja pessoal (L)">🏪<small>Loja</small></button>
-  <button id="bBestiary" type="button" title="Bestiário (B)">🐾<small>Bestiário</small></button>
-  <button id="bChat" type="button" title="Conversar (Enter)">💬<small>Chat</small></button>
+  <button id="bMore" type="button" title="Abrir menu" aria-label="Abrir menu" aria-expanded="false">☰<small>Menu</small></button>
+  <div id="moreMenu" class="more-menu" hidden>
+    <button id="bInv" type="button" title="Mochila (I)">🎒<small>Mochila</small></button>
+    <button id="bChar" type="button" title="Personagem (C)">🛡️<small>Herói</small></button>
+    <button id="bSocial" type="button" title="Social (G)">🤝<small>Social</small></button>
+    <button id="bPets" type="button" title="Companheiros (V)">🐾<small>Pets</small></button>
+    <button id="bSkills" type="button" title="Árvore de habilidades (K)">🌟<small>Skills</small></button>
+    <button id="bQuest" type="button" title="Diário de missões (J)">📜<small>Missões</small><span class="badge" id="questBadge"></span></button>
+    <button id="bShop" type="button" title="Loja pessoal (L)">🏪<small>Loja</small></button>
+    <button id="bBestiary" type="button" title="Bestiário (B)">🐾<small>Bestiário</small></button>
+    <button id="bLifestyleMenu" type="button" title="Profissões e Artesanato">⚒<small>Craft</small></button>
+    <button id="bLiveOpsMenu" type="button" title="Conquistas e Eventos">🏆<small>Conquistas</small></button>
+    <button id="bChat" type="button" title="Conversar (Enter)">💬<small>Chat</small></button>
+  </div>
 </div>
 
 <div class="bottom">
@@ -3962,6 +3976,11 @@ $('bInv').addEventListener('click', ()=> openWin($('winInv'), 1));
 $('bChar').addEventListener('click', ()=> openWin($('winChar'), -1));
 $('bSkills').addEventListener('click', ()=> openWin($('winSkills'), 1));
 $('bBestiary').addEventListener('click', ()=>{renderBestiary();openWin($('winBestiary'),1);});
+const moreBtn=$('bMore'),moreMenu=$('moreMenu');
+moreBtn.addEventListener('click',e=>{e.stopPropagation();const open=moreMenu.hidden;moreMenu.hidden=!open;moreBtn.setAttribute('aria-expanded',String(open));moreBtn.textContent=open?'×':'☰';});
+moreMenu.addEventListener('click',e=>{if(e.target.closest('button')){moreMenu.hidden=true;moreBtn.setAttribute('aria-expanded','false');moreBtn.textContent='☰';}});
+$('bLifestyleMenu').addEventListener('click',()=>{ensureLifestylePanel();const p=$('lifestylePanel');p.hidden=false;lifestyleSend('sync');renderLifestyle();});
+$('bLiveOpsMenu').addEventListener('click',()=>{ensureLiveOpsPanel();const p=$('liveOpsPanel');p.hidden=false;liveOpsSend('sync');renderLiveOps('overview');});
 
 function renderBestiary(){const body=$('bestiaryBody');if(!body)return;const rows=(bestiaryCatalog.entries||[]).map(x=>`<div class="card"><b>${esc(x.name)}</b><div class="sub">Níveis ${x.levels[0]}–${x.levels[1]} · ${x.aggressive?'Agressivo':'Neutro'}</div><div>Variantes: Normal · Raro · Elite · Gigante</div><div class="note">Habilidade: ${esc((x.skills||[]).join(', ').replaceAll('_',' '))}</div></div>`).join('');const bosses=(bestiaryCatalog.bosses||[]).map(x=>`<div class="card"><b>⚠ ${esc(x.name)}</b><div class="sub">World Boss · Nível ${x.level} · ${x.phases} fases</div></div>`).join('');body.innerHTML=rows+bosses;}
 buildHotbar();
@@ -4018,9 +4037,11 @@ canvas.addEventListener('contextmenu', e=> e.preventDefault());
 canvas.addEventListener('pointerdown', e=>{
   if (blocked()) return;
   canvas.setPointerCapture(e.pointerId);
+  if(isTouch&&e.pointerType!=='mouse'){startDynamicJoy(e);return;}
   camPtrs.set(e.pointerId, {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now()}); pinch = 0;
 });
 canvas.addEventListener('pointermove', e=>{
+  if(dynamicJoy&&e.pointerId===joy.id){moveJoy(e);return;}
   const p = camPtrs.get(e.pointerId); if (!p) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
   if (camPtrs.size === 1){
@@ -4032,11 +4053,12 @@ canvas.addEventListener('pointermove', e=>{
   }
 });
 canvas.addEventListener('pointerup', e=>{
+  if(dynamicJoy&&e.pointerId===joy.id){endJoy(e);return;}
   const p = camPtrs.get(e.pointerId);
   if (p && camPtrs.size === 1 && Math.hypot(e.clientX-p.x0, e.clientY-p.y0) < 8 && performance.now()-p.t0 < 400) tap(e.clientX, e.clientY);
   camPtrs.delete(e.pointerId); pinch = 0;
 });
-canvas.addEventListener('pointercancel', e=>{ camPtrs.delete(e.pointerId); pinch = 0; });
+canvas.addEventListener('pointercancel', e=>{if(dynamicJoy&&e.pointerId===joy.id)endJoy(e);camPtrs.delete(e.pointerId);pinch=0;});
 canvas.addEventListener('wheel', e=>{ e.preventDefault(); dist = Math.min(24, Math.max(4, dist * (e.deltaY>0 ? 1.1 : 0.9))); }, {passive:false});
 
 const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), tmpV = new THREE.Vector3();
@@ -4084,16 +4106,20 @@ function tap(cx, cy){
 }
 
 const joyEl = $('joy'), knob = $('knob');
-joyEl.addEventListener('pointerdown', e=>{ if (blocked()) return; joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); moveJoy(e); });
-joyEl.addEventListener('pointermove', e=>{ if (e.pointerId === joy.id) moveJoy(e); });
-const endJoy = e=>{ if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
-joyEl.addEventListener('pointerup', endJoy); joyEl.addEventListener('pointercancel', endJoy);
+let dynamicJoy=false;
+function startDynamicJoy(e){
+  if(!isTouch||blocked()||e.pointerType==='mouse'||camPtrs.size>1)return;
+  dynamicJoy=true;joy.id=e.pointerId;joy.x=joy.y=0;knob.style.transform='';
+  const size=132,x=Math.max(6,Math.min(innerWidth-size-6,e.clientX-size/2)),y=Math.max(6,Math.min(innerHeight-size-6,e.clientY-size/2));
+  joyEl.style.left=x+'px';joyEl.style.top=y+'px';joyEl.classList.add('active');
+  moveJoy(e);
+}
+function endJoy(e){if(e.pointerId!==joy.id)return;dynamicJoy=false;joy.id=null;joy.x=joy.y=0;knob.style.transform='';joyEl.classList.remove('active');}
 function moveJoy(e){
-  const r = joyEl.getBoundingClientRect(), max = r.width/2 - 14;
-  let dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
-  const m = Math.hypot(dx,dy); if (m > max){ dx *= max/m; dy *= max/m; }
-  knob.style.transform = `translate(${dx}px,${dy}px)`;
-  joy.x = dx/max; joy.y = -dy/max;
+  const r=joyEl.getBoundingClientRect(),max=r.width/2-14;
+  let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+  const m=Math.hypot(dx,dy);if(m>max){dx*=max/m;dy*=max/m;}
+  knob.style.transform=`translate(${dx}px,${dy}px)`;joy.x=dx/max;joy.y=-dy/max;
 }
 {
   const jb = $('jump'), db = $('down');
