@@ -1509,6 +1509,17 @@ function navLineClear(ax,az,bx,bz){
 const pathfinder = window.ClaudoniaPathfinding
   ? new window.ClaudoniaPathfinding.GridPathfinder({step:NAV_STEP,maxNodes:40000,nearestRadius:8,isWalkable:navWalkable,lineClear:navLineClear})
   : null;
+function nearestWalkablePosition(x,z,maxRadius=12){
+  if(navWalkable(x,z))return{x,z};
+  for(let r=NAV_STEP;r<=maxRadius;r+=NAV_STEP){
+    const samples=Math.max(16,Math.ceil(r*10));
+    for(let i=0;i<samples;i++){
+      const a=i/samples*Math.PI*2,nx=x+Math.cos(a)*r,nz=z+Math.sin(a)*r;
+      if(navWalkable(nx,nz))return{x:nx,z:nz};
+    }
+  }
+  return navWalkable(SPAWN.x,SPAWN.z)?{x:SPAWN.x,z:SPAWN.z}:null;
+}
 
 /* ---------- Juntar objetos parados em poucos desenhos (bom para o celular) ---------- */
 const bakeSolid = {pos:[], nor:[], col:[]}, bakeGlow = {pos:[], nor:[], col:[]};
@@ -4524,7 +4535,10 @@ function handle(m){
     if (online.first){
       online.first = false;
       const x = m.char.x, z = m.char.z;
-      if (Math.hypot(x,z) < R - 2){ player.x = x; player.z = z; player.y = heightAt(x,z); }
+      if (Math.hypot(x,z) < R - 2){
+        const safe=nearestWalkablePosition(x,z);
+        if(safe){player.x=safe.x;player.z=safe.z;player.y=heightAt(safe.x,safe.z);if(Math.hypot(safe.x-x,safe.z-z)>.1)log('Posição recuperada para uma área navegável.','good');}
+      }
       log(`Bem-vindo ao Reino De Claudonia, ${m.char.nome}!`, 'good');
     }
     applyItemCatalog(m.itemCatalog,m.itemState);
