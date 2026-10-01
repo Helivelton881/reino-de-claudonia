@@ -203,13 +203,15 @@
         if (gltf.animations && gltf.animations.length){
           const mixer=new THREE.AnimationMixer(object), clips=gltf.animations;
           const find=(rx)=>clips.find(a=>rx.test(a.name));
-          const row={root:object,mixer,actions:{
-            idle:find(/flying_idle|^idle$/i)||find(/idle/i)||clips[0],
-            move:find(/fast_flying|^run$|^walk$/i)||find(/walk|run|flying/i),
-            attack:find(/bite_front|headbutt|^punch$/i)||find(/attack|bite|punch/i),
-            hit:find(/hitreact|hitrecieve|hitreceive/i),
-            death:find(/^death$/i)
-          },current:null};
+          // Pacote 1 (Ultimate Monsters): normaliza as três famílias de rigs sem tocar na IA.
+          // Big: Idle/Walk/Run/Punch/HitReact/Death; Blob: Idle/Walk/Bite_Front/HitRecieve/Death;
+          // Flying: Flying_Idle/Fast_Flying/Headbutt|Punch/HitReact/Death.
+          const idle=find(/^(flying[_ ]?idle|idle)$/i)||find(/idle/i)||clips[0];
+          const move=find(/^(fast[_ ]?flying|run|walk)$/i)||find(/walk|run|flying/i)||idle;
+          const attack=find(/^(bite[_ ]?front|headbutt|punch|attack)$/i)||find(/attack|bite|headbutt|punch|weapon/i)||move||idle;
+          const hit=find(/^(hitreact|hitrecieve|hitreceive|hit|damage)$/i)||find(/hit|damage|hurt/i)||idle;
+          const death=find(/^death$/i)||find(/death|die|dead/i)||hit||idle;
+          const row={root:object,mixer,actions:{idle,move,attack,hit,death},current:null};
           object.userData.monsterAnimation=row; monster.userData=monster.userData||{}; monster.userData.assetAnimation=row;
           this.mixers.push(row); this.setMonsterAnimation(monster,'idle',true);
         }

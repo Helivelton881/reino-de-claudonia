@@ -1713,7 +1713,7 @@ const sharedCollisionWorld = window.ClaudoniaWorldCollision.generate();
 const trees = sharedCollisionWorld.trees.map(src=>{
   const t = Object.assign({pine:src.kind === 'pine'}, src), zk = zoneKeyAt(t.x,t.z);
   // copa mais alta/cheia sem tocar no raio de colisão compartilhado.
-  t.s=(t.s||1)*(t.kind==='pine'?1.45:t.kind==='dead'?1.22:1.55);
+  t.s=(t.s||1)*(t.kind==='pine'?1.62:t.kind==='dead'?1.28:t.kind==='twisted'?1.5:1.72);
   if (t.kind === 'common'){
     const green = zk === 'espirito' || (zk === 'coelhorn' && hash(t.x+17,t.z-9) < 0.5);
     const k = hash(t.x*1.7,t.z*1.3), h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
@@ -1737,21 +1737,21 @@ function scatterVeg(count, place){
 }
 const lowGround = (x,z,town) => freeSpot(x,z,town) && heightAt(x,z) <= 9 && !nearHouse(x, z, 0.5);
 // grama
-scatterVeg(HQ ? 9000 : 3400, (x,z)=>{
+scatterVeg(HQ ? 11800 : 4300, (x,z)=>{
   if (Math.hypot(x,z) < TOWN+2 || Math.hypot(x-LAKE.x,z-LAKE.z) < LAKE.r+5 || heightAt(x,z) > 11 || nearHouse(x, z, 0)) return null;
   const r = rand();
   return {model: 'Grass_Common_Short', h:0.72+rand()*0.58,
     color:new THREE.Color().setHSL(0.15+rand()*0.09, 0.55, 0.66+rand()*0.14)};
 });
 // flores
-scatterVeg(HQ ? 1200 : 450, (x,z)=>{
+scatterVeg(HQ ? 1650 : 560, (x,z)=>{
   if (!lowGround(x,z,TOWN+3)) return null;
   const zk = zoneKeyAt(x,z); if ((zk === 'golem' || zk === 'ciclope') && rand() < 0.8) return null;
   return {model: 'Flower_3_Group', h:0.7+rand()*0.5,
     color:new THREE.Color().setHSL(0.25+rand()*0.06, 0.5, 0.42)};
 });
 // plantas de folha (samambaia, folhas grandes, trevo)
-scatterVeg(HQ ? 800 : 350, (x,z)=>{
+scatterVeg(HQ ? 1150 : 440, (x,z)=>{
   if (!lowGround(x,z,TOWN+4)) return null;
   const zk = zoneKeyAt(x,z), m = pick(['Fern_1','Fern_1','Plant_1_Big','Clover_2']);
   const h = m === 'Plant_1_Big' ? 1.6+rand()*0.8 : m === 'Fern_1' ? 1.1+rand()*0.6 : 0.6+rand()*0.4;
@@ -1765,7 +1765,7 @@ sharedCollisionWorld.bushes.forEach(src=>{
   vegAdd(b.model,b); if (b.solid) addCollider({x:b.x,z:b.z,r:b.r});
 });
 // cogumelos (muitos no Bosque dos Cogumelos e na Mata das Teias)
-scatterVeg(HQ ? 360 : 200, (x,z)=>{
+scatterVeg(HQ ? 520 : 240, (x,z)=>{
   if (!lowGround(x,z,TOWN+6)) return null;
   const zk = zoneKeyAt(x,z), forest = zk === 'cogumelo' || zk === 'aranha';
   if (!forest && rand() < 0.6) return null;
@@ -1777,12 +1777,12 @@ sharedCollisionWorld.rocks.forEach(src=>{
   if (r.solid) addCollider({x:r.x,z:r.z,r:r.r});
 });
 // pedrinhas perto dos caminhos
-scatterVeg(HQ ? 500 : 220, (x,z)=>{
+scatterVeg(HQ ? 720 : 280, (x,z)=>{
   const dp = distPath(x,z); if (dp > 5.5 || dp < 1.2 || Math.hypot(x,z) < TOWN || nearHouse(x, z, 0)) return null;
   return {model: 'Pebble_Round_1', s:2.2+rand()*2};
 });
 // distância em que cada tipo some (o celular desenha menos longe) e quem faz sombra
-const VEG_FAR = m => /Tree|Pine/.test(m) ? (HQ ? 130 : 78) : /Rock|Bush/.test(m) ? (HQ ? 95 : 62) : /Grass|Pebble/.test(m) ? (HQ ? 40 : 30) : (HQ ? 55 : 42);
+const VEG_FAR = m => /Tree|Pine/.test(m) ? (HQ ? 145 : 88) : /Rock/.test(m) ? (HQ ? 105 : 68) : /Bush/.test(m) ? (HQ ? 90 : 60) : /Grass|Pebble/.test(m) ? (HQ ? 36 : 27) : /Flower|Clover|Mushroom/.test(m) ? (HQ ? 44 : 32) : (HQ ? 58 : 42);
 const natureReady = worldAssets.loadKit(WA.nature).then(K=>{
   let total = 0;
   VEG.forEach((items, name)=>{
@@ -1884,6 +1884,15 @@ function buildTownProps(){
   [[-12,0],[12,0],[0,-12],[0,12]].forEach(([x,z])=>propAt('Torch_Metal',x,z,Math.atan2(-x,-z),{solid:false,s:1.05}));
 }
 buildTownProps();
+// Ambientação rural/biomas Lv.1-60: somente decoração, sem novos colliders ou alteração de spawn.
+ZONES.filter(z=>!['ossario','legionário','espectro','necromante'].includes(z.key)).forEach((z,zi)=>{
+  const kit = zi<3 ? ['Barrel','Crate_Wooden','FarmCrate_Apple'] : zi<6 ? ['Bench','Barrel','Stall_Cart_Empty'] : ['Crate_Wooden','Barrel','Torch_Metal'];
+  for(let i=0;i<(HQ?10:6);i++){
+    const a=i*2.399+zi*.71, rr=z.r+7+(i%4)*2.4, x=z.x+Math.cos(a)*rr, zz=z.z+Math.sin(a)*rr;
+    if(distPath(x,zz)<4.6 || nearHouse(x,zz,2) || Math.hypot(x-LAKE.x,zz-LAKE.z)<LAKE.r+4) continue;
+    propAt(kit[i%kit.length],x,zz,a+Math.PI/2,{solid:false,s:.72+(i%3)*.12});
+  }
+});
 // colisões dos props são parte do mundo lógico e não dependem do GLB carregar
 window.ClaudoniaWorldCollision.STATIC_PROP_COLLIDERS.forEach(c=>addCollider({x:c.x,z:c.z,r:c.r}));
 const propsReady = worldAssets.loadKit(WA.props).then(K=>{
