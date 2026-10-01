@@ -4607,6 +4607,11 @@ function ensureAdminPanel(){
   $('admTp').onclick=()=>{const v=z.value,q=v==='spawn'?{x:0,z:5}:ZONES[Number(v)];if(q)sendWs({t:'adminCommand',action:'teleport',x:q.x,z:q.z});};
   $('admGive').onclick=()=>sendWs({t:'adminCommand',action:'addItem',id:$('admItem').value,n:Number($('admQty').value)||1});
   $('admInvisible').onclick=()=>sendWs({t:'adminCommand',action:'invisible',value:!adminInvisible});
+  const clamp=()=>{const r=el.getBoundingClientRect(),x=Math.max(4,Math.min(innerWidth-r.width-4,r.left)),y=Math.max(4,Math.min(innerHeight-r.height-4,r.top));el.style.left=x+'px';el.style.top=y+'px';el.style.right='auto';};
+  let drag=null;el.style.touchAction='none';
+  el.addEventListener('pointerdown',e=>{if(/^(INPUT|BUTTON|SELECT|OPTION)$/.test(e.target.tagName))return;const r=el.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top};el.setPointerCapture?.(e.pointerId);e.preventDefault();});
+  el.addEventListener('pointermove',e=>{if(!drag)return;el.style.left=(e.clientX-drag.dx)+'px';el.style.top=(e.clientY-drag.dy)+'px';el.style.right='auto';clamp();});
+  const stop=()=>{drag=null;clamp();};el.addEventListener('pointerup',stop);el.addEventListener('pointercancel',stop);window.addEventListener('resize',()=>requestAnimationFrame(clamp));screen.orientation?.addEventListener?.('change',()=>setTimeout(clamp,100));requestAnimationFrame(clamp);
 }
 function handle(m){
   if (m.t === 'welcome'){

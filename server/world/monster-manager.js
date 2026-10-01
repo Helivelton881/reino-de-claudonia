@@ -167,7 +167,7 @@ class MonsterManager {
 
       if(m.stunUntil>now){m.state='stunned';if(network)this.emit(m,{t:'monsterMove',id:m.id,x:m.x,z:m.z,state:m.state,targetId:m.targetId,hp:m.hp});continue;}
       let target=m.targetId&&this.players.get(m.targetId);
-      if(target&&(target.dead||Math.hypot(target.x-m.spawnX,target.z-m.spawnZ)>Math.max(28,this.zones[m.zone].radius*1.8))){
+      if(target&&(target.dead||target.invisible||Math.hypot(target.x-m.spawnX,target.z-m.spawnZ)>Math.max(28,this.zones[m.zone].radius*1.8))){
         target=null;
         this.clearNavigation(m);
       }
@@ -257,7 +257,7 @@ class MonsterManager {
   closestPlayer(m,radius){
     let best=null,bestD=radius;
     for(const p of this.players.values()){
-      if(p.dead||[4,5,6].includes(p.a)) continue;
+      if(p.dead||p.invisible||[4,5,6].includes(p.a)) continue;
       const d=Math.hypot(p.x-m.x,p.z-m.z);
       if(d<bestD){ best=p;bestD=d; }
     }
