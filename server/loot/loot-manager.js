@@ -22,11 +22,13 @@ class LootManager {
   public(entity){ return {lootId:entity.id,x:entity.x,z:entity.z,...entity.value,expiresAt:entity.expiresAt}; }
   snapshotFor(player,radius=110){ return [...this.loot.values()].filter(e=>this.allowed(e,player)&&Math.hypot(e.x-player.x,e.z-player.z)<=radius).map(e=>this.public(e)); }
   allowed(entity,player){ return entity.allowed.has(player.id); }
-  pickup(player,id) {
+  get(id){ return this.loot.get(Number(id)) || null; }
+  pickup(player,id,options={}) {
     const entity=this.loot.get(Number(id));
     if (!entity) return this.reject(player,id,'Loot indisponível.');
     if (!this.allowed(entity,player)) return this.reject(player,id,'Este loot pertence a outro jogador ou grupo.');
-    if (Math.hypot(entity.x-player.x,entity.z-player.z)>2.6) return this.reject(player,id,'Loot distante demais.');
+    const radius=Number.isFinite(options.radius)?Math.max(2.6,Math.min(8,options.radius)):2.6;
+    if (Math.hypot(entity.x-player.x,entity.z-player.z)>radius) return this.reject(player,id,'Loot distante demais.');
     if (entity.value.id && !(this.itemManager ? this.itemManager.addItem(player,entity.value) : this.addItem(player,entity.value.id,entity.value.n||1))) return this.reject(player,id,'Mochila cheia.');
     if (entity.value.gold) player.dados.gold=Math.max(0,Math.floor(Number(player.dados.gold)||0))+entity.value.gold;
     this.loot.delete(entity.id); player.dirty=true;

@@ -684,7 +684,8 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 <div class="menu" id="menu">
   <button id="bInv" type="button" title="Mochila (I)">🎒<small>Mochila</small></button>
   <button id="bChar" type="button" title="Personagem (C)">🛡️<small>Herói</small></button>
-  <button id="bSocial" type="button" title="Grupo e guilda (G)">🤝<small>Grupo</small></button>
+  <button id="bSocial" type="button" title="Social (G)">🤝<small>Social</small></button>
+  <button id="bPets" type="button" title="Companheiros (V)">🐾<small>Pets</small></button>
   <button id="bSkills" type="button" title="Árvore de habilidades (K)">🌟<small>Skills</small></button>
   <button id="bQuest" type="button" title="Diário de missões (J)">📜<small>Missões</small><span class="badge" id="questBadge"></span></button>
   <button id="bShop" type="button" title="Loja pessoal (L)">🏪<small>Loja</small></button>
@@ -778,10 +779,12 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   <div class="wbody" id="charBody"></div>
 </section>
 
-<section class="win" id="winSocial" hidden aria-label="Grupo e guilda">
-  <header><b>Grupo e guilda</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
+<section class="win" id="winSocial" hidden aria-label="Social">
+  <header><b>Social</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
   <div class="wbody" id="socialBody"></div>
 </section>
+
+<section class="win" id="winPets" hidden aria-label="Companheiros"><header><b>Companheiros</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header><div class="wbody" id="petsBody"></div></section>
 
 <section class="win" id="winQuest" hidden aria-label="Diário de missões">
   <header><b>Diário de Missões</b><button class="x" type="button" data-close aria-label="Fechar">×</button></header>
@@ -4621,6 +4624,9 @@ function handle(m){
   }
   else if(m.t==='combatState'){ch.hp=m.hp;ch.mp=m.mp;ch.fp=m.fp;if(m.inv)ch.inv=m.inv;if(m.exp!==undefined)ch.exp=m.exp;if(m.expLoss)log(`Você perdeu ${m.expLoss} de experiência.`,'bad');if(m.heal)floatText(player.x,player.y+2.4,player.z,'+'+m.heal,'heal');deadOpen=false;$('dead').hidden=true;refreshUI();}
   else if(m.t==='itemEffect'){ch.inv=m.inv;if(m.itemId==='combustivel'){player.turboT=12;floatText(player.x,player.y+2.4,player.z,'Turbo!','exp');}refreshUI();}
+  else if(m.t==='petState'){petState=m.state||petState;if(!$('winPets').hidden)$('petsBody').innerHTML=petHTML();if(m.event==='summon')log('Companheiro invocado.','gold');}
+  else if(m.t==='socialState'){socialState=m.state||socialState;if(!$('winSocial').hidden)renderSocial();}
+  else if(m.t==='whisper'){log('✉ '+(m.to?'Para '+m.to:m.from)+': '+m.msg,'good');}
   else if(m.t==='itemState'){if(m.state)applyItemCatalog(null,m.state);if(m.ok===false&&m.msg)log(m.msg,'bad');derive();syncHeroEquipment(hero,ch.eq,ch.cls);refreshUI();}
   else if(m.t==='equipmentState'){applyItemCatalog(null,m);if(m.combat){ch.hp=m.combat.hp;ch.mp=m.combat.mp;ch.fp=m.combat.fp;}derive();syncHeroEquipment(hero,ch.eq,ch.cls);invModalState=null;selInv=-1;selEq=null;refreshUI();}
   else if(m.t==='attributeState'){ch[m.stat]=m.value;ch.pts=m.pts;derive();refreshUI();}
@@ -4825,7 +4831,13 @@ function renderParty(){
 }
 
 // Janela "Grupo e guilda"
-let socialTab = 'grupo';
+let socialTab = 'grupo', socialState={friends:[],blacklist:[],mail:[]}, petState={active:null,pets:[],catalog:[]};
+function petHTML(){const owned=new Map((petState.pets||[]).map(x=>[x.id,x]));return (petState.catalog||[]).map(cfg=>{const p=owned.get(cfg.id),active=petState.active===cfg.id,tier=p?.tier||1,visual=cfg.tiers.find(x=>x.tier===tier)||cfg.tiers[0];return `<div class="card"><b>🐾 ${esc(p?.nickname||visual.name)}</b><div class="sub">${esc(cfg.role)} · Tier ${tier}${p?` · nível ${p.level}`:' · não obtido'}</div>${p?`<div class="actions"><button class="btn" data-pet="${cfg.id}" data-action="${active?'unsummon':'summon'}">${active?'Guardar':'Invocar'}</button></div>`:''}</div>`;}).join('');}
+function openPets(){openWin($('winPets'),1);if(!$('winPets').hidden){$('petsBody').innerHTML=petHTML();sendWs({t:'pet',action:'sync'});}}
+$('bPets').addEventListener('click',openPets);$('winPets').addEventListener('click',e=>{const b=e.target.closest('[data-pet]');if(b)sendWs({t:'pet',action:b.dataset.action,id:b.dataset.pet});});
+function friendsHTML(){const rows=(socialState.friends||[]).map(f=>`<div class="row"><div><b><span class="dot ${f.online?'on':''}"></span>${esc(f.name)}</b><span>${f.online?'Online':f.lastActivity?'Última atividade '+new Date(f.lastActivity).toLocaleString('pt-BR'):'Offline'}</span></div><button class="btn ghost" data-whisper="${esc(f.name)}">Mensagem</button><button class="btn ghost" data-unfriend="${esc(f.name)}">Remover</button></div>`).join('');return `<label class="note">Adicionar por nome<input id="friendName" maxlength="24" placeholder="Nome do jogador"></label><div class="actions"><button class="btn" id="friendAdd">Adicionar</button><button class="btn ghost" id="partyByName">Convidar ao grupo</button></div>${rows||'<p class="note">Nenhum amigo adicionado.</p>'}`;}
+function mailHTML(){const rows=(socialState.mail||[]).map(m=>`<div class="card"><b>${esc(m.subject)}</b><div class="sub">De ${esc(m.from)}</div><div>${esc(m.body)}</div><div class="note">${m.claimed?'Coletado':`${(m.items||[]).length} item(ns) · ${m.gold||0} ouro`}</div>${m.claimed?'':`<button class="btn" data-mail-claim="${m.id}">Coletar anexos</button>`}</div>`).join('');return `<div class="card"><b>Enviar correio</b><input id="mailTo" maxlength="24" placeholder="Destinatário"><input id="mailSubject" maxlength="60" placeholder="Assunto"><input id="mailBody" maxlength="600" placeholder="Mensagem"><input id="mailGold" type="number" min="0" placeholder="Ouro"><button class="btn" id="mailSend">Enviar</button></div>${rows||'<p class="note">Caixa vazia.</p>'}`;}
+function blacklistHTML(){return `<label class="note">Bloquear jogador<input id="blockName" maxlength="24" placeholder="Nome"></label><button class="btn" id="blockAdd">Bloquear</button>`+(socialState.blacklist||[]).map(n=>`<div class="row"><b>${esc(n)}</b><button class="btn ghost" data-unblock="${esc(n)}">Desbloquear</button></div>`).join('');}
 function openSocial(){
   const w = $('winSocial'); openWin(w, 1);
   if (!w.hidden && socialTab === 'guilda' && myGuild) sendWs({t:'glist'});
@@ -4894,8 +4906,8 @@ function guildHTML(){
 }
 function renderSocial(){
   const keep = ['gName','gGold'].map(id=>{ const el = $(id); return el ? [id, el.value, document.activeElement === el] : null; }).filter(Boolean);
-  let html = `<div class="tabs"><button type="button" data-stab="grupo" class="${socialTab==='grupo'?'on':''}">Grupo</button><button type="button" data-stab="guilda" class="${socialTab==='guilda'?'on':''}">Guilda</button></div>`;
-  html += socialTab === 'grupo' ? partyHTML() : guildHTML();
+  let html = `<div class="tabs"><button type="button" data-stab="grupo" class="${socialTab==='grupo'?'on':''}">Grupo</button><button type="button" data-stab="guilda" class="${socialTab==='guilda'?'on':''}">Guilda</button><button type="button" data-stab="amigos" class="${socialTab==='amigos'?'on':''}">Amigos</button><button type="button" data-stab="correio" class="${socialTab==='correio'?'on':''}">Correio</button><button type="button" data-stab="bloqueados" class="${socialTab==='bloqueados'?'on':''}">Bloqueados</button></div>`;
+  html += socialTab === 'grupo' ? partyHTML() : socialTab === 'guilda' ? guildHTML() : socialTab==='amigos'?friendsHTML():socialTab==='correio'?mailHTML():blacklistHTML();
   $('socialBody').innerHTML = html;
   keep.forEach(([id, v, f])=>{ const el = $(id); if (el){ el.value = v; if (f) el.focus(); } });
 }
@@ -4906,6 +4918,14 @@ $('winSocial').addEventListener('change', e=>{
 $('winSocial').addEventListener('click', e=>{
   const tb = e.target.closest('[data-stab]');
   if (tb){ socialTab = tb.dataset.stab; if (socialTab === 'guilda' && myGuild) sendWs({t:'glist'}); renderSocial(); return; }
+  if(e.target.id==='friendAdd'){sendWs({t:'social',action:'friend',name:$('friendName').value.trim()});return;}
+  if(e.target.id==='partyByName'){sendWs({t:'inviteByName',kind:'grupo',name:$('friendName').value.trim()});return;}
+  const uf=e.target.closest('[data-unfriend]');if(uf){sendWs({t:'social',action:'unfriend',name:uf.dataset.unfriend});return;}
+  const wh=e.target.closest('[data-whisper]');if(wh){const msg=prompt('Mensagem para '+wh.dataset.whisper);if(msg)sendWs({t:'social',action:'whisper',name:wh.dataset.whisper,msg});return;}
+  if(e.target.id==='blockAdd'){sendWs({t:'social',action:'block',name:$('blockName').value.trim()});return;}
+  const ub=e.target.closest('[data-unblock]');if(ub){sendWs({t:'social',action:'unblock',name:ub.dataset.unblock});return;}
+  if(e.target.id==='mailSend'){sendWs({t:'social',action:'mailSend',name:$('mailTo').value.trim(),subject:$('mailSubject').value.trim(),body:$('mailBody').value.trim(),gold:+$('mailGold').value||0,items:[]});return;}
+  const mc=e.target.closest('[data-mail-claim]');if(mc){sendWs({t:'social',action:'mailClaim',id:mc.dataset.mailClaim});return;}
   const pk = e.target.closest('[data-pkick]'); if (pk){ sendWs({t:'pkick', id:+pk.dataset.pkick}); return; }
   const pm = e.target.closest('[data-pmode]'); if (pm && !pm.disabled){ sendWs({t:'pmode', mode:pm.dataset.pmode}); return; }
   const ps = e.target.closest('[data-pskill]'); if (ps){ sendWs({t:'pskill', id:ps.dataset.pskill}); return; }

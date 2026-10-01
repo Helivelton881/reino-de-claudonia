@@ -25,6 +25,8 @@ const NPCS = require('./server/data/npcs');
 const EQUIPMENT = require('./server/data/equipment');
 const {DUNGEONS} = require('./server/data/dungeons');
 const DungeonManager = require('./server/dungeons/dungeon-manager');
+const PetManager = require('./server/pets/pet-manager');
+const SocialManager = require('./server/social/social-manager');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -104,6 +106,8 @@ const monsterManager = new MonsterManager({ types:MONSTER_TYPES, zones:ZONES, sp
 lootManager = new LootManager({ players, send, emitNearby:emitirPerto, itemManager });
 const economyManager = new EconomyManager({send,itemManager});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
+const petManager = new PetManager({send,itemManager,lootManager});
+const socialManager = new SocialManager({players,send,itemManager,save:salvar});
 combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); combatManager.setItemManager(itemManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize(); monsterManager.spawnWorldBoss('guardiao_cinzas');
 
 async function salvar(p) {
@@ -210,6 +214,10 @@ wss.on('connection', ws => {
         p = novo;
         players.set(p.id, p);
         dungeonManager.reconnect(p);
+        restaurarGrupo(p);
+        socialManager.onLogin(p);
+        if(!Object.keys(p.dados.pets||{}).length)petManager.grant(p,'lumim');
+        else petManager.sync(p,{event:'login'});
         clearTimeout(semLogin);
         send(ws, {
           t: 'welcome', id: p.id,
@@ -276,7 +284,7 @@ wss.on('connection', ws => {
         if (!m.dados || typeof m.dados !== 'object' || Array.isArray(m.dados)) return;
         if (JSON.stringify(m.dados).length > 20000) return;
         if (COMBATE_AUTORITATIVO) {
-          const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree']);
+          const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree','pets','petActive','social','mail']);
           for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
           Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
         } else {
@@ -302,6 +310,7 @@ wss.on('connection', ws => {
       case 'attack': if (COMBATE_AUTORITATIVO) combatManager.attack(p,m); break;
       case 'skill': if (COMBATE_AUTORITATIVO) combatManager.skill(p,m); break;
       case 'pickup': if (COMBATE_AUTORITATIVO && lootManager.pickup(p,m.id)) questManager.sync(p,{event:'inventory'}); break;
+      case 'petPickup': { if(!COMBATE_AUTORITATIVO)break;const drop=lootManager.get(m.id),check=petManager.pickup(p,drop);if(!check.ok)return erro(p,check.reason);const active=p.dados.petActive,cfg=active&&require('./server/data/pets').PETS[active];if(cfg&&lootManager.pickup(p,m.id,{radius:cfg.pickupRadius})){petManager.gainExp(p,1);questManager.sync(p,{event:'inventory'});}break; }
       case 'itemUse': if (COMBATE_AUTORITATIVO && combatManager.useItem(p,m)) questManager.recordEvent(p,'use-item',{itemId:m.itemId,count:1}); break;
       case 'equipment': if (COMBATE_AUTORITATIVO && combatManager.equipment(p,m)) broadcast({t:'gear',id:p.id,cls:p.dados.cls||'aprendiz',gear:{...(p.dados.eq||{})}},p); break;
       case 'item': if (COMBATE_AUTORITATIVO) { if(m.action==='flag') itemManager.flag(p,m.index,m.key,m.value); else if(m.action==='discard') itemManager.discard(p,m.index); else if(m.action==='storagePut') itemManager.storagePut(p,m.index); else if(m.action==='storageTake') itemManager.storageTake(p,m.index); else if(m.action==='socket') itemManager.socket(p,m.where,m.ref,m.cardId); else itemManager.fail(p,'Ação de item inválida.'); } break;
@@ -358,6 +367,9 @@ wss.on('connection', ws => {
       case 'glist': listarGuilda(p); break;
       case 'gdonate': doarParaGuilda(p, m); break;
       case 'grank': mudarCargo(p, m); break;
+      case 'pet': if(!petManager.handle(p,m)) erro(p,'Ação de pet inválida.'); break;
+      case 'social': { const out=socialManager.handle(p,m); if(out&&out.ok===false)erro(p,out.reason||'Ação social inválida.'); else if(out===false)erro(p,'Ação social inválida.'); break; }
+      case 'inviteByName': { const alvo=[...players.values()].find(o=>o.name.toLowerCase()===String(m.name||'').trim().toLowerCase()); if(!alvo)return erro(p,'Jogador não encontrado ou offline.'); convidar(p,{kind:m.kind,to:alvo.id}); break; }
       case 'token':
         if (typeof m.token === 'string') p.token = m.token;
         break;
@@ -368,10 +380,11 @@ wss.on('connection', ws => {
     clearTimeout(semLogin);
     if (!p) return;
     dungeonManager.disconnect(p);
+    socialManager.onDisconnect(p);
+    preservarGrupo(p);
     players.delete(p.id);
     if (p.trade) fimTroca(p.trade, `${p.name} saiu do jogo. Troca cancelada.`);
     if (p.shop) fecharLoja(p);
-    sairDoGrupo(p, true);
     broadcast({ t: 'leave', id: p.id });
     p.posDirty = true;
     await salvar(p);
@@ -430,6 +443,10 @@ async function responder(p, m){
 // Nível do grupo: sobe com monstros derrotados por quem está junto. No nível 10 o líder
 // pode tornar o grupo avançado; só grupo avançado passa do 10 e usa habilidades.
 const GRUPO_MAX_NIVEL = 10, GRUPO_MAX_AVANCADO = 40;
+const partyReconnect=new Map();
+function preservarGrupo(p){const party=p.party;if(!party)return;partyReconnect.set(p.charId,{party,oldId:p.id,expires:Date.now()+120000});party.members.delete(p.id);if(party.leader===p.id)party.leader=party.members.values().next().value||p.id;p.party=null;if(party.members.size)enviarGrupo(party);}
+function restaurarGrupo(p){const rec=partyReconnect.get(p.charId);if(!rec||rec.expires<Date.now()){partyReconnect.delete(p.charId);return false;}const party=rec.party;party.members.delete(rec.oldId);party.members.add(p.id);if(!players.has(party.leader))party.leader=p.id;p.party=party;partyReconnect.delete(p.charId);enviarGrupo(party);return true;}
+
 const grupoExpNeed = L => Math.round(60 * Math.pow(L, 1.4));
 const HAB_GRUPO = {
   cadeia:   { name: 'Ataque em Cadeia', custo: 3, nivel: 12 },
