@@ -2410,8 +2410,9 @@ function createMonster(key, giant, net){
   const T = MTYPES[key] || (net&&net.worldBoss ? MTYPES.ciclope : null); if(!T){console.warn('[Monster] tipo visual desconhecido',key);return null;} const built = T.build(giant);
   mergeBody(built.body);
   const m = {type:T, key, giant:!!giant, mesh:built.g, body:built.body, label:null, face:Math.random()*6.28,
-    state:'idle', cd:0, wanderT:rnd(1,4), wx:0, wz:0, dead:false, deadT:0, dying:0, hitT:0, phase:Math.random()*6};
-  const p = net || spawnPoint(T.zone); m.x = p.x; m.z = p.z; m.home = {x:p.x, z:p.z};
+    state:'idle', cd:0, wanderT:rnd(1,4), wx:0, wz:0, dead:false, deadT:0, dying:0, hitT:0, phase:Math.random()*6,
+    renderX:null,renderZ:null,renderFace:null,netPrevX:null,netPrevZ:null,netSpeed:0};
+  const p = net || spawnPoint(T.zone); m.x = p.x; m.z = p.z; m.renderX=p.x; m.renderZ=p.z; m.home = {x:p.x, z:p.z};
   if (net){ m.id=net.id; m.lvl=net.level; m.name=net.name; m.maxHp=net.maxHp; m.hp=net.hp; m.dead=!!net.dead; m.state=net.state||'idle'; m.variant=net.variant||'normal';m.worldBoss=!!net.worldBoss;m.bossPhase=net.phase||1; m.scale=m.worldBoss?2.8:m.giant?2.4:0.9+(m.lvl-T.lv[0])*0.07; m.mesh.scale.setScalar(m.scale); m.radius=T.r*m.scale; refreshLabel(m); }
   else setupStats(m);
   scene.add(m.mesh); monsters.push(m);
@@ -2429,7 +2430,8 @@ function netMonster(data){
   let m=monsters.find(x=>x.id===data.id);
   if(!m)m=createMonster(data.key,data.giant,data);
   Object.assign(m,{x:data.x,z:data.z,lvl:data.level||m.lvl,name:data.name||m.name,hp:data.hp,maxHp:data.maxHp,state:data.state||m.state,dead:!!data.dead});
-  m.mesh.visible=!m.dead;m.mesh.position.set(m.x,heightAt(m.x,m.z),m.z);return m;
+  if(m.renderX==null){m.renderX=m.x;m.renderZ=m.z;}
+  m.mesh.visible=!m.dead;m.mesh.position.set(m.renderX,heightAt(m.renderX,m.renderZ),m.renderZ);return m;
 }
 function startLegacyMonsters(){if(monsters.length)return;Object.keys(MTYPES).forEach(k=>{for(let i=0;i<MTYPES[k].count;i++)createMonster(k);});createMonster('bolota',true);}
 
@@ -4127,12 +4129,26 @@ function updateMonsters(dt, t){
   if(authoritativeCombat){
     monsters.forEach(m=>{
       const dp=Math.hypot(player.x-m.x,player.z-m.z);m.mesh.visible=!m.dead&&dp<PERF.monsterFar;if(!m.mesh.visible){if(m.dead)worldAssets.setMonsterAnimation(m,'death');return;}
-      m.label.visible=dp<32;m.mesh.position.set(m.x,heightAt(m.x,m.z),m.z);
-      const moving=['chase','return','wander'].includes(m.state);if(moving)m.phase+=dt*8;
+      m.label.visible=dp<32;
+      // O servidor continua autoritativo em m.x/m.z; renderX/renderZ suavizam apenas a apresentação.
+      const gap=Math.hypot(m.x-m.renderX,m.z-m.renderZ);
+      if(gap>8){m.renderX=m.x;m.renderZ=m.z;}else{
+        const follow=1-Math.exp(-dt*11);m.renderX+=(m.x-m.renderX)*follow;m.renderZ+=(m.z-m.renderZ)*follow;
+      }
+      const visualDx=m.x-m.renderX,visualDz=m.z-m.renderZ;
+      const moving=['chase','return','wander'].includes(m.state)&&(gap>.025||m.netSpeed>.01);
+      if(moving){
+        const desired=Number.isFinite(m.netFace)?m.netFace:Math.atan2(visualDx,visualDz);
+        m.renderFace=lerpAngle(m.renderFace==null?m.face:m.renderFace,desired,1-Math.exp(-dt*12));
+        m.face=m.renderFace;
+      }
+      m.mesh.position.set(m.renderX,heightAt(m.renderX,m.renderZ),m.renderZ);m.mesh.rotation.y=m.face;
       const assetState=m.dead?'death':m.hitT>0?'hit':m.state==='attack'?'attack':moving?'move':'idle';worldAssets.setMonsterAnimation(m,assetState);
-      if(m.body.userData.float)m.body.position.y=.35+Math.sin(t*2+m.phase)*.25;
-      else if(m.type.hop)m.body.position.y=moving?Math.abs(Math.sin(m.phase))*.45:Math.abs(Math.sin(t*2+m.phase))*.06;
-      else{m.body.position.y=moving?Math.abs(Math.sin(m.phase))*.08:0;m.body.rotation.z=moving?Math.sin(m.phase)*.06:0;}
+      // Rigs GLB já possuem passada própria: não somar bob/hop procedural durante movimento.
+      if(m.body.userData.float)m.body.position.y=.35+Math.sin(t*2+m.phase)*.12;
+      else if(m.type.hop)m.body.position.y=moving?0:Math.abs(Math.sin(t*2+m.phase))*.035;
+      else{m.body.position.y=0;m.body.rotation.z=0;}
+      m.netSpeed*=Math.exp(-dt*7);
       m.hitT=Math.max(0,m.hitT-dt);m.mesh.scale.setScalar(m.scale*(1+m.hitT*1.2));
     });
     return;
@@ -4634,7 +4650,7 @@ function handle(m){
   else if(m.t==='dungeonComplete'){if(dungeonState)dungeonState.instance=m.instance;banner('DUNGEON CONCLUÍDA','Baú individual liberado');renderDungeonHud();}
   else if(m.t==='dungeonLoot'){log(`Recompensa individual: ${m.loot.rolls} rolagens (${m.loot.rarityMin}+).`,'gold');}
   else if(m.t==='worldSnapshot'){(m.monsters||[]).forEach(netMonster);(m.loot||[]).forEach(l=>{if(!drops.some(d=>d.id===l.lootId))spawnDrop(l.x,l.z,l.gold?{gold:l.gold}:{id:l.id,n:l.n||1},{id:l.lootId});});}
-  else if(m.t==='monsterMove'){const x=monsters.find(q=>q.id===m.id);if(x){x.x=m.x;x.z=m.z;x.state=m.state;x.hp=m.hp;}}
+  else if(m.t==='monsterMove'){const x=monsters.find(q=>q.id===m.id);if(x){const ox=x.x,oz=x.z;x.x=m.x;x.z=m.z;x.state=m.state;x.hp=m.hp;const d=Math.hypot(x.x-ox,x.z-oz);x.netSpeed=d;x.netPrevX=ox;x.netPrevZ=oz;if(d>.001)x.netFace=Math.atan2(x.x-ox,x.z-oz);}}
   else if(m.t==='combatHit'){
     const x=monsters.find(q=>q.id===m.monsterId);if(x){x.hp=m.hp;x.hitT=.15;if(m.miss)floatText(x.x,x.type.h*x.scale+.3,x.z,'Errou','miss');else floatText(x.x,x.type.h*x.scale+.3,x.z,(m.dot?'• ':'')+String(m.damage),m.critical?'crit':'');if(x===target)refreshTarget();}
   }

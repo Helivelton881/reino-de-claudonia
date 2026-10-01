@@ -159,7 +159,8 @@
       const clip=row.actions[state]||row.actions.idle;if(!clip||row.current===state)return;
       const prev=row.current&&row.actions[row.current],next=row.mixer.clipAction(clip);
       if(prev){const pa=row.mixer.clipAction(prev);if(immediate)pa.stop();else pa.fadeOut(.12);}
-      next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1);
+      const pace=state==='move'?0.88:state==='idle'?0.92:1;
+      next.reset().setEffectiveTimeScale(pace).setEffectiveWeight(1);
       if(state==='death'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=true;}
       else if(state==='attack'||state==='hit'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=false;}
       else next.setLoop(THREE.LoopRepeat,Infinity);
