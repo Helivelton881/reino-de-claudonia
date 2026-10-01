@@ -8,7 +8,10 @@ async function enter(page){
   await expect(row).toBeVisible();
   await row.locator('[data-play]').click();
   await page.locator('#start').click();
-  await page.waitForFunction(()=>window.__CLAUDONIA_QA__?.snapshot().connection.connected,null,{timeout:25000});
+  await page.waitForFunction(()=>{
+    const q=window.__CLAUDONIA_QA__,s=q?.snapshot?.();
+    return q?.mode==='read-only' && s?.character?.level>=1 && Number.isFinite(s?.position?.x) && !document.querySelector('#start:not([hidden])');
+  },null,{timeout:25000});
 }
 const snap=p=>p.evaluate(()=>window.__CLAUDONIA_QA__.snapshot());
 

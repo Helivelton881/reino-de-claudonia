@@ -5187,6 +5187,42 @@ if (sb) sb.auth.getSession().then(({data})=>{ if (data.session) showChars(); els
 
 addEventListener('pagehide', ()=>{ if (dirty) save(); });
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden && dirty) save(); });
+
+// QA observability: snapshots somente leitura para Playwright; nenhum comando de mutação é exposto.
+const qaClone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+const qaSnapshot = () => Object.freeze({
+  schemaVersion: 1,
+  capturedAt: new Date().toISOString(),
+  character: Object.freeze({
+    id: currentChar?.id || null, name: currentChar?.nome || null,
+    level: ch.L, exp: ch.exp, classId: ch.cls, className: CLASSES[ch.cls]?.name || ch.cls,
+    hp: ch.hp, mp: ch.mp, fp: ch.fp, gold: ch.gold, statPoints: ch.pts,
+    maxLevel: maxLevel(), legacyMaxLevel: MAX_LEVEL
+  }),
+  position: Object.freeze({x:player.x, y:player.y, z:player.z, flying:!!player.flying}),
+  connection: Object.freeze({
+    authenticated: !!currentChar, connected: online.ws?.readyState === WebSocket.OPEN,
+    websocketState: online.ws?.readyState ?? null, playerId: online.myId,
+    kicked: !!online.kicked, onlineCount: others.size + (currentChar ? 1 : 0)
+  }),
+  quests: qaClone(questState),
+  inventory: qaClone(ch.inv),
+  equipment: Object.freeze({slots:qaClone(ch.eq), upgrades:qaClone(ch.equp), metadata:qaClone(ch.eqMeta)}),
+  skills: Object.freeze({tree:qaClone(skillTreeState), hotbar:qaClone(ch.skillBar), buffs:qaClone(buffs)}),
+  combat: Object.freeze({targetId:target?.id || null, targetHp:target?.hp ?? null, autoAttack:!!autoAttack, authoritative:!!authoritativeCombat}),
+  world: Object.freeze({
+    moveGoal:qaClone(player.moveGoal), movePathLength:player.movePath?.length || 0, npcGoal:player.npcGoal?.id || null,
+    npcOpen:npcOpen?.id || null,
+    npcs:npcObjs.map(n=>({id:n.id,name:n.name,x:n.x,z:n.z,distance:Math.hypot(n.x-player.x,n.z-player.z)})),
+    monsters:monsters.filter(m=>!m.dead).map(m=>({id:m.id,name:m.type?.name || m.type?.id || 'monster',level:m.type?.level ?? m.level ?? null,hp:m.hp,x:m.x,z:m.z,distance:Math.hypot(m.x-player.x,m.z-player.z)})),
+    drops:drops.map(d=>({id:d.id||null,x:d.x,z:d.z,age:d.age,requested:!!d.requested,what:qaClone(d.what),distance:Math.hypot(d.x-player.x,d.z-player.z)}))
+  })
+});
+Object.defineProperty(window, '__CLAUDONIA_QA__', {
+  value: Object.freeze({version:'1.0.0', mode:'read-only', snapshot:qaSnapshot}),
+  writable:false, configurable:false, enumerable:false
+});
+
 refreshUI();
 requestAnimationFrame(frame);
 })();
