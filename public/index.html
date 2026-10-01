@@ -4619,7 +4619,7 @@ function frame(){
   }
   saveT += dt; if (saveT > 5){ saveT = 0; if (dirty) save(); }
   frames++; fpsT += dt;
-  if (fpsT >= 0.5){ const measuredFps=Math.round(frames/fpsT);if(fpsOn) fpsEl.textContent=measuredFps+' fps';window.__IV_PERF={fps:measuredFps,dpr:+renderDpr.toFixed(2),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures};frames=0;fpsT=0; }
+  if (fpsT >= 0.5){ const measuredFps=Math.round(frames/fpsT);if(fpsOn) fpsEl.textContent=measuredFps+' fps';let visible=0,total=0,instanced=0,meshes=0;scene.traverse(o=>{total++;if(o.visible)visible++;if(o.isMesh)meshes++;if(o.isInstancedMesh)instanced++;});window.__IV_PERF={fps:measuredFps,frameMs:+(1000/Math.max(1,measuredFps)).toFixed(2),dpr:+renderDpr.toFixed(2),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,points:renderer.info.render.points,lines:renderer.info.render.lines,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,programs:renderer.info.programs?.length||0,sceneObjects:total,visibleObjects:visible,meshes,instanced,monsters:monsters.length,npcs:npcObjs.length,others:others.size,authenticated:!!currentChar,connected:online.ws?.readyState===WebSocket.OPEN};frames=0;fpsT=0; }
   requestAnimationFrame(frame);
 }
 
