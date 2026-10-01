@@ -1394,7 +1394,19 @@ const PERF = { renderFar:IOS_SAFE?48:isTouch?68:92, monsterFar:IOS_SAFE?52:isTou
 const renderer = new THREE.WebGLRenderer({canvas, antialias:!IOS_SAFE, alpha:false, powerPreference:IOS_SAFE?'default':'high-performance',preserveDrawingBuffer:false});
 // DPR limitado: 2x quadruplica os pixels sem melhorar a jogabilidade. Mantém nitidez com custo previsível.
 const BASE_DPR=Math.min(window.devicePixelRatio||1,IOS_SAFE?0.85:isTouch?1.15:1.5);
-renderer.setPixelRatio(BASE_DPR);
+const MIN_DPR=IOS_SAFE?0.62:isTouch?0.72:1.0;
+let renderDpr=BASE_DPR,perfFrames=0,perfElapsed=0,perfCool=0;
+renderer.setPixelRatio(renderDpr);
+function performanceGovernor(dt){
+  // Ajusta somente após uma janela longa: evita oscilar resolução em um frame ruim isolado.
+  perfFrames++;perfElapsed+=dt;perfCool=Math.max(0,perfCool-dt);
+  if(perfElapsed<2||perfCool>0)return;
+  const fps=perfFrames/perfElapsed;perfFrames=0;perfElapsed=0;
+  let next=renderDpr;
+  if(fps<52)next=Math.max(MIN_DPR,renderDpr-.10);
+  else if(fps>58.5)next=Math.min(BASE_DPR,renderDpr+.05);
+  if(Math.abs(next-renderDpr)>.001){renderDpr=next;renderer.setPixelRatio(renderDpr);renderer.setSize(innerWidth,innerHeight,false);perfCool=3;}
+}
 renderer.setClearColor(0xF1D2A6, 1);
 renderer.shadowMap.enabled = HQ; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -4543,7 +4555,7 @@ function updateFloats(dt){
   }
 }
 
-let uiT = 0, fastUiT = 0, lifeT = 0, saveT = 0;
+let uiT = 0, fastUiT = 0, lifeT = 0, saveT = 0, envT = 0;
 function frame(){
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   Object.keys(cds).forEach(k=> cds[k] = Math.max(0, cds[k] - dt));
@@ -4579,13 +4591,19 @@ function frame(){
   camera.position.set(cx,cy,cz); camera.lookAt(camTarget);
   worldAssets.update(camera.position, dt);
 
-  clouds.forEach(c=>{ c.a += c.v*dt; c.g.position.set(Math.cos(c.a)*c.r, c.y, Math.sin(c.a)*c.r); });
-  isles.forEach(i=>{ i.g.position.y = i.y + Math.sin(t*0.5 + i.ph)*0.8; });
+  // Ambiente distante não precisa recalcular transform 60x/s; no mobile 20 Hz reduz CPU/GC.
+  envT+=dt;
+  const envStep=isTouch?0.05:0.033;
+  if(envT>=envStep){
+    clouds.forEach(c=>{ c.a += c.v*envT; c.g.position.set(Math.cos(c.a)*c.r, c.y, Math.sin(c.a)*c.r); });
+    isles.forEach(i=>{ i.g.position.y = i.y + Math.sin(t*0.5 + i.ph)*0.8; });
+    updateQuestBeacon(t);envT=0;
+  }
   skyDome.position.copy(camera.position);
-  updateQuestBeacon(t);
   if (HQ){ sun.position.set(player.x - 60, player.y + 70, player.z + 40); sun.target.position.set(player.x, player.y, player.z); }
 
   renderer.render(scene, camera);
+  performanceGovernor(dt);
   updateFloats(dt);
   fastUiT += dt;
   if(fastUiT>=PERF.uiStep){
@@ -4601,7 +4619,7 @@ function frame(){
   }
   saveT += dt; if (saveT > 5){ saveT = 0; if (dirty) save(); }
   frames++; fpsT += dt;
-  if (fpsT >= 0.5){ if (fpsOn) fpsEl.textContent = Math.round(frames/fpsT) + ' fps'; frames = 0; fpsT = 0; }
+  if (fpsT >= 0.5){ const measuredFps=Math.round(frames/fpsT);if(fpsOn) fpsEl.textContent=measuredFps+' fps';window.__IV_PERF={fps:measuredFps,dpr:+renderDpr.toFixed(2),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures};frames=0;fpsT=0; }
   requestAnimationFrame(frame);
 }
 
