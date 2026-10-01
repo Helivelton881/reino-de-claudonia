@@ -3047,6 +3047,10 @@ npcObjs.filter(n=>n.model).forEach(n=>{
     const model=gltf.scene||gltf.scenes&&gltf.scenes[0]; if(!model)return;
     n.h.legL.visible=n.h.legR.visible=n.h.armL.visible=n.h.armR.visible=n.h.torso.visible=false;
     model.position.set(0,0,0); model.scale.setScalar(1); model.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}}); n.h.root.add(model); n.customModel=model;
+    if(gltf.animations&&gltf.animations.length){
+      const idle=gltf.animations.find(a=>/^(idle|idle_a|idle_01)$/i.test(a.name))||gltf.animations.find(a=>/idle/i.test(a.name))||gltf.animations[0];
+      n.animMixer=new THREE.AnimationMixer(model); n.idleAction=n.animMixer.clipAction(idle); n.idleAction.setLoop(THREE.LoopRepeat,Infinity); n.idleAction.play();
+    }
   },undefined,err=>console.warn('[NPC] modelo 3D indisponível, usando fallback',n.id,err));
 });
 
@@ -3084,11 +3088,14 @@ function updateVillagers(dt, t){
     h.torso.position.y = 1.35 + (moving ? Math.abs(Math.sin(v.phase))*0.04 : Math.sin(t*2)*0.02);
   });
 }
+let npcAnimTime=performance.now();
 function updateNpcs(t){
+  const now=performance.now(), animDt=Math.min(0.05,Math.max(0,(now-npcAnimTime)/1000)); npcAnimTime=now;
   npcObjs.forEach((n,i)=>{
     const near=Math.hypot(n.x-player.x,n.z-player.z)<=PERF.npcFar;
     n.h.root.visible=near; n.h.shadow.visible=near;
     if(!near)return;
+    if(n.animMixer)n.animMixer.update(animDt);
     n.h.torso.position.y = 1.35 + Math.sin(t*2 + i)*0.02;
     const state=npcMarkerState(n), y=3.35 + Math.sin(t*3)*0.08;
     n.markAvailable.visible=state==='available'; n.markActive.visible=state==='active'; n.markReady.visible=state==='ready';
