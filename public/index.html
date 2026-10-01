@@ -195,8 +195,8 @@ button{font-family:inherit;color:inherit}
 .more-menu{display:grid;grid-template-columns:repeat(2,auto);gap:7px;padding:8px;border:1px solid var(--panel-edge);border-radius:12px;background:linear-gradient(180deg,rgba(58,38,18,.97),rgba(34,22,10,.97));box-shadow:0 8px 22px rgba(0,0,0,.58)}
 .more-menu[hidden]{display:none}.menu>#bMore{box-shadow:0 0 0 2px #E0B45C,0 3px 8px rgba(0,0,0,.5)}
 #lifestyleLaunch,#liveOpsLaunch{display:none!important}
-.touch #joy{display:none;opacity:0;pointer-events:none;transition:opacity .1s}
-.touch #joy.active{display:block;opacity:1;pointer-events:none;left:0;top:0;bottom:auto}
+.touch #joy{display:block;opacity:0;pointer-events:auto;transition:opacity .1s}
+.touch #joy.active{opacity:1}
 .touch .menu{top:calc(env(safe-area-inset-top,0px) + 196px)}
 .touch .more-menu{position:absolute;right:0;top:48px;grid-template-columns:repeat(2,40px);max-height:min(330px,60vh);overflow:auto}
 
@@ -4037,11 +4037,9 @@ canvas.addEventListener('contextmenu', e=> e.preventDefault());
 canvas.addEventListener('pointerdown', e=>{
   if (blocked()) return;
   canvas.setPointerCapture(e.pointerId);
-  if(isTouch&&e.pointerType!=='mouse'){startDynamicJoy(e);return;}
   camPtrs.set(e.pointerId, {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now()}); pinch = 0;
 });
 canvas.addEventListener('pointermove', e=>{
-  if(dynamicJoy&&e.pointerId===joy.id){moveJoy(e);return;}
   const p = camPtrs.get(e.pointerId); if (!p) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
   if (camPtrs.size === 1){
@@ -4053,12 +4051,11 @@ canvas.addEventListener('pointermove', e=>{
   }
 });
 canvas.addEventListener('pointerup', e=>{
-  if(dynamicJoy&&e.pointerId===joy.id){endJoy(e);return;}
   const p = camPtrs.get(e.pointerId);
   if (p && camPtrs.size === 1 && Math.hypot(e.clientX-p.x0, e.clientY-p.y0) < 8 && performance.now()-p.t0 < 400) tap(e.clientX, e.clientY);
   camPtrs.delete(e.pointerId); pinch = 0;
 });
-canvas.addEventListener('pointercancel', e=>{if(dynamicJoy&&e.pointerId===joy.id)endJoy(e);camPtrs.delete(e.pointerId);pinch=0;});
+canvas.addEventListener('pointercancel', e=>{camPtrs.delete(e.pointerId);pinch=0;});
 canvas.addEventListener('wheel', e=>{ e.preventDefault(); dist = Math.min(24, Math.max(4, dist * (e.deltaY>0 ? 1.1 : 0.9))); }, {passive:false});
 
 const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), tmpV = new THREE.Vector3();
@@ -4107,13 +4104,9 @@ function tap(cx, cy){
 
 const joyEl = $('joy'), knob = $('knob');
 let dynamicJoy=false;
-function startDynamicJoy(e){
-  if(!isTouch||blocked()||e.pointerType==='mouse'||camPtrs.size>1)return;
-  dynamicJoy=true;joy.id=e.pointerId;joy.x=joy.y=0;knob.style.transform='';
-  const size=132,x=Math.max(6,Math.min(innerWidth-size-6,e.clientX-size/2)),y=Math.max(6,Math.min(innerHeight-size-6,e.clientY-size/2));
-  joyEl.style.left=x+'px';joyEl.style.top=y+'px';joyEl.classList.add('active');
-  moveJoy(e);
-}
+joyEl.addEventListener('pointerdown',e=>{if(blocked()||e.pointerType==='mouse')return;e.preventDefault();e.stopPropagation();dynamicJoy=true;joy.id=e.pointerId;joy.x=joy.y=0;knob.style.transform='';joyEl.classList.add('active');joyEl.setPointerCapture(e.pointerId);moveJoy(e);});
+joyEl.addEventListener('pointermove',e=>{if(dynamicJoy&&e.pointerId===joy.id)moveJoy(e);});
+joyEl.addEventListener('pointerup',endJoy);joyEl.addEventListener('pointercancel',endJoy);
 function endJoy(e){if(e.pointerId!==joy.id)return;dynamicJoy=false;joy.id=null;joy.x=joy.y=0;knob.style.transform='';joyEl.classList.remove('active');}
 function moveJoy(e){
   const r=joyEl.getBoundingClientRect(),max=r.width/2-14;
