@@ -623,6 +623,21 @@ button{font-family:inherit;color:inherit}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
 .overlay .panel{touch-action:pan-y}
+/* Character creation lobby */
+.char-lobby{background:radial-gradient(circle at 50% 20%,rgba(83,167,220,.24),transparent 36%),linear-gradient(rgba(8,20,31,.32),rgba(7,12,19,.66));backdrop-filter:blur(2px)}
+.char-select-panel{width:min(620px,92vw)!important;padding:28px!important;border:2px solid #b98246!important;background:linear-gradient(180deg,rgba(242,222,176,.98),rgba(222,194,139,.98))!important;color:#402b1b!important;box-shadow:0 24px 70px #000b,inset 0 0 0 3px #f8e9bd!important}
+.char-brand{text-align:center;color:#714023;font-family:Georgia,serif}.char-brand span{display:block;font-size:11px;letter-spacing:5px}.char-brand strong{font-size:30px;letter-spacing:2px}.char-select-panel h1{text-align:center;margin:8px 0 2px;color:#5b2e20!important;font-family:Georgia,serif}.char-lead{text-align:center!important;color:#745b42!important}
+.char-select-panel #charList{display:grid;gap:9px;margin:18px 0}.char-select-panel .charrow{border:2px solid #aa7845!important;border-radius:10px!important;background:linear-gradient(180deg,#f8e9c3,#e4c995)!important;color:#402b1b!important;box-shadow:inset 0 0 0 1px #fff6d8}.char-select-panel .charrow span{color:#755b40!important}
+.char-new-btn{margin-top:8px}.char-account-exit{display:block;margin:14px auto 0;border:0;background:none;color:#70452e;text-decoration:underline;cursor:pointer;font-weight:700}
+.char-create-modal{position:absolute;inset:0;z-index:4;display:grid;place-items:center;padding:18px;background:rgba(4,10,16,.72);backdrop-filter:blur(5px)}.char-create-modal[hidden]{display:none}
+.char-create-card{position:relative;width:min(880px,96vw);height:min(610px,88vh);display:grid;grid-template-columns:minmax(300px,.9fr) minmax(320px,1.1fr);overflow:hidden;border:3px solid #9d6035;border-radius:18px;background:linear-gradient(110deg,#f4e4b9 0 48%,#dfc48d 48%);box-shadow:0 30px 90px #000c,inset 0 0 0 3px #f9edc9;color:#40291b}
+.char-create-title{position:absolute;z-index:4;top:0;left:50%;transform:translate(-50%,-1px);min-width:310px;padding:12px 44px 14px;text-align:center;border:2px solid #b77b48;border-top:0;border-radius:0 0 16px 16px;background:linear-gradient(#8e4631,#632a20);color:#fff0d1;font:800 24px Georgia,serif;text-shadow:0 2px #3a160f;box-shadow:0 4px 10px #0004}
+.char-create-close{position:absolute;z-index:6;right:14px;top:12px;width:46px;height:46px;border-radius:50%;border:3px solid #7d3d20;background:radial-gradient(circle at 35% 30%,#ffb83f,#e86a22 62%,#963713);color:#682513;font-size:30px;font-weight:900;cursor:pointer;box-shadow:0 0 0 3px #e5b85f}
+.char-create-form{padding:90px 30px 28px;display:flex;flex-direction:column;justify-content:center}.char-name-label{font-weight:800;color:#563722}.char-name-label input{width:100%;height:46px;margin-top:7px;padding:0 12px;border:2px solid #8c633e;border-radius:8px;background:#403a34;color:#fff4df;font-size:17px;outline:none}.char-name-label input:focus{border-color:#e2a93b;box-shadow:0 0 0 3px #e2a93b33}
+.char-gender-title{text-align:center;margin:24px 0 10px;font-weight:800;color:#66442b}.char-gender-picks{display:grid;grid-template-columns:1fr 1fr;gap:12px}.char-gender{height:60px;border:2px solid #8c6239;border-radius:14px;background:linear-gradient(#8a5a3d,#613a28);color:#f5dfbd;font-weight:800;font-size:15px;cursor:pointer;box-shadow:inset 0 1px #c6956c}.char-gender b{font-size:28px;margin-right:7px}.char-gender.on{background:linear-gradient(#a8ed42,#62b82b);color:#173f0e;border-color:#568b26;box-shadow:0 0 0 3px #f1cf5d,inset 0 1px #d8ff91}
+.char-hint{text-align:center;color:#80664c!important;font-size:12px!important;margin:16px 0!important}.char-create-submit{margin-top:auto!important;font-size:18px!important}.char-create-preview{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 48%,#fff1b9 0,#e7c88a 30%,transparent 64%)}
+#createCharacter3D{position:absolute;inset:60px 20px 32px;width:calc(100% - 40px);height:calc(100% - 92px);z-index:2;touch-action:none;cursor:grab}.char-preview-glow{position:absolute;left:50%;top:46%;width:310px;height:310px;transform:translate(-50%,-50%);border-radius:50%;background:#fff1a933;filter:blur(8px)}.char-preview-base{position:absolute;left:23%;right:23%;bottom:42px;height:25px;border-radius:50%;background:#77573540;filter:blur(3px)}
+@media(max-width:700px){.char-create-card{height:min(720px,94vh);grid-template-columns:1fr;grid-template-rows:330px 1fr;background:linear-gradient(#e4ca95 0 46%,#f2dfb2 46%)}.char-create-preview{grid-row:1}.char-create-form{grid-row:2;padding:14px 20px 18px}.char-create-title{min-width:240px;font-size:20px;padding:10px 30px}.char-create-close{width:40px;height:40px;font-size:25px;top:8px}.char-create-preview #createCharacter3D{inset:48px 30px 10px;width:calc(100% - 60px);height:calc(100% - 58px)}.char-gender-title{margin:10px 0 7px}.char-gender{height:48px}.char-hint{margin:7px 0!important}.char-create-submit{height:46px!important}}
 </style>
 </head>
 <body>
@@ -835,14 +850,37 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   </div>
 </div>
 
-<div class="overlay" id="chars" hidden>
-  <div class="panel">
-    <h1>Personagens</h1>
-    <p>Escolha um personagem ou crie um novo. São até 3 por conta.</p>
+<div class="overlay char-lobby" id="chars" hidden>
+  <div class="panel char-select-panel">
+    <div class="char-brand"><span>REINO DE</span><strong>CLAUDONIA</strong></div>
+    <h1>Seus Personagens</h1>
+    <p class="char-lead">Escolha seu aventureiro para entrar no reino.</p>
     <div id="charList"></div>
-    <div class="newchar"><label style="flex:1;margin:0">Novo personagem<input id="newName" maxlength="16" autocomplete="off" placeholder="3 a 16 letras ou números"></label><label style="margin:0">Sexo<select id="newGender" aria-label="Sexo do personagem"><option value="male">Masculino</option><option value="female">Feminino</option></select></label><button class="btn" id="createBtn" type="button">Criar</button></div>
+    <button class="big char-new-btn" id="openCreateChar" type="button">+ Criar novo personagem</button>
     <div class="msg" id="charMsg" aria-live="polite"></div>
-    <button class="btn ghost" id="logout" type="button" style="width:100%">Sair da conta</button>
+    <button class="char-account-exit" id="logout" type="button">Sair da conta</button>
+  </div>
+  <div class="char-create-modal" id="charCreateModal" hidden>
+    <div class="char-create-card">
+      <button class="char-create-close" id="closeCreateChar" type="button" aria-label="Voltar">×</button>
+      <div class="char-create-title">Criar Personagem</div>
+      <div class="char-create-form">
+        <label class="char-name-label">Nome do aventureiro<input id="newName" maxlength="16" autocomplete="off" placeholder="Digite o nome"></label>
+        <div class="char-gender-title">Escolha o personagem</div>
+        <div class="char-gender-picks">
+          <button class="char-gender on" type="button" data-gender="male"><b>♂</b><span>Masculino</span></button>
+          <button class="char-gender" type="button" data-gender="female"><b>♀</b><span>Feminino</span></button>
+        </div>
+        <input id="newGender" type="hidden" value="male">
+        <p class="char-hint">Arraste o personagem para visualizar.</p>
+        <button class="big char-create-submit" id="createBtn" type="button">Criar e Jogar</button>
+      </div>
+      <div class="char-create-preview">
+        <div class="char-preview-glow"></div>
+        <canvas id="createCharacter3D" width="420" height="560" aria-label="Prévia 3D do novo personagem"></canvas>
+        <div class="char-preview-base"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2774,6 +2812,29 @@ function syncHeroEquipment(h,gear,cls){
   load(h.gearState.peitoral,'chestRigid');
   load(h.gearState.capa,'cape');
 }
+let createPreview=null,createPreviewYaw=0;
+function initCreatePreview(gender='male'){
+  const c=$('createCharacter3D');if(!c||!charSys||!charSys.ready)return false;
+  if(createPreview){createPreview.scene.remove(createPreview.view.root);createPreview=null;}
+  const r=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true,powerPreference:'high-performance'});r.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));r.setClearColor(0,0);
+  const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(27,1,.1,20);sc.add(new THREE.HemisphereLight(0xfff2d7,0x72563d,1.25));sc.add(new THREE.AmbientLight(0xffead1,.45));
+  const key=new THREE.DirectionalLight(0xffe1b5,1.5);key.position.set(-3,5,4);sc.add(key);const rim=new THREE.DirectionalLight(0x9fc8ff,.65);rim.position.set(3,3,-3);sc.add(rim);
+  const view=charSys.createView({gender,creation:true});if(!view)return false;charSys.views.delete(view);view.root.rotation.y=createPreviewYaw;sc.add(view.root);view.anim.setState('Idle');
+  createPreview={renderer:r,scene:sc,camera:cam,view,last:performance.now()};requestAnimationFrame(createPreviewFrame);return true;
+}
+function createPreviewFrame(now){
+  if(!createPreview)return;requestAnimationFrame(createPreviewFrame);if($('charCreateModal')?.hidden)return;
+  const c=$('createCharacter3D'),w=Math.max(1,c.clientWidth|0),h=Math.max(1,c.clientHeight|0);if(c.width!==w||c.height!==h){createPreview.renderer.setSize(w,h,false);createPreview.camera.aspect=w/h;createPreview.camera.updateProjectionMatrix();}
+  const dt=Math.min(.05,Math.max(.001,(now-createPreview.last)/1000));createPreview.last=now;createPreview.view.anim.update(dt);createPreview.view.root.rotation.y=createPreviewYaw;
+  const box=new THREE.Box3().setFromObject(createPreview.view.model),center=new THREE.Vector3(),size=new THREE.Vector3();box.getCenter(center);box.getSize(size);const fov=THREE.MathUtils.degToRad(createPreview.camera.fov),fit=Math.max(4.2,(size.y*.5)/Math.tan(fov*.5)*1.12);
+  createPreview.camera.position.set(center.x,Math.max(.9,center.y),fit);createPreview.camera.lookAt(center.x,Math.max(.9,center.y),center.z);createPreview.renderer.render(createPreview.scene,createPreview.camera);
+}
+function openCharacterCreator(){
+  const m=$('charCreateModal');if(!m)return;m.hidden=false;$('newName').value='';$('newGender').value='male';document.querySelectorAll('.char-gender').forEach(b=>b.classList.toggle('on',b.dataset.gender==='male'));
+  setTimeout(()=>initCreatePreview('male'),0);$('newName').focus();
+}
+function closeCharacterCreator(){$('charCreateModal').hidden=true;}
+
 let invPreview=null,invPreviewYaw=0;
 function initInventoryPreview(){
   const c=$('invCharacter');
@@ -4331,7 +4392,8 @@ async function showChars(){
     });
     list.appendChild(el);
   });
-  $('newName').parentElement.parentElement.style.display = data.length >= 3 ? 'none' : '';
+  $('openCreateChar').style.display = data.length >= 3 ? 'none' : '';
+  if (data.length >= 3) closeCharacterCreator();
 }
 async function createChar(){
   const nome = $('newName').value.trim(), msg = $('charMsg');
@@ -4346,9 +4408,20 @@ async function createChar(){
     else authMessage(msg, 'Erro ao criar: ' + error.message);
     return;
   }
-  $('newName').value = ''; authMessage(msg, ''); showChars();
+  $('newName').value = ''; authMessage(msg, ''); closeCharacterCreator(); showChars();
 }
 $('createBtn').addEventListener('click', createChar);
+$('openCreateChar').addEventListener('click', openCharacterCreator);
+$('closeCreateChar').addEventListener('click', closeCharacterCreator);
+document.querySelectorAll('.char-gender').forEach(b=>b.addEventListener('click', ()=>{
+  const g=b.dataset.gender;$('newGender').value=g;document.querySelectorAll('.char-gender').forEach(x=>x.classList.toggle('on',x===b));initCreatePreview(g);
+}));
+(()=>{
+  const c=$('createCharacter3D'),drag={on:false,x:0};
+  c.addEventListener('pointerdown',e=>{drag.on=true;drag.x=e.clientX;c.setPointerCapture?.(e.pointerId);});
+  c.addEventListener('pointermove',e=>{if(!drag.on)return;createPreviewYaw+=(e.clientX-drag.x)*.012;drag.x=e.clientX;});
+  c.addEventListener('pointerup',()=>drag.on=false);c.addEventListener('pointercancel',()=>drag.on=false);
+})();
 $('newName').addEventListener('keydown', e=>{ if (e.key === 'Enter') createChar(); });
 $('logout').addEventListener('click', async ()=>{ await sb.auth.signOut(); $('chars').hidden = true; $('auth').hidden = false; });
 
