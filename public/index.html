@@ -1359,11 +1359,12 @@ addEventListener('orientationchange', ()=> setTimeout(resize, 250));
    ========================================================= */
 const canvas = $('game');
 // PC: sombras de verdade e mais detalhe. Celular: mais leve.
+const IOS_SAFE = isIOS;
 const HQ = !isTouch;
-const PERF = { renderFar:isTouch?68:92, monsterFar:isTouch?78:100, npcFar:isTouch?30:36, playerFar:isTouch?68:88, uiStep:isTouch?0.12:0.08, lifeStep:isTouch?1/20:1/30 };
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false, powerPreference:'high-performance'});
+const PERF = { renderFar:IOS_SAFE?48:isTouch?68:92, monsterFar:IOS_SAFE?52:isTouch?78:100, npcFar:IOS_SAFE?22:isTouch?30:36, playerFar:IOS_SAFE?48:isTouch?68:88, uiStep:IOS_SAFE?0.16:isTouch?0.12:0.08, lifeStep:IOS_SAFE?1/15:isTouch?1/20:1/30 };
+const renderer = new THREE.WebGLRenderer({canvas, antialias:!IOS_SAFE, alpha:false, powerPreference:IOS_SAFE?'default':'high-performance',preserveDrawingBuffer:false});
 // DPR limitado: 2x quadruplica os pixels sem melhorar a jogabilidade. Mantém nitidez com custo previsível.
-const BASE_DPR=Math.min(window.devicePixelRatio||1,isTouch?1.15:1.5);
+const BASE_DPR=Math.min(window.devicePixelRatio||1,IOS_SAFE?0.85:isTouch?1.15:1.5);
 renderer.setPixelRatio(BASE_DPR);
 renderer.setClearColor(0xF1D2A6, 1);
 renderer.shadowMap.enabled = HQ; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1373,8 +1374,8 @@ const questRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.09,8,40),new THREE.
 questRing.rotation.x=Math.PI/2;questBeacon.add(questRing);
 const questBeam=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,4.5,8),new THREE.MeshBasicMaterial({color:0xF6C85A,transparent:true,opacity:.32,depthWrite:false}));
 questBeam.position.y=2.25;questBeacon.add(questBeam);scene.add(questBeacon);
-scene.fog = new THREE.Fog(0xEBCFA6, 60, 240);
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 460);
+scene.fog = new THREE.Fog(0xEBCFA6, IOS_SAFE?38:60, IOS_SAFE?125:240);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, IOS_SAFE?210:460);
 scene.add(new THREE.HemisphereLight(0xFFF1DC, 0x6B5A3C, 0.72));
 scene.add(new THREE.AmbientLight(0xFFE8CC, 0.2));
 const sun = new THREE.DirectionalLight(0xFFE2B4, 0.95); sun.position.set(-60,70,40);
@@ -1830,12 +1831,12 @@ scatterVeg(HQ ? 340 : 170, (x,z)=>{
   });
 }
 // pedrinhas perto dos caminhos
-scatterVeg(HQ ? 720 : 280, (x,z)=>{
+scatterVeg(HQ ? 720 : IOS_SAFE ? 90 : 280, (x,z)=>{
   const dp = distPath(x,z); if (dp > 5.5 || dp < 1.2 || Math.hypot(x,z) < TOWN || nearHouse(x, z, 0)) return null;
   return {model: 'Pebble_Round_1', s:2.2+rand()*2};
 });
 // distância em que cada tipo some (o celular desenha menos longe) e quem faz sombra
-const VEG_FAR = m => /Tree|Pine/.test(m) ? (HQ ? 145 : 88) : /Rock/.test(m) ? (HQ ? 105 : 68) : /Bush/.test(m) ? (HQ ? 90 : 60) : /Grass|Pebble/.test(m) ? (HQ ? 36 : 27) : /Flower|Clover|Mushroom/.test(m) ? (HQ ? 44 : 32) : (HQ ? 58 : 42);
+const VEG_FAR = m => IOS_SAFE ? (/Tree|Pine/.test(m)?52:/Rock/.test(m)?44:/Bush/.test(m)?38:/Grass|Pebble/.test(m)?18:/Flower|Clover|Mushroom/.test(m)?22:30) : /Tree|Pine/.test(m) ? (HQ ? 145 : 88) : /Rock/.test(m) ? (HQ ? 105 : 68) : /Bush/.test(m) ? (HQ ? 90 : 60) : /Grass|Pebble/.test(m) ? (HQ ? 36 : 27) : /Flower|Clover|Mushroom/.test(m) ? (HQ ? 44 : 32) : (HQ ? 58 : 42);
 const natureReady = worldAssets.loadKit(WA.nature).then(K=>{
   let total = 0;
   VEG.forEach((items, name)=>{
@@ -2948,7 +2949,7 @@ let createPreview=null,createPreviewYaw=0;
 function initCreatePreview(gender='male'){
   const c=$('createCharacter3D');if(!c||!charSys||!charSys.ready)return false;
   if(createPreview){createPreview.scene.remove(createPreview.view.root);createPreview=null;}
-  const r=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true,powerPreference:'high-performance'});r.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));r.setClearColor(0,0);
+  const r=new THREE.WebGLRenderer({canvas:c,antialias:!IOS_SAFE,alpha:true,powerPreference:IOS_SAFE?'default':'high-performance'});r.setPixelRatio(Math.min(window.devicePixelRatio||1,IOS_SAFE?.75:1.5));r.setClearColor(0,0);
   const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(27,1,.1,20);sc.add(new THREE.HemisphereLight(0xfff2d7,0x72563d,1.25));sc.add(new THREE.AmbientLight(0xffead1,.45));
   const key=new THREE.DirectionalLight(0xffe1b5,1.5);key.position.set(-3,5,4);sc.add(key);const rim=new THREE.DirectionalLight(0x9fc8ff,.65);rim.position.set(3,3,-3);sc.add(rim);
   const view=charSys.createView({gender,creation:true});if(!view)return false;charSys.views.delete(view);view.root.rotation.y=createPreviewYaw;sc.add(view.root);view.anim.setState('Idle');
@@ -2971,8 +2972,8 @@ let invPreview=null,invPreviewYaw=0;
 function initInventoryPreview(){
   const c=$('invCharacter');
   if(invPreview||!c||!charSys||!charSys.ready)return !!invPreview;
-  const r=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true,powerPreference:'high-performance'});
-  r.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));r.setClearColor(0x000000,0);
+  const r=new THREE.WebGLRenderer({canvas:c,antialias:!IOS_SAFE,alpha:true,powerPreference:IOS_SAFE?'default':'high-performance'});
+  r.setPixelRatio(Math.min(window.devicePixelRatio||1,IOS_SAFE?.75:1.5));r.setClearColor(0x000000,0);
   const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(28,1,.1,20);
   sc.add(new THREE.HemisphereLight(0xfff1d8,0x6b5540,1.15));
   sc.add(new THREE.AmbientLight(0xffead1,.45));
