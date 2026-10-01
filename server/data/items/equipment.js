@@ -59,10 +59,10 @@ for(const [req,key,name] of [[25,'prata','Prata'],[35,'runico','Rúnico'],[45,'c
 }
 
 const CLASS_VISUAL={
-  guerreiro:{weapon:'weapon_solaris_blade.glb',offhand:'offhand_bastion_shield.glb',helmet:'helmet_bastion.glb',chest:'armor_bastion.glb',cape:'cape_bastion.glb'},
-  druida:{weapon:'weapon_aurora_staff.glb',offhand:'offhand_verdant_totem.glb',helmet:'helmet_aurora.glb',chest:'armor_aurora.glb',cape:'cape_aurora.glb'},
-  mago:{weapon:'weapon_eclipse_scepter.glb',offhand:'offhand_arcane_grimoire.glb',helmet:'helmet_eclipse.glb',chest:'armor_eclipse.glb',cape:'cape_eclipse.glb'},
-  arqueiro:{weapon:'weapon_horizon_bow.glb',offhand:'offhand_horizon_quiver.glb',helmet:'helmet_horizon.glb',chest:'armor_horizon.glb',cape:'cape_horizon.glb'}
+  guerreiro:{weapon:'kaykit/guerreiro_espada.glb',offhand:'kaykit/guerreiro_escudo.glb',helmet:'helmet_bastion.glb',chest:'armor_bastion.glb',cape:'cape_bastion.glb'},
+  druida:{weapon:'kaykit/druida_varinha.glb',offhand:'kaykit/druida_totem.glb',helmet:'helmet_aurora.glb',chest:'armor_aurora.glb',cape:'cape_aurora.glb'},
+  mago:{weapon:'kaykit/mago_cajado.glb',offhand:'kaykit/mago_grimorio.glb',helmet:'helmet_eclipse.glb',chest:'armor_eclipse.glb',cape:'cape_eclipse.glb'},
+  arqueiro:{weapon:'kaykit/arqueiro_arco.glb',offhand:'offhand_horizon_quiver.glb',helmet:'helmet_horizon.glb',chest:'armor_horizon.glb',cape:'cape_horizon.glb'}
 };
 const asset=n=>`assets/equipment/phase9/${n}`;
 const className={guerreiro:'Guerreiro',druida:'Druida',mago:'Mago',arqueiro:'Arqueiro'};
