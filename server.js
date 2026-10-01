@@ -27,6 +27,7 @@ const {DUNGEONS} = require('./server/data/dungeons');
 const DungeonManager = require('./server/dungeons/dungeon-manager');
 const PetManager = require('./server/pets/pet-manager');
 const SocialManager = require('./server/social/social-manager');
+const PvpManager = require('./server/pvp/pvp-manager');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -108,6 +109,7 @@ const economyManager = new EconomyManager({send,itemManager});
 const npcServiceManager = new NpcServiceManager({send,combatManager,economyManager});
 const petManager = new PetManager({send,itemManager,lootManager});
 const socialManager = new SocialManager({players,send,itemManager,save:salvar});
+const pvpManager = new PvpManager({players,send,skillManager});
 combatManager.setMonsterManager(monsterManager); combatManager.setSkillManager(skillManager); combatManager.setItemManager(itemManager); monsterManager.setCombatManager(combatManager); monsterManager.initialize(); monsterManager.spawnWorldBoss('guardiao_cinzas'); monsterManager.spawnWorldBoss('rei_ossario');
 
 async function salvar(p) {
@@ -216,6 +218,7 @@ wss.on('connection', ws => {
         dungeonManager.reconnect(p);
         restaurarGrupo(p);
         socialManager.onLogin(p);
+    pvpManager.onLogin(p);
         if(!Object.keys(p.dados.pets||{}).length)petManager.grant(p,'lumim');
         else petManager.sync(p,{event:'login'});
         clearTimeout(semLogin);
@@ -284,7 +287,7 @@ wss.on('connection', ws => {
         if (!m.dados || typeof m.dados !== 'object' || Array.isArray(m.dados)) return;
         if (JSON.stringify(m.dados).length > 20000) return;
         if (COMBATE_AUTORITATIVO) {
-          const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree','pets','petActive','social','mail']);
+          const protectedKeys=new Set(['L','exp','gold','inv','storage','itemSeq','hp','mp','fp','eq','equp','eqMeta','str','sta','dex','int','pts','cls','upPity','quest','quests','skillTree','pets','petActive','social','mail','pvp']);
           for(const [key,value] of Object.entries(m.dados)) if(!protectedKeys.has(key)) p.dados[key]=value;
           Object.assign(p.dados,{L:p.L,hp:p.hp,mp:p.mp,fp:p.fp});
         } else {
@@ -369,6 +372,7 @@ wss.on('connection', ws => {
       case 'grank': mudarCargo(p, m); break;
       case 'pet': if(!petManager.handle(p,m)) erro(p,'Ação de pet inválida.'); break;
       case 'social': { const out=socialManager.handle(p,m); if(out&&out.ok===false)erro(p,out.reason||'Ação social inválida.'); else if(out===false)erro(p,'Ação social inválida.'); break; }
+      case 'pvp': pvpManager.handle(p,m); break;
       case 'inviteByName': { const alvo=[...players.values()].find(o=>o.name.toLowerCase()===String(m.name||'').trim().toLowerCase()); if(!alvo)return erro(p,'Jogador não encontrado ou offline.'); convidar(p,{kind:m.kind,to:alvo.id}); break; }
       case 'token':
         if (typeof m.token === 'string') p.token = m.token;
@@ -381,6 +385,7 @@ wss.on('connection', ws => {
     if (!p) return;
     dungeonManager.disconnect(p);
     socialManager.onDisconnect(p);
+    pvpManager.onDisconnect(p);
     preservarGrupo(p);
     players.delete(p.id);
     if (p.trade) fimTroca(p.trade, `${p.name} saiu do jogo. Troca cancelada.`);
@@ -863,7 +868,7 @@ let ultimoTickMonstros=Date.now();
 setInterval(()=>{
   if(!COMBATE_AUTORITATIVO)return;
   const now=Date.now(),dt=Math.min(.25,(now-ultimoTickMonstros)/1000);ultimoTickMonstros=now;
-  monsterManager.tick(dt);combatManager.tick(dt);lootManager.tick();dungeonManager.tick();
+  monsterManager.tick(dt);combatManager.tick(dt);lootManager.tick();dungeonManager.tick();pvpManager.tick();
 },100);
 
 // Recarrega o limite de experiência de monstros (evita abuso).
