@@ -82,6 +82,13 @@ for(const cls of Object.keys(CLASS_VISUAL)){
   }
 }
 
+
+// Fase 11: recompensas da Cripta dos Ecos (20-30), uma arma rara funcional por classe.
+for(const cls of Object.keys(CLASS_VISUAL)){
+ const req=28,base=req*(cls==='mago'?1.2:cls==='druida'?1.08:1.15)*RARITIES.raro.statMult;
+ add(cls+'_eco_28',{name:weaponNoun[cls]+' dos Ecos',slot:'arma',req,cls,atk:[Math.round(base*.86),Math.round(base*1.18)],source:'dungeon',rarity:'raro',tier:3,model:asset(CLASS_VISUAL[cls].weapon),visualSlot:'weapon',modelScale:WEAPON_SCALE[cls],modelQuaternion:Q_WEAPON,affixBias:cls==='guerreiro'?['str','sta']:cls==='druida'?['int','healing']:cls==='mago'?['int','atkPct']:['dex','crit']});
+}
+
 const setTiers=[
   {req:20,key:'vigilia',source:'giant',rarity:'raro',label:'Vigília'},
   {req:40,key:'astral',source:'dungeon',rarity:'epico',label:'Astral'},

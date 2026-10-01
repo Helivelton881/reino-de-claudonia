@@ -27,7 +27,8 @@ const META = Object.freeze({
   vigia_tessa:{name:'Vigia Tessa',tag:'[Vigia] Tessa',role:'Vigia auxiliar da Trilha dos Lobos',service:'guide',guideZone:'lobo',dialogue:'A alcateia muda de posição, mas a trilha principal continua sendo a rota mais segura.'},
   tecela_sia:{name:'Tecelã Sia',tag:'[Tecelã] Sia',role:'Tecelã da Mata das Teias',service:'guide',guideZone:'aranha',dialogue:'A seda das aranhas é valiosa, porém a mata fecha caminhos rapidamente.'},
   pesquisador_iven:{name:'Pesquisador Iven',tag:'[Pesquisador] Iven',role:'Pesquisador do Lago Espelhado',service:'guide',guideZone:'espirito',dialogue:'Os espíritos reagem à presença de aventureiros nas margens. Não entre sem preparo.'},
-  arqueologa_dena:{name:'Arqueóloga Dena',tag:'[Arqueóloga] Dena',role:'Arqueóloga das Ruínas do Ciclope',service:'guide',guideZone:'ciclope',dialogue:'As ruínas guardam sinais antigos e ciclopes agressivos. Posso marcar a rota até a entrada.'}
+  arqueologa_dena:{name:'Arqueóloga Dena',tag:'[Arqueóloga] Dena',role:'Arqueóloga das Ruínas do Ciclope',service:'guide',guideZone:'ciclope',dialogue:'As ruínas guardam sinais antigos e ciclopes agressivos. Posso marcar a rota até a entrada.'},
+  guardiao_cripta:{name:'Guardião Vaelor',tag:'[Dungeon] Vaelor',role:'Guardião da Cripta dos Ecos',service:'dungeon',dungeonId:'cripta_ecos',dialogue:'A Cripta dos Ecos aceita grupos de nível 20 a 30. O líder escolhe a dificuldade.'}
 });
 
 const NPCS = Object.freeze(STATIC_NPCS.map(p=>Object.freeze({

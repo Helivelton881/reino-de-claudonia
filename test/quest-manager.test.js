@@ -25,7 +25,7 @@ function manager(sent,now=()=>1000){
 }
 function unlockClass(player){player.dados.quests.completed.push('jornada_12_presas');}
 
-test('catalogo possui historia, side quests, diarias, quatro provas e 25 NPCs',()=>{
+test('catalogo possui historia, side quests, diarias, quatro provas e 26 NPCs',()=>{
   const sent=[],qm=manager(sent),catalog=qm.publicCatalog();
   assert.equal(catalog.length,60);
   assert.equal(catalog.filter(q=>q.category==='story').length,46);
@@ -36,7 +36,7 @@ test('catalogo possui historia, side quests, diarias, quatro provas e 25 NPCs',(
   const types=new Set(catalog.flatMap(q=>q.objectives.map(o=>o.type)));
   for(const type of ['talk','kill','explore','delivery','collect','use-item','boss']) assert.ok(types.has(type));
   assert.ok(catalog.filter(q=>q.category==='class-trial').every(q=>q.exclusiveGroup==='class-trial'));
-  assert.equal(NPCS.length,25);
+  assert.equal(NPCS.length,26);
   assert.ok(NPCS.some(n=>n.service==='forge'));
   assert.ok(NPCS.some(n=>n.service==='flight-shop'));
   assert.ok(NPCS.some(n=>n.id==='vigia_lobos'&&n.service==='quest-giver'));

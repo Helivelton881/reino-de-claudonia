@@ -17,8 +17,8 @@ function make(){
   return {mgr,player,sent,economyCalls,combatSync};
 }
 
-test('fase 7.10 registra 25 NPCs com serviços e diálogos úteis',()=>{
-  assert.equal(NPCS.length,25);
+test('fase 11 registra 26 NPCs com serviços e diálogos úteis',()=>{
+  assert.equal(NPCS.length,26);
   assert.ok(NPCS.some(n=>n.service==='healer'));
   assert.ok(NPCS.some(n=>n.service==='guild-registrar'));
   assert.ok(NPCS.filter(n=>n.service==='supply-shop').length>=3);

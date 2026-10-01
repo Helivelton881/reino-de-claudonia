@@ -656,6 +656,7 @@ button,input,select,textarea,label,a,.cell,.slot{touch-action:manipulation}
   <div class="chips txt"><span>✨ Buff <em id="buffCount">x0</em></span><span>🤝 Grupo <em id="partyCount">x0</em></span></div>
   <div class="buffs txt" id="buffs"></div>
   <div class="party" id="partyHud"></div>
+  <div class="panel txt" id="dungeonHud" hidden style="position:fixed;right:18px;top:110px;z-index:31;max-width:310px;padding:10px 12px"></div>
 </div>
 
 <div class="quest-tracker txt" id="questTrack" hidden>
@@ -1070,7 +1071,11 @@ let dirty = false;
 const online = {ws:null, myId:null, kicked:false, posT:0, last:'', first:true};
 // Fase 5: grupo, troca e guilda (o servidor é quem manda nesses estados)
 let party = {leader:null, members:[], skills:{}}, trade = null, myGuild = null, guildList = null, guildAsked = false, myShop = null;
-let questCatalog = {}, questState = {active:[], completed:[], lastCompletedAt:{}}, npcCatalog = [], bestiaryCatalog={entries:[],bosses:[]};
+let questCatalog = {}, questState = {active:[], completed:[], lastCompletedAt:{}}, npcCatalog = [], bestiaryCatalog={entries:[],bosses:[]}, dungeonState=null, dungeonEntities=[];
+function renderDungeonHud(){const el=$('dungeonHud');if(!el)return;if(!dungeonState){el.hidden=true;return;}const i=dungeonState.instance,c=dungeonState.config,s=c.stages[i.stageIndex];const foes=dungeonEntities.map(e=>`<button class="btn ghost" data-dungeon-attack="${e.id}" type="button">⚔ ${esc(e.name)} ${e.hp}/${e.maxHp}</button>`).join('');const objective=s&&s.type==='objective'?'<button class="btn" data-dungeon-interact="selo_eco" type="button">Ativar Selo do Eco</button>':'';el.hidden=false;el.innerHTML=`<b>⚔ ${esc(c.name)}</b><div class="sub">${i.difficulty==='dificil'?'Difícil':'Normal'} · Wipes ${i.wipes||0}</div><div>${s?esc(s.label):'Concluída'}</div><div class="actions">${foes}${objective}</div>${i.state==='completed'?'<button class="btn" type="button" id="dungeonChest">Abrir baú individual</button>':''}`;el.querySelectorAll('[data-dungeon-attack]').forEach(b=>b.onclick=()=>sendWs({t:'dungeon',action:'attack',targetId:b.dataset.dungeonAttack}));el.querySelectorAll('[data-dungeon-interact]').forEach(b=>b.onclick=()=>sendWs({t:'dungeon',action:'interact',target:b.dataset.dungeonInteract}));const b=$('dungeonChest');if(b)b.onclick=()=>sendWs({t:'dungeon',action:'chest'});}
+let dungeonVisual=null;
+function buildDungeonVisual(){if(dungeonVisual){scene.remove(dungeonVisual);dungeonVisual=null;}dungeonVisual=new THREE.Group();dungeonVisual.name='CriptaDosEcos_Instance';dungeonVisual.position.set(player.x,player.y-.1,player.z);scene.add(dungeonVisual);const loader=new THREE.GLTFLoader(),base='assets/dungeons/cripta_ecos/';const parts=[['room_module.glb',0,0,1],['room_module.glb',0,-15,1],['room_module.glb',0,-30,1],['gate_echo.glb',0,-7.5,1],['gate_echo.glb',0,-22.5,1],['echo_seal.glb',-3,-16,1],['echo_seal.glb',0,-18,1],['echo_seal.glb',3,-16,1],['miniboss_vigia_runico.glb',0,-25,.8],['boss_matriarca_ecos.glb',0,-34,.75],['loot_chest.glb',3,-34,.8]];for(const [file,x,z,s] of parts)loader.load(base+file,g=>{if(!dungeonVisual)return;g.scene.position.set(x,0,z);g.scene.scale.setScalar(s);dungeonVisual.add(g.scene);},undefined,()=>log('Falha ao carregar '+file,'bad'));}
+function clearDungeonVisual(){if(dungeonVisual){scene.remove(dungeonVisual);dungeonVisual=null;}}
 let itemCatalog = {equipment:{},sets:{},rarities:{},cards:{},inventoryLimit:32,storageLimit:60}, itemState = {inv:[],storage:[],eq:{},equp:{},eqMeta:{}};
 const SLOT_ICONS={arma:'⚔️',offhand:'🛡️',capacete:'⛑️',peitoral:'🥋',luvas:'🧤',botas:'🥾',capa:'🧣',acessorio1:'💍',acessorio2:'📿',voo:'🛹'};
 function applyItemCatalog(catalog,state){
@@ -3184,6 +3189,7 @@ function npcServiceHTML(n,meta){
     }
   }
   if(meta.service==='guild-registrar')html+='<div class="actions"><button class="btn" type="button" data-bank="1">Abrir banco</button><button class="btn ghost" type="button" data-social="1">Grupo e guilda</button></div>';
+  if(meta.service==='dungeon')html+='<div class="card"><b>Cripta dos Ecos</b><div class="sub">Nível 20–30 · grupo 2–4 · 30 min</div><div class="actions"><button class="btn" type="button" data-dungeon="normal">Entrar — Normal</button><button class="btn ghost" type="button" data-dungeon="dificil">Entrar — Difícil</button></div></div>';
   if(meta.service==='guide'&&meta.guideZone){
     const z=ZONES.find(x=>x.key===meta.guideZone),label=z&&z.name||meta.guideZone;
     html+=`<div class="actions"><button class="btn" type="button" data-guide-zone="${meta.guideZone}">Traçar rota: ${label}</button></div>`;
@@ -3326,6 +3332,7 @@ $('winNpc').addEventListener('click', e=>{
   const respec=e.target.closest('[data-skill-respec]');if(respec&&npcOpen){sendWs({t:'skillTree',action:'respec',npcId:npcOpen.id});return;}
   const service=e.target.closest('[data-service]');if(service&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:service.dataset.service});return;}
   const serviceBuy=e.target.closest('[data-service-buy]');if(serviceBuy&&npcOpen){sendWs({t:'npcService',npcId:npcOpen.id,action:'buy',itemId:serviceBuy.dataset.serviceBuy});return;}
+  const dungeon=e.target.closest('[data-dungeon]');if(dungeon&&npcOpen){sendWs({t:'dungeon',action:'enter',dungeonId:'cripta_ecos',difficulty:dungeon.dataset.dungeon});return;}
   const guide=e.target.closest('[data-guide-zone]');if(guide){const z=ZONES.find(x=>x.key===guide.dataset.guideZone);if(z){clearMoveRoute();if(!setMoveRoute(z.x,z.z,false))log('Não foi possível traçar a rota indicada.','bad');else log(`Rota marcada: ${z.name}.`,'gold');}return;}
   const bank=e.target.closest('[data-bank]');if(bank){openWin($('winBank'),1);renderBank();return;}
   const social=e.target.closest('[data-social]');if(social){$('bSocial').click();return;}
@@ -4583,6 +4590,14 @@ function handle(m){
   else if(m.t==='worldBossSpawn'){netMonster(m.boss);banner('WORLD BOSS',`${m.boss.name} surgiu!`);log(`${m.boss.name} apareceu no mundo.`,'bad');}
   else if(m.t==='worldBossPhase'){const x=monsters.find(q=>q.id===m.id);if(x)x.bossPhase=m.phase;banner(`Fase ${m.phase}`,m.enrage>1?'O chefe entrou em fúria!':'O combate mudou!');}
   else if(m.t==='bossTelegraph'){ringFx(m.x,m.z,m.radius||4,0xE5484D);log(`Ataque do chefe: ${String(m.skill||'perigo').replaceAll('_',' ')}`,'bad');}
+  else if(m.t==='dungeonEnter'||m.t==='dungeonReconnect'){dungeonState={instance:m.instance,config:m.config};dungeonEntities=m.entities||[];$('winNpc').hidden=true;buildDungeonVisual();banner(m.config.name,m.instance.difficulty==='dificil'?'Dificuldade Difícil':'Dificuldade Normal');renderDungeonHud();}
+  else if(m.t==='dungeonEntities'){dungeonEntities=m.entities||[];renderDungeonHud();}
+  else if(m.t==='dungeonHit'){const e=dungeonEntities.find(x=>x.id===m.targetId);if(e){e.hp=m.hp;if(e.hp<=0)dungeonEntities=dungeonEntities.filter(x=>x.id!==e.id);}renderDungeonHud();}
+  else if(m.t==='dungeonStage'){if(dungeonState)dungeonState.instance=m.instance;dungeonEntities=[];renderDungeonHud();if(m.gate)log(`Porta liberada: ${m.gate}.`,'gold');}
+  else if(m.t==='dungeonTelegraph'){ringFx(m.x,m.z,m.radius||4,0xE5484D);log(`Mecânica: ${String(m.mechanic).replaceAll('_',' ')}`,'bad');}
+  else if(m.t==='dungeonWipe'){log(`Grupo derrotado. Wipe ${m.wipes}.`,'bad');}
+  else if(m.t==='dungeonComplete'){if(dungeonState)dungeonState.instance=m.instance;banner('DUNGEON CONCLUÍDA','Baú individual liberado');renderDungeonHud();}
+  else if(m.t==='dungeonLoot'){log(`Recompensa individual: ${m.loot.rolls} rolagens (${m.loot.rarityMin}+).`,'gold');}
   else if(m.t==='worldSnapshot'){(m.monsters||[]).forEach(netMonster);(m.loot||[]).forEach(l=>{if(!drops.some(d=>d.id===l.lootId))spawnDrop(l.x,l.z,l.gold?{gold:l.gold}:{id:l.id,n:l.n||1},{id:l.lootId});});}
   else if(m.t==='monsterMove'){const x=monsters.find(q=>q.id===m.id);if(x){x.x=m.x;x.z=m.z;x.state=m.state;x.hp=m.hp;}}
   else if(m.t==='combatHit'){

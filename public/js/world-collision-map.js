@@ -45,7 +45,8 @@
     {id:'vigia_tessa',x:82,z:23,r:.6,kind:'npc'},
     {id:'tecela_sia',x:-74,z:-52,r:.6,kind:'npc'},
     {id:'pesquisador_iven',x:-58,z:72,r:.6,kind:'npc'},
-    {id:'arqueologa_dena',x:25,z:96,r:.6,kind:'npc'}
+    {id:'arqueologa_dena',x:25,z:96,r:.6,kind:'npc'},
+    {id:'guardiao_cripta',x:18,z:-18,r:.6,kind:'npc'}
   ];
   const COTTAGES=[];
   for(let i=0;i<11;i++){

@@ -23,6 +23,8 @@ const {ItemManager} = require('./server/items/item-manager');
 const NpcServiceManager = require('./server/npcs/npc-service-manager');
 const NPCS = require('./server/data/npcs');
 const EQUIPMENT = require('./server/data/equipment');
+const {DUNGEONS} = require('./server/data/dungeons');
+const DungeonManager = require('./server/dungeons/dungeon-manager');
 
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -79,6 +81,7 @@ const worldNavigation = new WorldNavigation();
 const questManager = new QuestManager({send});
 const skillManager = new SkillManager({send});
 const itemManager = new ItemManager({send});
+const dungeonManager = new DungeonManager({catalog:DUNGEONS,players,send});
 const emitirPerto = (point, msg) => { for (const p of players.values()) if (perto(point, p, 110)) send(p.ws, msg); };
 let lootManager;
 const combatManager = new CombatManager({
@@ -206,6 +209,7 @@ wss.on('connection', ws => {
         if (ws.readyState !== 1) return;
         p = novo;
         players.set(p.id, p);
+        dungeonManager.reconnect(p);
         clearTimeout(semLogin);
         send(ws, {
           t: 'welcome', id: p.id,
@@ -304,6 +308,13 @@ wss.on('connection', ws => {
       case 'attribute': if (COMBATE_AUTORITATIVO) combatManager.addAttribute(p,m); break;
       case 'npcTalk': questManager.talk(p,m.npcId); break;
       case 'npcService': if (COMBATE_AUTORITATIVO) npcServiceManager.act(p,m); break;
+      case 'dungeon': {
+        if(m.action==='enter'){const npc=NPCS.find(n=>n.id==='guardiao_cripta');if(!npc||!perto(p,npc,5))return erro(p,'Aproxime-se do Guardião Vaelor.');const out=dungeonManager.create(p,m.dungeonId||'cripta_ecos',m.difficulty||'normal');if(!out.ok)erro(p,out.reason);}
+        else if(m.action==='attack') dungeonManager.attack(p,m.targetId);
+        else if(m.action==='interact') dungeonManager.progress(p,'interact',m.target,1);
+        else if(m.action==='chest'){const out=dungeonManager.claimChest(p);if(!out.ok)erro(p,'Baú indisponível ou já coletado.');else{const pool=Object.values(EQUIPMENT).filter(x=>x.source==='dungeon'&&Number(x.req||x.level||1)<=p.L&&(!x.cls||x.cls===p.dados.cls));const granted=[];for(let n=0;n<out.loot.rolls&&pool.length;n++){const it=pool[Math.floor(Math.random()*pool.length)];if(itemManager.addItem(p,{id:it.id,n:1}))granted.push(it.id);}p.dirty=true;itemManager.sync(p,{event:'dungeon-chest'});send(p.ws,{t:'dungeonLoot',loot:out.loot,items:granted});}}
+        break;
+      }
       case 'skillTree': {
         let changed=false;
         if(m.action==='learn') changed=skillManager.learn(p,m.skillId);
@@ -356,6 +367,7 @@ wss.on('connection', ws => {
   ws.on('close', async () => {
     clearTimeout(semLogin);
     if (!p) return;
+    dungeonManager.disconnect(p);
     players.delete(p.id);
     if (p.trade) fimTroca(p.trade, `${p.name} saiu do jogo. Troca cancelada.`);
     if (p.shop) fecharLoja(p);
@@ -834,7 +846,7 @@ let ultimoTickMonstros=Date.now();
 setInterval(()=>{
   if(!COMBATE_AUTORITATIVO)return;
   const now=Date.now(),dt=Math.min(.25,(now-ultimoTickMonstros)/1000);ultimoTickMonstros=now;
-  monsterManager.tick(dt);combatManager.tick(dt);lootManager.tick();
+  monsterManager.tick(dt);combatManager.tick(dt);lootManager.tick();dungeonManager.tick();
 },100);
 
 // Recarrega o limite de experiência de monstros (evita abuso).
