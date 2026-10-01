@@ -1712,6 +1712,8 @@ Promise.all(PHASE13_MODELS.map(name=>worldAssets._gltf(PHASE13_NATURE+name).then
 const sharedCollisionWorld = window.ClaudoniaWorldCollision.generate();
 const trees = sharedCollisionWorld.trees.map(src=>{
   const t = Object.assign({pine:src.kind === 'pine'}, src), zk = zoneKeyAt(t.x,t.z);
+  // copa mais alta/cheia sem tocar no raio de colisão compartilhado.
+  t.s=(t.s||1)*(t.kind==='pine'?1.45:t.kind==='dead'?1.22:1.55);
   if (t.kind === 'common'){
     const green = zk === 'espirito' || (zk === 'coelhorn' && hash(t.x+17,t.z-9) < 0.5);
     const k = hash(t.x*1.7,t.z*1.3), h = k < 0.42 ? 0.07 : k < 0.6 ? 0.095 : k < 0.72 ? 0.125 : k < 0.82 ? 0.025 : 0.24;
@@ -1735,10 +1737,10 @@ function scatterVeg(count, place){
 }
 const lowGround = (x,z,town) => freeSpot(x,z,town) && heightAt(x,z) <= 9 && !nearHouse(x, z, 0.5);
 // grama
-scatterVeg(HQ ? 6000 : 2200, (x,z)=>{
+scatterVeg(HQ ? 9000 : 3400, (x,z)=>{
   if (Math.hypot(x,z) < TOWN+2 || Math.hypot(x-LAKE.x,z-LAKE.z) < LAKE.r+5 || heightAt(x,z) > 11 || nearHouse(x, z, 0)) return null;
   const r = rand();
-  return {model: 'Grass_Common_Short', h:0.55+rand()*0.5,
+  return {model: 'Grass_Common_Short', h:0.72+rand()*0.58,
     color:new THREE.Color().setHSL(0.15+rand()*0.09, 0.55, 0.66+rand()*0.14)};
 });
 // flores
@@ -4115,9 +4117,10 @@ function pushOut(nx, nz, rad, isle){
 function updateMonsters(dt, t){
   if(authoritativeCombat){
     monsters.forEach(m=>{
-      const dp=Math.hypot(player.x-m.x,player.z-m.z);m.mesh.visible=!m.dead&&dp<PERF.monsterFar;if(!m.mesh.visible)return;
+      const dp=Math.hypot(player.x-m.x,player.z-m.z);m.mesh.visible=!m.dead&&dp<PERF.monsterFar;if(!m.mesh.visible){if(m.dead)worldAssets.setMonsterAnimation(m,'death');return;}
       m.label.visible=dp<32;m.mesh.position.set(m.x,heightAt(m.x,m.z),m.z);
       const moving=['chase','return','wander'].includes(m.state);if(moving)m.phase+=dt*8;
+      const assetState=m.dead?'death':m.hitT>0?'hit':m.state==='attack'?'attack':moving?'move':'idle';worldAssets.setMonsterAnimation(m,assetState);
       if(m.body.userData.float)m.body.position.y=.35+Math.sin(t*2+m.phase)*.25;
       else if(m.type.hop)m.body.position.y=moving?Math.abs(Math.sin(m.phase))*.45:Math.abs(Math.sin(t*2+m.phase))*.06;
       else{m.body.position.y=moving?Math.abs(Math.sin(m.phase))*.08:0;m.body.rotation.z=moving?Math.sin(m.phase)*.06:0;}
@@ -4168,6 +4171,7 @@ function updateMonsters(dt, t){
     const gy = heightAt(m.x, m.z);
     m.mesh.position.set(m.x, gy, m.z); m.mesh.rotation.y = m.face;
     const moving = sp > 0;
+    const assetState=m.dead?'death':m.hitT>0?'hit':m.lunge>0?'attack':moving?'move':'idle';worldAssets.setMonsterAnimation(m,assetState);
     if (m.body.userData.float) m.body.position.y = 0.35 + Math.sin(t*2 + m.phase)*0.25;
     else if (T.hop) m.body.position.y = moving ? Math.abs(Math.sin(m.phase))*0.45 : Math.abs(Math.sin(t*2 + m.phase))*0.06;
     else { m.body.position.y = moving ? Math.abs(Math.sin(m.phase))*0.08 : 0; m.body.rotation.z = moving ? Math.sin(m.phase)*0.06 : 0; }

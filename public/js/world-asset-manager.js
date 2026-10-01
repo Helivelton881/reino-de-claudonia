@@ -154,6 +154,17 @@
     }
 
     // Some com os blocos longe da câmera (chamado todo quadro; trabalha 4 vezes por segundo).
+    setMonsterAnimation(monster, state, immediate=false){
+      const row=monster&&monster.userData&&monster.userData.assetAnimation;if(!row)return;
+      const clip=row.actions[state]||row.actions.idle;if(!clip||row.current===state)return;
+      const prev=row.current&&row.actions[row.current],next=row.mixer.clipAction(clip);
+      if(prev){const pa=row.mixer.clipAction(prev);if(immediate)pa.stop();else pa.fadeOut(.12);}
+      next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1);
+      if(state==='death'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=true;}
+      else if(state==='attack'||state==='hit'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=false;}
+      else next.setLoop(THREE.LoopRepeat,Infinity);
+      if(immediate)next.play();else next.fadeIn(.12).play();row.current=state;
+    }
     update(cameraPosition, dt){
       const frameDt = dt || 0.016;
       for (let i=this.mixers.length-1;i>=0;i--){ const row=this.mixers[i]; if(!row.root.parent){this.mixers.splice(i,1);continue;} row.mixer.update(frameDt); }
@@ -190,8 +201,17 @@
         } });
         monster.body.visible = false; monster.mesh.add(object); monster.assetVisual = object;
         if (gltf.animations && gltf.animations.length){
-          const mixer=new THREE.AnimationMixer(object), idle=gltf.animations.find(a=>/idle/i.test(a.name))||gltf.animations[0];
-          mixer.clipAction(idle).play(); this.mixers.push({root:object,mixer});
+          const mixer=new THREE.AnimationMixer(object), clips=gltf.animations;
+          const find=(rx)=>clips.find(a=>rx.test(a.name));
+          const row={root:object,mixer,actions:{
+            idle:find(/flying_idle|^idle$/i)||find(/idle/i)||clips[0],
+            move:find(/fast_flying|^run$|^walk$/i)||find(/walk|run|flying/i),
+            attack:find(/bite_front|headbutt|^punch$/i)||find(/attack|bite|punch/i),
+            hit:find(/hitreact|hitrecieve|hitreceive/i),
+            death:find(/^death$/i)
+          },current:null};
+          object.userData.monsterAnimation=row; monster.userData=monster.userData||{}; monster.userData.assetAnimation=row;
+          this.mixers.push(row); this.setMonsterAnimation(monster,'idle',true);
         }
         return object;
       } catch (error){ console.warn('[WorldAssets] Monstro do Bestiary indisponível', error); return null; }
