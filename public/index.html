@@ -3058,6 +3058,7 @@ const NPCS = [
   {id:'tecela_sia', ...npcPhysical('tecela_sia'), long:true, name:'Tecelã Sia', tag:'[Tecelã] Sia', role:'Tecelã da Mata das Teias', tunic:0x6B3D75, hair:0x382044, model:KAYKIT_NPC+'Mage.glb'},
   {id:'pesquisador_iven', ...npcPhysical('pesquisador_iven'), name:'Pesquisador Iven', tag:'[Pesquisador] Iven', role:'Pesquisador do Lago Espelhado', tunic:0x386B85, hair:0x203848, model:KAYKIT_NPC+'Mage.glb'},
   {id:'arqueologa_dena', ...npcPhysical('arqueologa_dena'), long:true, name:'Arqueóloga Dena', tag:'[Arqueóloga] Dena', role:'Arqueóloga das Ruínas do Ciclope', tunic:0x805239, hair:0x3B241A, model:KAYKIT_NPC+'Rogue_Hooded.glb'},
+  {id:'guardiao_cripta', ...npcPhysical('guardiao_cripta'), name:'Guardião Vaelor', tag:'[Dungeon] Vaelor', role:'Guardião da Cripta dos Ecos', tunic:0x303847, hair:0xD2D7DF, model:KAYKIT_NPC+'Knight.glb'},
 ];
 const npcObjs = NPCS.map(n=>{
   const h = makeLegacyHero({tunic:n.tunic, hair:n.hair, long:!!n.long, eye:n.eye}), y = heightAt(n.x, n.z);
